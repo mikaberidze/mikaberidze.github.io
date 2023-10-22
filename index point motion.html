@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guram Mikaberidze</title>
+    <title>Guram Mikaberidze</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0; /* Removes default margin */
+            padding: 0; /* Removes default padding */
+            background-color: #f8f8f8;
+            color: #333;
+        }
+
+        header {
+            position: relative;
+            text-align: center;
+            padding: 2em 0;
+        }
+
+        h1 {
+            font-size: 2eem;
+            padding: 0;
+            margin: 0; /* Remove default margin */
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 1em;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 0.5em;
+            margin-top: 2em;
+            margin: 2% 10%; /* Adds margin to the sides of the content */
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 2% 10%;
+        }
+
+        li {
+            padding: 0.5em 0;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 4em;
+            padding: 2em 0;
+            font-size: 0.9em;
+            border-top: 1px solid #ccc;
+            margin: 2% 10%;
+        }
+
+
+        #footerCanvas {
+            display: block;
+            background-color: #f8f8f8;
+            width: 100%; /* Ensures canvas takes up full width */
+        }
+
+        /* profile pannel */
+        .profile-panel {
+            position: absolute; 
+            --panelWidth: 200px;
+            top: 50px;      /* Adjust the distance from the top as desired */
+            right: 50px;    /* Adjust the distance from the right as desired */
+            width: var(--panelWidth);   /* Ensure the width matches the profile picture width */
+            height: 300px;  /* Ensure the height matches the profile picture height */
+        }
+
+        #profileCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0
+        }
+
+        .profile-pic {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            border-radius: 50%;
+            z-index: 1; /* Ensure the main photo stays above the connecting lines */
+        }
+
+        .image-links {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;        
+        }
+
+        .image-links img {
+            display: block;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            transition: transform 0.1s linear;
+            --shift: 10px;
+        }
+
+        /* circular layout */
+        .image-links a:nth-child(1) {
+            --angle: 0deg;
+        }
+        .image-links a:nth-child(2) {
+            --angle: 30deg;
+        }
+        .image-links a:nth-child(3) {
+            --angle: -30deg;
+        }
+
+        .image-links a {
+            display: flex;            /* Set the <a> tag to use flex layout */
+            align-items: center;      /* Center vertically */
+            justify-content: center;  /* Center horizontally */
+            position: absolute;
+            top: calc(var(--panelWidth)/2);
+            left: 50%;
+            width: 60px;
+            height: 60px;
+            transform: translate(-50%, -50%) rotate(var(--angle)) translateY(125px) rotate(calc(-1*var(--angle)));
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        /* hover animation */
+        .image-links a:hover img{
+            transform: translateX(calc(-1*var(--shift)*sin(var(--angle)))) translateY(calc(var(--shift)*cos(var(--angle))));
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <i>Hey, I'm</i>
+        <h1>Guram Mikaberidze</h1>
+    </header>
+    <div class="profile-panel">
+        <img src="guga.jpg" alt="Guram Mikaberidze" class="profile-pic">
+        <canvas id="profileCanvas"></canvas>
+        <div class="image-links">
+            <a href="https://www.researchgate.net/profile/Guram-Mikaberidze" target="_blank">
+                <img src="icon_researchgate.png" alt="ResearchGate Logo">
+            </a>
+            <a href="https://scholar.google.com/citations?user=YOUR_GOOGLE_SCHOLAR_ID" target="_blank">
+                <img src="icon_scholar_google.png" alt="Google Scholar Logo">
+            </a>
+            <a href="https://gitlab.com/mikaberidze" target="_blank">
+                <img src="icon_gitlab.png" alt="Gitlab Logo">
+            </a>
+        </div>
+    </div>
+
+    <p style="text-align:center; clear: both;">a PhD Candidate in Applied Mathematics at UC Davis. I study the dynamics on complex networks</p>
+
+    <section>
+        <h2>Education</h2>
+        <ul>
+            <li>2016 - Present: MS in Physics (2019), Ph.D. in Applied Mathematics (expected in 2024), UC Davis, CA, USA.</li>
+            <li>2010 - 2015: BS in Computer Science (2014), BS in Physics (2015), Free University of Tbilisi, Georgia.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Employment History</h2>
+        <ul>
+            <li>2016 - Present: UC Davis, Davis, CA, Teaching Assistant / Graduate Student Researcher. Teaching math and physics classes, including graduate level Network Science, Information Theory, Applied Mathematics, and undergraduate Honors Physics.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Professional Interests</h2>
+        <ul>
+            <li>Dynamics on Networks</li>
+            <li>Neuronal networks</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Selected Publications</h2>
+        <ul>
+            <li>Mikaberidze, G., Chowdhury, S.N., Hastings, A. and D’Souza, R.M., 2023. Consensus Formation Among Mobile Agents in Networks of Heterogeneous Interaction Venues. Submitted to Nature Communications.</li>
+        </ul>
+    </section>
+
+    <footer>
+        Contact: [Your Email Address] | [Your Phone Number] | [LinkedIn Profile] | [GitHub Profile]
+    </footer>
+
+    <canvas id="footerCanvas" height="200"></canvas>
+
+    <script>
+        const canvas = document.getElementById('footerCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; // Set canvas width to window width
+        const points = [];
+        const maxPoints = 100;
+        const connectionDistance = 70;
+
+        const dotSize = 2;
+        const edgeWidth = 0.5;
+
+        const gravity = 0.015; // Adjust this value to increase/decrease the strength of gravity
+
+        class Point {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.dx = (Math.random() - 0.5) * 2;
+                this.dy = (Math.random() - 0.5) * 2;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2, false);
+                ctx.fill();
+            }
+
+            update() {
+                // Boundary conditions and gravity
+                if (this.x + this.dx > canvas.width || this.x + this.dx < 0) {
+                    this.dx = -this.dx;
+                }
+
+                if (this.y + this.dy > canvas.height || this.y + this.dy < 0) {
+                    this.dy = -this.dy;
+                } else {
+                    this.dy += gravity;
+                }
+
+                this.x += this.dx;
+                this.y += this.dy;
+
+                this.draw();
+            }
+        }
+
+        function connectDots(p1, p2) {
+            const distance = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
+            if (distance < connectionDistance) {
+                const opacity = 1 - (distance / connectionDistance)**4;
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.lineWidth = edgeWidth;
+                ctx.strokeStyle = `rgba(50, 50, 50, ${opacity})`;
+                ctx.stroke();
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < maxPoints - 1; i++) {
+                for (let j = i + 1; j < maxPoints; j++) {
+                    connectDots(points[i], points[j]);
+                }
+            }
+            for (let i = 0; i < maxPoints; i++) {
+                points[i].update();
+            }
+        }
+
+        for (let i = 0; i < maxPoints; i++) {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            points.push(new Point(x, y));
+        }
+
+        animate();
+
+
+
+        // profile pannel
+        const profilePanel = document.querySelector('.profile-panel');
+        const mainPic = document.querySelector('.profile-pic');
+        const linkImages = document.querySelectorAll('.image-links a');
+        const profileCanvas = document.getElementById('profileCanvas');
+        const profileCtx = profileCanvas.getContext('2d');
+
+        function drawEdges() {
+            // Clear the canvas first
+            profileCtx.clearRect(0, 0, profileCanvas.width, profileCanvas.height);
+            
+            const canvasRect = profileCanvas.getBoundingClientRect();
+            const profilePanelRect = profilePanel.getBoundingClientRect();
+
+            // Adjust canvas size to match the profilePanel's size
+            profileCanvas.width = profilePanelRect.width;
+            profileCanvas.height = profilePanelRect.height;
+
+            const mainPicRect = mainPic.getBoundingClientRect();
+            const mainPicCenter = {
+                x: mainPicRect.left + mainPicRect.width / 2 - canvasRect.left,
+                y: mainPicRect.top + mainPicRect.height / 2 - canvasRect.top
+            };
+
+            linkImages.forEach(link => {
+                const rect = link.getBoundingClientRect();
+                const linkCenter = {
+                    x: rect.left + rect.width / 2 - canvasRect.left,
+                    y: rect.top + rect.height / 2 - canvasRect.top
+                };
+
+                profileCtx.beginPath();
+                profileCtx.moveTo(mainPicCenter.x, mainPicCenter.y);
+                profileCtx.lineTo(linkCenter.x, linkCenter.y);
+                profileCtx.stroke();
+            });
+        }
+        // Initial drawing
+        window.onload = drawEdges;
+
+        // Redraw edges when window is resized
+        window.addEventListener('resize', drawEdges);
+
+
+    </script>
+</body>
+
+</html>
