@@ -7,14 +7,14 @@
     <title>Guram Mikaberidze</title>
     <title>Guram Mikaberidze</title>
     <style>
-        /* profile pannel */
+        /* ---------------------------------------------------------------------------------------------------- profile pannel */
         .profile-panel {
             position: fixed;
             --panelWidth: 200px;
             top: 50px;      /* Adjust the distance from the top as desired */
             right: 50px;    /* Adjust the distance from the right as desired */
             width: var(--panelWidth);   /* Ensure the width matches the profile picture width */
-            height: 300px;  /* Ensure the height matches the profile picture height */
+            height: calc(100%-200px);  /* Ensure the height matches the profile picture height */
         }
 
         #profileEdgeCanvas {
@@ -23,7 +23,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 0
+            z-index: -1
         }
 
         #triangulationCanvas, #overlayCanvas, #backgroundCanvas {
@@ -50,7 +50,7 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 100%;        
+            height: 100%;
         }
 
         .image-links img {
@@ -60,6 +60,7 @@
             border-radius: 50%;
             transition: transform 0.1s linear;
             --shift: 10px;
+            z-index: 4;
         }
 
         /* circular layout */
@@ -70,14 +71,14 @@
             --angle: 25deg;
         }
         .image-links a:nth-child(3) {
-            --angle: 0deg;
-        }
-        .image-links a:nth-child(4) {
             --angle: -25deg;
         }
-        .image-links a:nth-child(5) {
+        .image-links a:nth-child(4) {
             --angle: -50deg;
         }
+        /* .image-links a:nth-child(5) {
+            --angle: -50deg;
+        } */
 
         .image-links a {
             display: flex;            /* Set the <a> tag to use flex layout */
@@ -93,17 +94,44 @@
             overflow: hidden;
         }
 
-        /* hover animation */
+        /* hover link logo animation */
         .image-links a:hover img{
             transform: translateX(calc(-1*var(--shift)*sin(var(--angle)))) translateY(calc(var(--shift)*cos(var(--angle))));
         }
 
-        /* FOOTER */
+        /* ---------------------------------------------------------------------------------------------------- NAVIGATION */
+        .menu {
+            margin-top: 225px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            padding: 10px;
+        }
+
+        .menu-item {
+            margin: 25px 0; /* Increase distance between menu items */
+            text-align: center;
+            color: #333;
+            transition: font-weight 0.3s; /* Smooth transition for font-weight */
+            /* padding-top: 5px; */
+            cursor: pointer; /* Optional: Change cursor to pointer to indicate clickability */
+            z-index: 1;
+            text-decoration: none;
+        }
+
+        .menu-item:hover, .menu-item.bold {
+            font-weight: bold;
+        }
+
+
+        /* ---------------------------------------------------------------------------------------------------- FOOTER */
         #footerCanvas {
             display: block;
             background-color: #f8f8f8;
             width: 100%; /* Ensures canvas takes up full width */
             height: 150px;
+            z-index: 3;
         }
 
         footer {
@@ -116,7 +144,7 @@
             margin-right: calc(max(10%, 300px));
         }
 
-        /* MAIN TEXT */
+        /* ---------------------------------------------------------------------------------------------------- MAIN TEXT */
         body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
@@ -145,16 +173,18 @@
         h2 {
             font-size: 1.5em;
             border-top: 1px solid #ccc;
-            margin-top: 2em;
-            margin: 1% 10%; 
+            padding-top: 2em;
+            padding: 1% 10%; 
+            margin: 0;
             margin-right: calc(max(10%, 300px));
         }
 
         h3 {
             font-size: 1.25em;
             /* border-bottom: 1px solid #ccc; */
-            margin-top: 1em;
-            margin: 1% 10%; 
+            margin-top: 0;
+            margin-bottom: 0;
+            padding: 1% 10%; 
             margin-right: calc(max(10%, 300px));
         }
 
@@ -162,7 +192,7 @@
             list-style-type: none;
             padding: 0;
             margin: 0% 10%;
-            margin-bottom: 2%;
+            padding-bottom: 2%;
             margin-right: calc(max(10%, 300px));
         }
 
@@ -185,6 +215,7 @@
 </head>
 
 <body>
+    <!-- ---------------------------------------------------------------------------------- Profile / menu Pane -->
     <div class="profile-panel">
         <canvas id="profileEdgeCanvas"></canvas>
         <canvas id="backgroundCanvas" style="display: none;"></canvas>
@@ -202,15 +233,21 @@
             <a href="https://gitlab.com/mikaberidze" target="_blank">
                 <img src="icon_gitlab.png" alt="Gitlab Logo">
             </a>
-            <a href="https://www.linkedin.com/in/guram-mikaberidze-7914538a/" target="_blank">
+            <!-- <a href="https://www.linkedin.com/in/guram-mikaberidze-7914538a/" target="_blank">
                 <img src="icon_linkedin.png" alt="Gitlab Logo">
-            </a>
+            </a> -->
             <a href="https://orcid.org/0000-0001-6776-3481" target="_blank">
                 <img src="icon_orchid.png" alt="Gitlab Logo">
             </a>
         </div>
+        <div class="menu">
+            <a href="#education" class="menu-item">education</a>
+            <a href="#research" class="menu-item">research</a>
+            <a href="#teaching" class="menu-item">teaching</a>
+        </div>
     </div>
 
+    <!-- ---------------------------------------------------------------------------------- Main Text -->
     <header>
         <i>Hey, I'm</i>
         <h1>Guram Mikaberidze</h1>
@@ -237,7 +274,7 @@
         </li>
     </ul>
 
-    <section>
+    <section id="education">
         <h2>Education</h2>
         <ul>
             <li>Ph.D. in Applied Mathematics (expected in 2024), UC Davis, CA, USA.</li>
@@ -247,7 +284,7 @@
         </ul>
     </section>
 
-    <section>
+    <section id="research">
         <h2>Selected Research Projects</h2>
         <h3>Consensus Formation Among Mobile Agents in Networks of Heterogeneous Interaction Venues</h3>
         <ul>
@@ -334,29 +371,58 @@
         <h3>Flows on Networks</h3>
         <ul>
             <li>
-
+                In this ongoing research project, we study the dynamics of flows on networks under various symmetries and constraints. We have developed novel field 
+                theoretic analytic tools on networks (as opposed to the common mean-field theory) that captures well the emergent behavior for random walking particles 
+                on networks, as well as guided shortest path routing.
+                <br>
+                Principle Investigator: <b>Raissa D'Souza</b>. Collaborator: Oriol Artime.
             </li>
         </ul>
 
         <h3>Gerogian Natural Language Pprocessing</h3>
         <ul>
             <li>
-
+                This project aims to save the Georgian languages from digital extinction. We are attempting to create modern Large Language Models for Georgian language
+                by overcoming various obsticles, such as the lack of large datasets, and uniqueness of three Georgian languages which represent a language island.
+                <br>
+                Project lead: <b>Beso Mikaberidze</b>
             </li>
         </ul>
     </section>
 
-    <section>
-        <h2>Next Chapter</h2>
+    <section id="teaching">
+        <h2>Teaching</h2>
         <ul>
             <li>
-
+                I have enjoyed teaching various classes in Physics and Mathematics. My favorite appointments include:
+            </li>
+            <li>
+                Lead TA for graduate level <b>Network Science</b> class ad UC Davis, where I helped with the student projects and gave a guest lecture.
+            </li>
+            <li>
+                TA for undergraduate <b>Information Theory</b> class at UC Davis, where I helped students with the material during office hours, and gave a guest lecture on 
+                Information Theory in Physics.
+            </li>
+            <li>
+                Lead TA for graduate class in <b>Applied Mathematics</b> at UC Davis.
+            </li>
+            <li>
+                Lead TA for undergraduate <b>Honors Physics</b> series.
+            </li>
+            <li>
+                Designer and Instructor of an undergraduate class in <b>Computational Physics with Wolfram Mathematica</b> at Free University of Tbilisi, Georgia.
+            </li>
+            <li>
+                Teacher and team leader for high-school scientific teams for International Young Physicists' and Naturalists' Tournaments (IYPT and IYNT).
             </li>
         </ul>
     </section>
 
+    <!-- ---------------------------------------------------------------------------------- Footer -->
     <footer>
-        Contact: [Your Email Address] | [Your Phone Number] | [LinkedIn Profile] | [GitHub Profile]
+        ✉️ &#x6d;&#x69;&#x6b;&#x61;&#x62;&#x65;&#x72;&#x69;&#x64;&#x7a;&#x65;&#x40;&#x75;&#x63;&#x64;&#x61;&#x76;&#x69;&#x73;&#x2e;&#x65;&#x64;&#x75; |
+        🇺🇲 &#x2b;&#x31;&#x20;&#x35;&#x33;&#x30;&#x20;&#x35;&#x36;&#x34;&#x20;&#x39;&#x38;&#x38;&#x33; |
+        🇬🇪 &#x2b;&#x39;&#x39;&#x35;&#x20;&#x35;&#x35;&#x31;&#x20;&#x33;&#x32;&#x20;&#x37;&#x37;&#x20;&#x37;&#x31;
     </footer>
 
     <canvas id="footerCanvas" height="200"></canvas>
@@ -449,8 +515,7 @@
         animate_footer();
 
 
-
-        // profile pannel
+        // ----------------------------------------------------------------------------------------- profile pannel
         const profilePanel = document.querySelector('.profile-panel');
         const mainPic = document.querySelector('#overlayCanvas');
         const linkImages = document.querySelectorAll('.image-links a');
@@ -460,6 +525,8 @@
         function drawEdges() {
             // Clear the canvas first
             profileCtx.clearRect(0, 0, profileEdgeCanvas.width, profileEdgeCanvas.height);
+            let line_color = "gray";
+            profileCtx.strokeStyle = line_color;
             
             const canvasRect = profileEdgeCanvas.getBoundingClientRect();
             const profilePanelRect = profilePanel.getBoundingClientRect();
@@ -486,14 +553,55 @@
                 profileCtx.lineTo(linkCenter.x, linkCenter.y);
                 profileCtx.stroke();
             });
+
+            profileCtx.beginPath();
+            profileCtx.moveTo(mainPicCenter.x, mainPicCenter.y);
+            profileCtx.lineTo(mainPicCenter.x, profileEdgeCanvas.height);
+            profileCtx.stroke();
+            
+            // Draw the circles
+            document.querySelectorAll('.menu-item').forEach(div => {
+                const rect = div.getBoundingClientRect();
+                const circleRadius = 3;
+
+                // Calculate circle's position
+                const circleX = rect.left + rect.width / 2 - canvasRect.left;
+                const circleY = rect.bottom - canvasRect.top;
+
+                // Remove segment of line from behind the text
+                // Set line color
+                profileCtx.strokeStyle = '#f8f8f8';
+                // Set line thickness
+                profileCtx.lineWidth = 20; 
+                profileCtx.beginPath();
+                profileCtx.moveTo(mainPicCenter.x, circleY);
+                profileCtx.lineTo(mainPicCenter.x, rect.top - canvasRect.top);
+                profileCtx.stroke();
+                
+
+                // Set line color
+                profileCtx.strokeStyle = line_color;
+                profileCtx.fillStyle = line_color;
+                // Set line thickness
+                profileCtx.lineWidth = 1; 
+
+                // Draw the circle
+                profileCtx.beginPath();
+                profileCtx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+                profileCtx.fill();
+                profileCtx.closePath();
+            })
         }
         // Initial drawing
         window.onload = drawEdges;
 
-        // Profile setup with clickable triangulation
+        // ----------------------------------------------------------------------------------------- Profile setup with triangulation when hovered
         // Setting constants for animation delay and the number of random points
         const DELAY_MS = 100;
-        const POINTS_NUMBER = 2000;
+        const MAX_POINTS_NUMBER = 10000;
+        const MIN_POINTS_NUMBER = 2000;
+        const INCREMENT_POINTS_NUMBER = 2000;
+        let pointsNumber = MAX_POINTS_NUMBER;
         
         // Setting up variables to control animation flow
         let triangulationOn = false;
@@ -523,7 +631,7 @@
             const noBackgroundImg = new Image();
             noBackgroundImg.src = 'guga_no_background.png';
 
-            const size = backgroundCanvas.width*5; // Setting size of canvases (adjusted to match CSS)
+            const size = backgroundCanvas.width*10; // Setting size of canvases (adjusted to match CSS)
             const radius = size / 2;
             
             // Setting canvas dimensions
@@ -543,13 +651,18 @@
 
                 // Animation function
                 function animate() {
-                    if (triangulationOn) {
+                    if (triangulationOn || pointsNumber < MAX_POINTS_NUMBER) {
                         profilePic.style.display = 'none';
                         triangulationCanvas.style.display = 'block';
                         backgroundCanvas.style.display = 'none';
-                        const points = generateRandomPoints(POINTS_NUMBER, radius);
+                        const points = generateRandomPoints(pointsNumber, radius);
                         const delaunay = Delaunator.from(points);
                         colorAndDrawTriangles(delaunay, points, ctxHidden, ctxDisplay);
+                        if (triangulationOn && pointsNumber > MIN_POINTS_NUMBER) {
+                            pointsNumber -= INCREMENT_POINTS_NUMBER;
+                        } else {
+                            pointsNumber += INCREMENT_POINTS_NUMBER
+                        }
                     }else {
                         profilePic.style.display = 'block';
                         triangulationCanvas.style.display = 'none';
@@ -598,6 +711,44 @@
                 ctxDisplay.fill();
             }
         }
+
+        // ----------------------------------------------------------------------------------------- Navigation
+        document.addEventListener("DOMContentLoaded", () => {
+            // add click listeners to menu items
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                });
+            });
+            // add click listener to the profile pic
+            const overlayCanvas = document.getElementById('overlayCanvas');
+            overlayCanvas.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+
+            const menuItems = document.querySelectorAll('.menu-item');
+            window.addEventListener('scroll', () => {
+                const sections = document.querySelectorAll('section');
+                const scrollPosition = window.scrollY + window.innerHeight/4;
+                document.querySelector('.menu-item.bold')?.classList.remove('bold');
+
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.offsetHeight;
+                    
+                    let topSectTop = Infinity;
+                    if (scrollPosition >= sectionTop && scrollPosition <= sectionTop + sectionHeight) {
+                        document.querySelector('.menu-item.bold')?.classList.remove('bold');
+                        console.log('Current Section ID:', section.id);
+                        document.querySelector(`.menu-item[href="#${section.id}"]`).classList.add('bold');
+                    }
+                });
+            });
+        });
 
     </script>
 </body>
