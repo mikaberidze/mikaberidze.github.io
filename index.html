@@ -1,73 +1,605 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image Triangulation</title>
-  <style>
-    #displayCanvas {
-      border: 1px solid black;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guram Mikaberidze</title>
+    <title>Guram Mikaberidze</title>
+    <style>
+        /* profile pannel */
+        .profile-panel {
+            position: fixed;
+            --panelWidth: 200px;
+            top: 50px;      /* Adjust the distance from the top as desired */
+            right: 50px;    /* Adjust the distance from the right as desired */
+            width: var(--panelWidth);   /* Ensure the width matches the profile picture width */
+            height: 300px;  /* Ensure the height matches the profile picture height */
+        }
+
+        #profileEdgeCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0
+        }
+
+        #triangulationCanvas, #overlayCanvas, #backgroundCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: var(--panelWidth);
+            height: var(--panelWidth);
+            border-radius: 50%;
+            z-index: 2; /* Ensure the main photo stays above the connecting lines */
+        }
+        
+        #profile-pic {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .image-links {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;        
+        }
+
+        .image-links img {
+            display: block;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            transition: transform 0.1s linear;
+            --shift: 10px;
+        }
+
+        /* circular layout */
+        .image-links a:nth-child(1) {
+            --angle: 50deg;
+        }
+        .image-links a:nth-child(2) {
+            --angle: 25deg;
+        }
+        .image-links a:nth-child(3) {
+            --angle: 0deg;
+        }
+        .image-links a:nth-child(4) {
+            --angle: -25deg;
+        }
+        .image-links a:nth-child(5) {
+            --angle: -50deg;
+        }
+
+        .image-links a {
+            display: flex;            /* Set the <a> tag to use flex layout */
+            align-items: center;      /* Center vertically */
+            justify-content: center;  /* Center horizontally */
+            position: absolute;
+            top: calc(var(--panelWidth)/2);
+            left: 50%;
+            width: 60px;
+            height: 60px;
+            transform: translate(-50%, -50%) rotate(var(--angle)) translateY(125px) rotate(calc(-1*var(--angle)));
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        /* hover animation */
+        .image-links a:hover img{
+            transform: translateX(calc(-1*var(--shift)*sin(var(--angle)))) translateY(calc(var(--shift)*cos(var(--angle))));
+        }
+
+        /* FOOTER */
+        #footerCanvas {
+            display: block;
+            background-color: #f8f8f8;
+            width: 100%; /* Ensures canvas takes up full width */
+            height: 150px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 4em;
+            padding: 2em 0;
+            font-size: 0.9em;
+            border-top: 1px solid #ccc;
+            margin: 2% 10%;
+            margin-right: calc(max(10%, 300px));
+        }
+
+        /* MAIN TEXT */
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0; /* Removes default margin */
+            padding: 0; /* Removes default padding */
+            background-color: #f8f8f8;
+            color: #333;
+            counter-reset: citation;
+        }
+
+        header {
+            position: relative;
+            text-align: center;
+            padding: 2em 0;
+            margin-top: 5em;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 2em;
+            padding: 0;
+            margin: 0; /* Remove default margin */
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 1.5em;
+            border-top: 1px solid #ccc;
+            margin-top: 2em;
+            margin: 1% 10%; 
+            margin-right: calc(max(10%, 300px));
+        }
+
+        h3 {
+            font-size: 1.25em;
+            /* border-bottom: 1px solid #ccc; */
+            margin-top: 1em;
+            margin: 1% 10%; 
+            margin-right: calc(max(10%, 300px));
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0% 10%;
+            margin-bottom: 2%;
+            margin-right: calc(max(10%, 300px));
+        }
+
+        li {
+            padding: 0.5em 0;
+        }
+        cite {
+            counter-increment: citation; /* Increment the counter */
+            position: relative;
+            font-size: 0.9em;
+            font-style: normal;
+        }
+
+        cite::before {
+            content: "[" counter(citation) "] "; /* Display the counter */
+        }
+
+
+    </style>
 </head>
+
 <body>
-  <canvas id="hiddenCanvas" style="display:none;"></canvas>
-  <canvas id="displayCanvas"></canvas>
-  
-  <script src="https://unpkg.com/delaunator@3.0.1"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const hiddenCanvas = document.getElementById('hiddenCanvas');
-      const ctxHidden = hiddenCanvas.getContext('2d');
-      
-      const displayCanvas = document.getElementById('displayCanvas');
-      const ctxDisplay = displayCanvas.getContext('2d');
-      
-      const img = new Image();
-      img.src = 'guga.jpg'; // Replace with the path to your image
-      img.onload = () => {
-        hiddenCanvas.width = img.width;
-        hiddenCanvas.height = img.height;
-        displayCanvas.width = img.width;
-        displayCanvas.height = img.height;
+    <div class="profile-panel">
+        <canvas id="profileEdgeCanvas"></canvas>
+        <canvas id="backgroundCanvas" style="display: none;"></canvas>
+        <canvas id="triangulationCanvas" style="display: block;"></canvas>
+        <canvas id="overlayCanvas" style="display: block;"></canvas>
+        <img src="guga.jpg" alt="Guram Mikaberidze" id="profile-pic">
+
+        <div class="image-links">
+            <a href="https://scholar.google.com/citations?user=YOUR_GOOGLE_SCHOLAR_ID" target="_blank">
+                <img src="icon_scholar_google.png" alt="Google Scholar Logo">
+            </a>
+            <a href="https://www.researchgate.net/profile/Guram-Mikaberidze" target="_blank">
+                <img src="icon_researchgate.png" alt="ResearchGate Logo">
+            </a>
+            <a href="https://gitlab.com/mikaberidze" target="_blank">
+                <img src="icon_gitlab.png" alt="Gitlab Logo">
+            </a>
+            <a href="https://www.linkedin.com/in/guram-mikaberidze-7914538a/" target="_blank">
+                <img src="icon_linkedin.png" alt="Gitlab Logo">
+            </a>
+            <a href="https://orcid.org/0000-0001-6776-3481" target="_blank">
+                <img src="icon_orchid.png" alt="Gitlab Logo">
+            </a>
+        </div>
+    </div>
+
+    <header>
+        <i>Hey, I'm</i>
+        <h1>Guram Mikaberidze</h1>
+    </header>
+
+
+    <ul>
+        <li>I am a PhD candidate in Applied Mathematics at UC Davis. My research revolves around emergent dynamical phenomena on complex networks, 
+            drawing inspiration from a variety of sources and applications.
+            My research resonates with my national motto "ძალა ერთობაშია" which translates from Georgian to "power is in unity", emphasizing how the collective can manifest 
+            properties and capabilities that surpass the sum of its individual parts. This birth of surplus complexity is the central focus of my interests.
+        </li>
+        <li>
+            Networks manifest themselves everywhere, from quantum network of Feynman diagrams, that represents the fabric of matter to the kinship network that represents 
+            the fabric of the tree of life.
+            From the most worying and promising Deep Neural Networks, to our mysterious brains. 
+            And from the tiny protein machinary in our cells, to the massive power grids, world-wide-web, and all kinds of logistic networks and supply chains that keep our
+            society running.
+        </li>
+        <li> 
+            My research usually combines numerical simulations with analytical work.
+            I use the mathematical tools from my Applied Math PhD program, the ability to neglect aspects of dynamics without reservation from the MSc in Physics, 
+            and computational skills from my BSc in Computer Science.
+        </li>
+    </ul>
+
+    <section>
+        <h2>Education</h2>
+        <ul>
+            <li>Ph.D. in Applied Mathematics (expected in 2024), UC Davis, CA, USA.</li>
+            <li>MS in Physics (2019), UC Davis, CA, USA.</li>
+            <li>BS in Physics (2015), Free University of Tbilisi, Georgia.</li>
+            <li>BS in Computer Science (2014), Free University of Tbilisi, Georgia.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Selected Research Projects</h2>
+        <h3>Consensus Formation Among Mobile Agents in Networks of Heterogeneous Interaction Venues</h3>
+        <ul>
+            <li>
+                Exploring the collective behavior of interacting entities is of great interest and importance. Rather than 
+                focusing on static and uniform connections, we examine the co-evolution of diverse mobile agents experiencing 
+                varying interactions across both space and time. Analogous to the social dynamics of intrinsically diverse 
+                individuals who navigate between and interact within various physical or digital locations, agents in our 
+                model traverse a complex network of heterogeneous environments and engage with everyone they encounter. The 
+                precise nature of agents internal dynamics and the various interactions that nodes induce are left 
+                unspecified and can be tailored to suit the requirements of individual applications. We derive effective 
+                dynamical equations for agent states which are instrumental in investigating thresholds of consensus, 
+                devising effective attack strategies to hinder coherence, and designing optimal network structures with 
+                inherent node variations in mind. We demonstrate that agent cohesion can be promoted by increasing agent 
+                density, introducing network heterogeneity, and intelligently designing the network structure, aligning 
+                node degrees with the corresponding interaction strengths they facilitate. Our findings are applied to two 
+                distinct scenarios: the synchronization of brain activities between interacting individuals, as observed in 
+                recent collective MRI scans, and the emergence of consensus in a cusp catastrophe model of opinion dynamics.
+            </li>
+            <li>
+                <cite>
+                    <b>Mikaberidze, G.</b>, Chowdhury, S.N., Hastings, A. and D'Souza, R.M., 2023. Consensus Formation Among Mobile Agents in Networks of Heterogeneous Interaction Venues. Submitted to ---.
+                </cite>
+            </li>
+        </ul>
+        <h3>Dragon Kings in Self-Organized Criticality Systems</h3>
+        <ul>
+            <li>
+                The spontaneous emergence of scale invariance, called self-organized criticality (SOC), is often attributed 
+                to a second-order absorbing-state phase transition (ASPT). Many real-world systems display SOC, yet extreme 
+                events are often overrepresented, causing significant disruption, and are called dragon kings (DK). We show 
+                analytically that the tradeoff between driving impulse and dissipation rate can create DKs in a second-order 
+                ASPT. This establishes that DKs exist in SOC systems, reveals a taxonomy of DKs, and shows that larger 
+                dissipation and smoother driving lower risk of extreme events.
+            </li>
+            <li>
+                <cite>
+                    <b>Mikaberidze, G.</b>, Plaud, A and D'Souza, R.M., 2023. Dragon kings in self-organized criticality systems. <i>Physical Review Research</i>, 5, L042013 <b>(Editor's choice)</b>.
+                </cite>
+            </li>
+        </ul>
+        <h3>Sandpile Cascades on Oscillator Networks: The BTW Model Meets Kuramoto</h3>
+        <ul>
+            <li>
+                Cascading failures abound in complex systems and the BTW sandpile model provides a theoretical underpinning for
+                their analysis. Yet, it does not account for the possibility of nodes having oscillatory dynamics such as in power grids
+                and brain networks. Here we consider a network of Kuramoto oscillators upon which the BTW model is unfolding,
+                enabling us to study how the feedback between the oscillatory and cascading dynamics can lead to new emergent 
+                behaviors. We assume that the more out-of-sync a node is with its neighbors the more vulnerable it is and lower its
+                load-carrying capacity accordingly. And when a node topples and sheds load, its oscillatory phase is reset at random.
+                This leads to novel cyclic behavior at an emergent, long timescale. The system spends the bulk of its time in 
+                a synchronized state where load builds up with minimal cascades. Yet, eventually the system reaches a tipping point where a
+                large cascade triggers a “cascade of larger cascades,” which can be classified as a Dragon King event. The system then
+                undergoes a short transient back to the synchronous, build-up phase. The coupling between capacity and synchronization 
+                gives rise to endogenous cascade seeds in addition to the standard exogenous ones, and we show their respective
+                roles. We establish the phenomena from numerical studies and develop the accompanying mean-field theory to locate
+                the tipping point, calculate the load in the system, determine the frequency of the long-time oscillations and find the
+                distribution of cascade sizes during the build-up phase.
+            </li>
+            <li>
+                <cite>
+                    <b>Mikaberidze, G.</b> and D'Souza, R.M., 2022. Sandpile cascades on oscillator networks: The BTW model meets Kuramoto. <i>Chaos: An Interdisciplinary Journal of Nonlinear Science</i>, 32(5), p.053121 <b>(Editor's choice)</b>.
+                </cite>
+            </li>
+        </ul>
+        <h3>Convergent Momentum-Space OPE and Bootstrap Equations in Conformal Field Theory</h3>
+        <ul>
+            <li>
+                General principles of quantum field theory imply that there exists an operator product expansion (OPE) for Wightman 
+                functions in Minkowski momentum space that converges for arbitrary kinematics. This convergence is guaranteed to 
+                hold in the sense of a distribution, meaning that it holds for correlation functions smeared by smooth test 
+                functions. The conformal blocks for this OPE are conceptually extremely simple: they are products of 3-point 
+                functions. We construct the conformal blocks in 2-dimensional conformal field theory and show that the OPE in 
+                fact converges pointwise to an ordinary function in a specific kinematic region. Using microcausality, we also 
+                formulate a bootstrap equation directly in terms of momentum space Wightman functions.
+            </li>
+            <li>
+                <cite>
+                    Gillioz, M., Lu, X., Luty, M.A. and <b>Mikaberidze, G.</b>, 2020. Convergent momentum-space OPE and bootstrap equations in conformal field theory. <i>Journal of High Energy Physics</i>, 2020(3), pp.1-22.
+                </cite>
+            </li>
+        </ul>
+
+        <h3>Flows on Networks</h3>
+        <ul>
+            <li>
+
+            </li>
+        </ul>
+
+        <h3>Gerogian Natural Language Pprocessing</h3>
+        <ul>
+            <li>
+
+            </li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Next Chapter</h2>
+        <ul>
+            <li>
+
+            </li>
+        </ul>
+    </section>
+
+    <footer>
+        Contact: [Your Email Address] | [Your Phone Number] | [LinkedIn Profile] | [GitHub Profile]
+    </footer>
+
+    <canvas id="footerCanvas" height="200"></canvas>
+
+    <script src="https://unpkg.com/delaunator@3.0.1"></script>
+    <script>
+        const canvas = document.getElementById('footerCanvas');
+        const ctx = canvas.getContext('2d');
+        // w = canvas.width*5; // Set canvas width to window width
+        // h = canvas.height*5
+        // canvas.style.width = window.innerWidth; // Set canvas width to window width
+        // canvas.style.width = window.innerWidth; // Set canvas width to window width
+        canvas.width = window.innerWidth*5; 
+        canvas.height = 150*5; // Set canvas width to window width
+        const points = [];
+        const maxPoints = 100;
+        const connectionDistance = 5*70;
+
+        const dotSize = 10;
+        const edgeWidth = 2.5;
+
+        const gravity = 0.; // Adjust this value to increase/decrease the strength of gravity
+
+        class Point {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.dx = (Math.random() - 0.5) * 50;
+                this.dy = (Math.random() - 0.5) * 50;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, dotSize, 0, Math.PI * 2, false);
+                ctx.fill();
+            }
+
+            update() {
+                // Boundary conditions and gravity
+                if (this.x + this.dx > canvas.width || this.x + this.dx < 0) {
+                    this.dx = -this.dx;
+                }
+
+                if (this.y + this.dy > canvas.height || this.y + this.dy < 0) {
+                    this.dy = -this.dy;
+                } else {
+                    this.dy += gravity;
+                }
+
+                this.x += this.dx;
+                this.y += this.dy;
+
+                this.draw();
+            }
+        }
+
+        function connectDots(p1, p2) {
+            const distance = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
+            if (distance < connectionDistance) {
+                const opacity = 1 - (distance / connectionDistance)**4;
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.lineWidth = edgeWidth;
+                ctx.strokeStyle = `rgba(50, 50, 50, ${opacity})`;
+                ctx.stroke();
+            }
+        }
+
+        function animate_footer() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < maxPoints; i++) {
+                points[i].update();
+            }
+            for (let i = 0; i < maxPoints - 1; i++) {
+                for (let j = i + 1; j < maxPoints; j++) {
+                    connectDots(points[i], points[j]);
+                }
+            }
+            setTimeout(requestAnimationFrame, 15, animate_footer);
+        }
+
+        for (let i = 0; i < maxPoints; i++) {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            points.push(new Point(x, y));
+        }
+
+        animate_footer();
+
+
+
+        // profile pannel
+        const profilePanel = document.querySelector('.profile-panel');
+        const mainPic = document.querySelector('#overlayCanvas');
+        const linkImages = document.querySelectorAll('.image-links a');
+        const profileEdgeCanvas = document.getElementById('profileEdgeCanvas');
+        const profileCtx = profileEdgeCanvas.getContext('2d');
+
+        function drawEdges() {
+            // Clear the canvas first
+            profileCtx.clearRect(0, 0, profileEdgeCanvas.width, profileEdgeCanvas.height);
+            
+            const canvasRect = profileEdgeCanvas.getBoundingClientRect();
+            const profilePanelRect = profilePanel.getBoundingClientRect();
+
+            // Adjust canvas size to match the profilePanel's size
+            profileEdgeCanvas.width = profilePanelRect.width;
+            profileEdgeCanvas.height = profilePanelRect.height;
+
+            const mainPicRect = mainPic.getBoundingClientRect();
+            const mainPicCenter = {
+                x: mainPicRect.left + mainPicRect.width / 2 - canvasRect.left,
+                y: mainPicRect.top + mainPicRect.height / 2 - canvasRect.top
+            };
+
+            linkImages.forEach(link => {
+                const rect = link.getBoundingClientRect();
+                const linkCenter = {
+                    x: rect.left + rect.width / 2 - canvasRect.left,
+                    y: rect.top + rect.height / 2 - canvasRect.top
+                };
+
+                profileCtx.beginPath();
+                profileCtx.moveTo(mainPicCenter.x, mainPicCenter.y);
+                profileCtx.lineTo(linkCenter.x, linkCenter.y);
+                profileCtx.stroke();
+            });
+        }
+        // Initial drawing
+        window.onload = drawEdges;
+
+        // Profile setup with clickable triangulation
+        // Setting constants for animation delay and the number of random points
+        const DELAY_MS = 100;
+        const POINTS_NUMBER = 2000;
         
-        ctxHidden.drawImage(img, 0, 0, img.width, img.height);
-        
-        const points = generateRandomPoints(100, img.width, img.height);
-        const delaunay = Delaunator.from(points);
-        colorAndDrawTriangles(delaunay, points, ctxHidden, ctxDisplay);
-      };
-    });
-    
-    function generateRandomPoints(count, width, height) {
-      const points = [];
-      for (let i = 0; i < count; i++) {
-        const x = Math.random() * width;
-        const y = Math.random() * height;
-        points.push([x, y]);
-      }
-      return points;
-    }
-    
-    function colorAndDrawTriangles(delaunay, points, ctxHidden, ctxDisplay) {
-      for (let i = 0; i < delaunay.triangles.length; i += 3) {
-        const pointIndices = [delaunay.triangles[i], delaunay.triangles[i + 1], delaunay.triangles[i + 2]];
-        const trianglePoints = pointIndices.map(index => points[index]);
-        
-        ctxDisplay.beginPath();
-        ctxDisplay.moveTo(trianglePoints[0][0], trianglePoints[0][1]);
-        ctxDisplay.lineTo(trianglePoints[1][0], trianglePoints[1][1]);
-        ctxDisplay.lineTo(trianglePoints[2][0], trianglePoints[2][1]);
-        ctxDisplay.closePath();
-        
-        const centerX = (trianglePoints[0][0] + trianglePoints[1][0] + trianglePoints[2][0]) / 3;
-        const centerY = (trianglePoints[0][1] + trianglePoints[1][1] + trianglePoints[2][1]) / 3;
-        const color = ctxHidden.getImageData(centerX, centerY, 1, 1).data;
-        ctxDisplay.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
-        ctxDisplay.fill();
-      }
-    }
-  </script>
+        // Setting up variables to control animation flow
+        let triangulationOn = false;
+        let lastUpdateTime = 0;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Getting the canvases and their contexts
+            const backgroundCanvas = document.getElementById('backgroundCanvas');
+            const ctxHidden = backgroundCanvas.getContext('2d');
+            const triangulationCanvas = document.getElementById('triangulationCanvas');
+            const ctxDisplay = triangulationCanvas.getContext('2d');
+            const overlayCanvas = document.getElementById('overlayCanvas');
+            const ctxOverlay = overlayCanvas.getContext('2d');
+            const profilePic = document.getElementById('profile-pic')
+
+
+            overlayCanvas.addEventListener('mousemove', () => {
+                triangulationOn = true;
+            });
+            overlayCanvas.addEventListener('mouseout', () => {
+                triangulationOn = false;
+            });
+            
+            // Loading the images
+            const img = new Image();
+            img.src = 'guga_just_background.png'; 
+            const noBackgroundImg = new Image();
+            noBackgroundImg.src = 'guga_no_background.png';
+
+            const size = backgroundCanvas.width*5; // Setting size of canvases (adjusted to match CSS)
+            const radius = size / 2;
+            
+            // Setting canvas dimensions
+            backgroundCanvas.width = size;
+            backgroundCanvas.height = size;
+            triangulationCanvas.width = size;
+            triangulationCanvas.height = size;
+            overlayCanvas.width = size;
+            overlayCanvas.height = size;
+            
+            // When images are loaded, proceed to set up canvases and start animation
+            Promise.all([img.decode(), noBackgroundImg.decode()]).then(() => {    
+                
+                // Drawing images onto canvases
+                ctxHidden.drawImage(img, 0, 0, size, size);
+                ctxOverlay.drawImage(noBackgroundImg, 0, 0, size, size);
+
+                // Animation function
+                function animate() {
+                    if (triangulationOn) {
+                        profilePic.style.display = 'none';
+                        triangulationCanvas.style.display = 'block';
+                        backgroundCanvas.style.display = 'none';
+                        const points = generateRandomPoints(POINTS_NUMBER, radius);
+                        const delaunay = Delaunator.from(points);
+                        colorAndDrawTriangles(delaunay, points, ctxHidden, ctxDisplay);
+                    }else {
+                        profilePic.style.display = 'block';
+                        triangulationCanvas.style.display = 'none';
+                        backgroundCanvas.style.display = 'block';
+                    }
+                    setTimeout(requestAnimationFrame, DELAY_MS, animate);
+                }
+                // Starting animation
+                animate();
+            });
+        });
+
+        // Function to generate random points within the circle
+        function generateRandomPoints(count, radius) {
+            const points = [];
+            const centerX = radius;
+            const centerY = radius;
+            while (points.length < count) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * radius;
+                const x = centerX + r * Math.cos(angle);
+                const y = centerY + r * Math.sin(angle);
+                points.push([x, y]);
+            }
+            return points;
+        }
+
+        // Function to color and draw triangles on the display canvas
+        function colorAndDrawTriangles(delaunay, points, ctxHidden, ctxDisplay) {
+            ctxDisplay.clearRect(0, 0, ctxDisplay.canvas.width, ctxDisplay.canvas.height);
+            for (let i = 0; i < delaunay.triangles.length; i += 3) {
+
+                const pointIndices = [delaunay.triangles[i], delaunay.triangles[i + 1], delaunay.triangles[i + 2]];
+                const trianglePoints = pointIndices.map(index => points[index]);
+                
+                ctxDisplay.beginPath();
+                ctxDisplay.moveTo(trianglePoints[0][0], trianglePoints[0][1]);
+                ctxDisplay.lineTo(trianglePoints[1][0], trianglePoints[1][1]);
+                ctxDisplay.lineTo(trianglePoints[2][0], trianglePoints[2][1]);
+                ctxDisplay.closePath();
+                
+                const centerX = (trianglePoints[0][0] + trianglePoints[1][0] + trianglePoints[2][0]) / 3;
+                const centerY = (trianglePoints[0][1] + trianglePoints[1][1] + trianglePoints[2][1]) / 3;
+                const color = ctxHidden.getImageData(centerX, centerY, 1, 1).data;
+                ctxDisplay.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
+                ctxDisplay.fill();
+            }
+        }
+
+    </script>
 </body>
+
 </html>
