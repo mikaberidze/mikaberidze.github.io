@@ -8,11 +8,13 @@
     <title>Guram Mikaberidze</title>
     <style>
         /* ---------------------------------------------------------------------------------------------------- profile pannel */
+        :root {
+            --panelWidth: 13vw;
+        }
         .profile-panel {
             position: fixed;
-            --panelWidth: 200px;
-            top: 50px;  
-            left: 50px;  
+            top: calc(var(--panelWidth)/4);  
+            left: calc(var(--panelWidth)/4);  
             width: var(--panelWidth); 
             height: calc(100%-200px); 
         }
@@ -55,11 +57,11 @@
 
         .image-links img {
             display: block;
-            width: 40px;
-            height: 40px;
+            width: calc(var(--panelWidth)*40/200);
+            height: calc(var(--panelWidth)*40/200);
             border-radius: 50%;
             transition: transform 0.1s linear;
-            --shift: 10px;
+            --shift: calc(var(--panelWidth)*10/200);
             z-index: 4;
         }
 
@@ -87,9 +89,9 @@
             position: absolute;
             top: calc(var(--panelWidth)/2);
             left: 50%;
-            width: 60px;
-            height: 60px;
-            transform: translate(-50%, -50%) rotate(var(--angle)) translateY(125px) rotate(calc(-1*var(--angle)));
+            width: calc(var(--panelWidth)*60/200);
+            height: calc(var(--panelWidth)*60/200);
+            transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--panelWidth)*125/200)) rotate(calc(-1*var(--angle)));
             border-radius: 50%;
             overflow: hidden;
         }
@@ -101,7 +103,7 @@
 
         /* ---------------------------------------------------------------------------------------------------- NAVIGATION */
         .menu {
-            margin-top: 250px;
+            margin-top: calc(var(--panelWidth)*1.4);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -124,26 +126,6 @@
             font-weight: bold;
         }
 
-
-        /* ---------------------------------------------------------------------------------------------------- FOOTER */
-        #footerCanvas {
-            display: block;
-            background-color: #f8f8f8;
-            width: 100%; /* Ensures canvas takes up full width */
-            height: 100px;
-            z-index: 3;
-        }
-
-        footer {
-            text-align: center;
-            margin-top: 4em;
-            padding: 2em 0;
-            font-size: 0.9em;
-            border-top: 1px solid #ccc;
-            padding-right: 10%; 
-            margin-left: calc(max(10%, 300px));
-        }
-
         /* ---------------------------------------------------------------------------------------------------- MAIN TEXT */
         body {
             font-family: Arial, sans-serif;
@@ -157,7 +139,7 @@
 
         section {
             margin-right: 10%;
-            margin-left: calc(max(10%, 300px));
+            margin-left: calc(var(--panelWidth)*1.5);
         }
 
         header {
@@ -167,7 +149,7 @@
             margin-top: 5em;
             pointer-events: none;
             margin-right: 10%; 
-            margin-left: calc(max(10%, 300px));
+            margin-left: calc(var(--panelWidth)*1.5);
         }
 
         h1 {
@@ -224,6 +206,26 @@
             content: "[" counter(citation) "] "; /* Display the counter */
         }
 
+
+
+        /* ---------------------------------------------------------------------------------------------------- FOOTER */
+        #footerCanvas {
+            display: block;
+            background-color: #f8f8f8;
+            width: 100%; /* Ensures canvas takes up full width */
+            height: 100px;
+            z-index: 3;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 4em;
+            padding: 2em 0;
+            font-size: 0.9em;
+            border-top: 1px solid #ccc;
+            padding-right: 10%; 
+            margin-left: calc(var(--panelWidth)*1.5);
+        }
 
     </style>
 </head>
