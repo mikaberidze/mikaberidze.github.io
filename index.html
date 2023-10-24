@@ -130,7 +130,7 @@
             display: block;
             background-color: #f8f8f8;
             width: 100%; /* Ensures canvas takes up full width */
-            height: 150px;
+            height: 100px;
             z-index: 3;
         }
 
@@ -275,7 +275,7 @@
 
 
     <ul>
-        <li>I am a PhD candidate in Applied Mathematics at UC Davis. My research revolves around emergent dynamical phenomena on complex networks, 
+        <li>I am a PhD candidate in Applied Mathematics at UC Davis studying emergent dynamical phenomena on complex networks, 
             drawing inspiration from a variety of sources and applications.
             My research resonates with my national motto "ძალა ერთობაშია" which translates from Georgian to "power is in unity", emphasizing how the collective can manifest 
             properties and capabilities that surpass the sum of its individual parts. This birth of surplus complexity is the central focus of my interests.
@@ -421,7 +421,7 @@
         <h3>Gerogian Natural Language Pprocessing</h3>
         <ul>
             <li>
-                This project aims to save the Georgian languages from digital extinction. We are attempting to create modern Large Language Models for Georgian language
+                This project aims to save the Georgian languages from digital extinction. We are attempting to create modern Large Language Models for Georgian languages
                 by overcoming various obsticles, such as the lack of large datasets, and uniqueness of three Georgian languages which represent a language island.
                 <br>
                 Project lead: <b>Beso Mikaberidze</b>
@@ -485,9 +485,9 @@
         // canvas.style.width = window.innerWidth; // Set canvas width to window width
         // canvas.style.width = window.innerWidth; // Set canvas width to window width
         canvas.width = window.innerWidth*5; 
-        canvas.height = 150*5; // Set canvas width to window width
+        canvas.height = 100*5; // Set canvas width to window width
         const points = [];
-        const maxPoints = 100;
+        const maxPoints = 70;
         const connectionDistance = 5*70;
 
         const dotSize = 10;
@@ -646,6 +646,7 @@
 
         // ----------------------------------------------------------------------------------------- Profile setup with triangulation when hovered
         // Setting constants for animation delay and the number of random points
+        const TRIANGULATION_ON = false
         const DELAY_MS = 100;
         const MAX_POINTS_NUMBER = 10000;
         const MIN_POINTS_NUMBER = 2000;
@@ -653,77 +654,77 @@
         let pointsNumber = MAX_POINTS_NUMBER;
         
         // Setting up variables to control animation flow
-        let triangulationOn = false;
+        let profileHovered = false;
         let lastUpdateTime = 0;
+        if (TRIANGULATION_ON){
+            document.addEventListener('DOMContentLoaded', () => {
+                // Getting the canvases and their contexts
+                const backgroundCanvas = document.getElementById('backgroundCanvas');
+                const ctxHidden = backgroundCanvas.getContext('2d');
+                const triangulationCanvas = document.getElementById('triangulationCanvas');
+                const ctxDisplay = triangulationCanvas.getContext('2d');
+                const overlayCanvas = document.getElementById('overlayCanvas');
+                const ctxOverlay = overlayCanvas.getContext('2d');
+                const profilePic = document.getElementById('profile-pic')
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // Getting the canvases and their contexts
-            const backgroundCanvas = document.getElementById('backgroundCanvas');
-            const ctxHidden = backgroundCanvas.getContext('2d');
-            const triangulationCanvas = document.getElementById('triangulationCanvas');
-            const ctxDisplay = triangulationCanvas.getContext('2d');
-            const overlayCanvas = document.getElementById('overlayCanvas');
-            const ctxOverlay = overlayCanvas.getContext('2d');
-            const profilePic = document.getElementById('profile-pic')
 
-
-            overlayCanvas.addEventListener('mousemove', () => {
-                triangulationOn = true;
-            });
-            overlayCanvas.addEventListener('mouseout', () => {
-                triangulationOn = false;
-            });
-            
-            // Loading the images
-            const img = new Image();
-            img.src = 'guga_just_background.png'; 
-            const noBackgroundImg = new Image();
-            noBackgroundImg.src = 'guga_no_background.png';
-
-            const size = backgroundCanvas.width*10; // Setting size of canvases (adjusted to match CSS)
-            const radius = size / 2;
-            
-            // Setting canvas dimensions
-            backgroundCanvas.width = size;
-            backgroundCanvas.height = size;
-            triangulationCanvas.width = size;
-            triangulationCanvas.height = size;
-            overlayCanvas.width = size;
-            overlayCanvas.height = size;
-            
-            // When images are loaded, proceed to set up canvases and start animation
-            Promise.all([img.decode(), noBackgroundImg.decode()]).then(() => {    
+                overlayCanvas.addEventListener('mousemove', () => {
+                    profileHovered = true;
+                });
+                overlayCanvas.addEventListener('mouseout', () => {
+                    profileHovered = false;
+                });
                 
-                // Drawing images onto canvases
-                ctxHidden.drawImage(img, 0, 0, size, size);
-                ctxOverlay.drawImage(noBackgroundImg, 0, 0, size, size);
+                // Loading the images
+                const img = new Image();
+                img.src = 'guga_just_background.png'; 
+                const noBackgroundImg = new Image();
+                noBackgroundImg.src = 'guga_no_background.png';
 
-                // Animation function
-                function animate() {
-                    if (triangulationOn || pointsNumber < MAX_POINTS_NUMBER) {
-                        profilePic.style.display = 'none';
-                        triangulationCanvas.style.display = 'block';
-                        backgroundCanvas.style.display = 'none';
-                        const points = generateRandomPoints(pointsNumber, radius);
-                        const delaunay = Delaunator.from(points);
-                        colorAndDrawTriangles(delaunay, points, ctxHidden, ctxDisplay);
-                        if (triangulationOn && pointsNumber > MIN_POINTS_NUMBER) {
-                            pointsNumber -= INCREMENT_POINTS_NUMBER;
-                        } else {
-                            pointsNumber += INCREMENT_POINTS_NUMBER
+                const size = backgroundCanvas.width*10; // Setting size of canvases (adjusted to match CSS)
+                const radius = size / 2;
+                
+                // Setting canvas dimensions
+                backgroundCanvas.width = size;
+                backgroundCanvas.height = size;
+                triangulationCanvas.width = size;
+                triangulationCanvas.height = size;
+                overlayCanvas.width = size;
+                overlayCanvas.height = size;
+                
+                // When images are loaded, proceed to set up canvases and start animation
+                Promise.all([img.decode(), noBackgroundImg.decode()]).then(() => {    
+                    
+                    // Drawing images onto canvases
+                    ctxHidden.drawImage(img, 0, 0, size, size);
+                    ctxOverlay.drawImage(noBackgroundImg, 0, 0, size, size);
+
+                    // Animation function
+                    function animate() {
+                        if (profileHovered || pointsNumber < MAX_POINTS_NUMBER) {
+                            profilePic.style.display = 'none';
+                            triangulationCanvas.style.display = 'block';
+                            backgroundCanvas.style.display = 'none';
+                            const points = generateRandomPoints(pointsNumber, radius);
+                            const delaunay = Delaunator.from(points);
+                            colorAndDrawTriangles(delaunay, points, ctxHidden, ctxDisplay);
+                            if (profileHovered && pointsNumber > MIN_POINTS_NUMBER) {
+                                pointsNumber -= INCREMENT_POINTS_NUMBER;
+                            } else {
+                                pointsNumber += INCREMENT_POINTS_NUMBER
+                            }
+                        }else {
+                            profilePic.style.display = 'block';
+                            triangulationCanvas.style.display = 'none';
+                            backgroundCanvas.style.display = 'block';
                         }
-                    }else {
-                        profilePic.style.display = 'block';
-                        triangulationCanvas.style.display = 'none';
-                        backgroundCanvas.style.display = 'block';
+                        setTimeout(requestAnimationFrame, DELAY_MS, animate);
                     }
-                    setTimeout(requestAnimationFrame, DELAY_MS, animate);
-                }
-                // Starting animation
-                animate();
+                    // Starting animation
+                    animate();
+                });
             });
-        });
-
+        }
         // Function to generate random points within the circle
         function generateRandomPoints(count, radius) {
             const points = [];
