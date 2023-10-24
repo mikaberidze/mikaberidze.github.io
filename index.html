@@ -103,7 +103,7 @@
 
         /* ---------------------------------------------------------------------------------------------------- NAVIGATION */
         .menu {
-            margin-top: calc(var(--panelWidth)*1.4);
+            margin-top: calc(var(--panelWidth)*0.75 + 15vh);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -112,7 +112,7 @@
         }
 
         .menu-item {
-            margin-bottom: 50px; /* Increase distance between menu items */
+            margin-bottom: 10vh; /* Increase distance between menu items */
             text-align: center;
             color: #333;
             transition: font-weight 0.3s; /* Smooth transition for font-weight */
@@ -146,7 +146,7 @@
             position: relative;
             text-align: center;
             padding: 2em 0;
-            margin-top: calc(var(--panelWidth)*0.75);
+            margin-top: calc(var(--panelWidth)*0.75 - 4em);
             pointer-events: none;
             margin-right: 10%; 
             margin-left: calc(var(--panelWidth)*1.5);
@@ -191,7 +191,7 @@
         section img, video {
             margin-top: calc(2% + 1em);
             float: right;
-            width: calc(max(30%, 300px));
+            width: calc(min(max(30%, 300px), 90vw - var(--panelWidth)*1.5));
             height: auto;
         }
 
@@ -257,9 +257,9 @@
             </a>
         </div>
         <div class="menu">
-            <a href="#research" class="menu-item">research</a>
-            <a href="#teaching" class="menu-item">teaching</a>
-            <a href="#education" class="menu-item">education</a>
+            <a href="#research" class="menu-item">Research</a>
+            <a href="#teaching" class="menu-item">Teaching</a>
+            <a href="#education" class="menu-item">Education</a>
         </div>
     </div>
 
