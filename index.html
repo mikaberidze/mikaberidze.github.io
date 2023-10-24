@@ -155,6 +155,11 @@
             counter-reset: citation;
         }
 
+        section {
+            margin-right: 10%;
+            margin-left: calc(max(10%, 300px));
+        }
+
         header {
             position: relative;
             text-align: center;
@@ -168,7 +173,7 @@
         h1 {
             font-size: 2em;
             padding: 0;
-            margin: 0; /* Remove default margin */
+            margin: 0;
             text-align: center;
         }
 
@@ -177,8 +182,6 @@
             border-top: 1px solid #ccc;
             padding-top: 1%;
             margin: 0;
-            margin-right: 10%; 
-            margin-left: calc(max(10%, 300px));
         }
 
         h3 {
@@ -187,16 +190,12 @@
             margin-top: 0;
             margin-bottom: 0;
             padding-top: 1%;
-            padding-right: 10%; 
-            margin-left: calc(max(10%, 300px));
         }
 
         ul {
             list-style-type: none;
             padding: 0;
-            margin: 0% 10%;
             padding-bottom: 2%;
-            margin-left: calc(max(10%, 300px));
         }
 
         li {
@@ -206,16 +205,11 @@
             display: flex;
             width: 100%;
         }
-        .description {
-            flex: 0 0 70%;
-            box-sizing: border-box; 
-        }
-        .visual {
-            flex: 0 0 30%;
-            box-sizing: border-box;
-        }
-        .visual img, video {
-            width: 100%;
+
+        img, video {
+            padding-top: 1%;
+            float: right;
+            width: calc(max(30%, 150px));
             height: auto;
         }
 
@@ -273,54 +267,46 @@
         <h1>Guram Mikaberidze</h1>
     </header>
 
-
-    <ul>
-        <li>I am a PhD candidate in Applied Mathematics at UC Davis studying emergent dynamical phenomena on complex networks, 
-            drawing inspiration from a variety of sources and applications.
-            My research resonates with my national motto "ძალა ერთობაშია" which translates from Georgian to "power is in unity", emphasizing how the collective can manifest 
-            properties and capabilities that surpass the sum of its individual parts. This birth of surplus complexity is the central focus of my interests.
-        </li>
-        <li>
-            Networks manifest themselves everywhere, from quantum network of Feynman diagrams, that represents the fabric of matter to the kinship network that represents 
-            the fabric of the tree of life.
-            From the most worying and promising Deep Neural Networks, to our mysterious brains. 
-            And from the tiny protein machinary in our cells, to the massive power grids, world-wide-web, and all kinds of logistic networks and supply chains that keep our
-            society running.
-        </li>
-        <li> 
-            My research usually combines numerical simulations with analytical work.
-            I use the mathematical tools from my Applied Math PhD program, the ability to neglect aspects of dynamics without reservation from the MSc in Physics, 
-            and computational skills from my BSc in Computer Science.
-        </li>
-    </ul>
+    <section id="intro">
+        <ul>
+            <li>
+                I am a PhD candidate in Applied Mathematics at UC Davis studying emergent dynamical phenomena on complex networks, 
+                drawing inspiration from a variety of sources and applications. Emergence implies that the whole is greater than the sum of its parts.
+                This birth of this surplus complexity is the central focus of my research, and Network Science, studying the interactions between units
+                is the perfect framework for it.
+            </li>
+            <li>
+                Networks manifest themselves everywhere, from quantum network of Feynman diagrams, that represents the fabric of matter to the kinship network that represents 
+                the fabric of the tree of life.
+                From the most worying and promising Deep Neural Networks, to our mysterious brains. 
+                And from the tiny protein machinary driving our cells, to the massive power grids, world-wide-web,
+                and all kinds of logistic networks and supply chains that keep our society running.
+            </li>
+            <li> 
+                My research usually combines numerical simulations with analytical work.
+                I use the mathematical tools from my Applied Math PhD program, the ability to neglect terms without reservation from my MSc in Physics, 
+                and computational skills from my BSc in Computer Science.
+            </li>
+        </ul>
+    </section>
 
     <section id="research">
         <h2>Selected Research Projects</h2>
+
         <h3>Consensus Formation Among Mobile Agents in Networks of Heterogeneous Interaction Venues</h3>
+        <video autoplay muted loop>
+            <source src="research-RWO.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
         <ul>
-            <li class="projectWrapper">
-                <div class="description">
-                    Exploring the collective behavior of interacting entities is of great interest and importance. Rather than 
-                    focusing on static and uniform connections, we examine the co-evolution of diverse mobile agents experiencing 
-                    varying interactions across both space and time. Analogous to the social dynamics of intrinsically diverse 
-                    individuals who navigate between and interact within various physical or digital locations, agents in our 
-                    model traverse a complex network of heterogeneous environments and engage with everyone they encounter. The 
-                    precise nature of agents internal dynamics and the various interactions that nodes induce are left 
-                    unspecified and can be tailored to suit the requirements of individual applications. We derive effective 
-                    dynamical equations for agent states which are instrumental in investigating thresholds of consensus, 
-                    devising effective attack strategies to hinder coherence, and designing optimal network structures with 
-                    inherent node variations in mind. We demonstrate that agent cohesion can be promoted by increasing agent 
-                    density, introducing network heterogeneity, and intelligently designing the network structure, aligning 
-                    node degrees with the corresponding interaction strengths they facilitate. Our findings are applied to two 
-                    distinct scenarios: the synchronization of brain activities between interacting individuals, as observed in 
-                    recent collective MRI scans, and the emergence of consensus in a cusp catastrophe model of opinion dynamics.
-                </div>
-                <div class="visual">
-                    <video autoplay muted loop>
-                        <source src="research-RWO.mp4" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
-                </div>
+            <li>
+                In this project we explored diverse mobile agents moving through and interacting in a complex network of different environments, 
+                similar to how people interact in various physical and digital spaces. The internal workings of these agents and their interactions 
+                are flexible to cater to various applications. The study results in effective equations for understanding agent behavior, 
+                useful for examining consensus formation, creating strategies to disrupt cohesion, and optimizing network structures. Applications of 
+                these findings include studying synchronized brain activity in group settings and understanding how consensus forms in opinion dynamics.
+                <br>
+                On the right, you can see an illustration of Kuramoto agents moving through a network of locations that facilitate various coupling strengths.
             </li>
             <li>
                 <cite>
@@ -328,20 +314,19 @@
                 </cite>
             </li>
         </ul>
+
         <h3>Dragon Kings in Self-Organized Criticality Systems</h3>
+        <img src="research-DKSOC.png" alt="dragon kings in SOC systems">
         <ul>
-            <li class="projectWrapper">
-                <div class="description">
-                    The spontaneous emergence of scale invariance, called self-organized criticality (SOC), is often attributed 
-                    to a second-order absorbing-state phase transition (ASPT). Many real-world systems display SOC, yet extreme 
-                    events are often overrepresented, causing significant disruption, and are called dragon kings (DK). We show 
-                    analytically that the tradeoff between driving impulse and dissipation rate can create DKs in a second-order 
-                    ASPT. This establishes that DKs exist in SOC systems, reveals a taxonomy of DKs, and shows that larger 
-                    dissipation and smoother driving lower risk of extreme events.
-                </div>
-                <div class="visual">
-                    <img src="research-DKSOC.png" alt="dragon kings in SOC systems">
-                </div>
+            <li>
+                This recent study focuses on self-organized criticality (SOC) - a phenomenon where systems naturally converge to rare, scale invariant states.
+                While many real-world scenarios display SOC, characterized by frequent and large fluctuations, many of them display even larger numbers of 
+                devastating events than scale invariance would predict. These eveents are known as dragon kings (DK). We explored how DK events emerge in
+                SOC models and discovered that the interplay between driving impulse and energy dissipation plays a crucial role. 
+                By tweaking this balance, we found ways to minimize these disruptions back to the scale-invariant expectations and we analytically found the
+                boundary between the two operating regimes.
+                <br>
+                The figure on the right shows the classification of DK events resulting from our study.
             </li>
             <li>
                 <cite>
@@ -349,31 +334,27 @@
                 </cite>
             </li>
         </ul>
+
         <h3>Sandpile Cascades on Oscillator Networks: The BTW Model Meets Kuramoto</h3>
+        <video autoplay muted loop>
+            <source src="research-BTWKM.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
         <ul>
-            <li class="projectWrapper">
-               <div class="description">
-                    Cascading failures abound in complex systems and the BTW sandpile model provides a theoretical underpinning for
-                    their analysis. Yet, it does not account for the possibility of nodes having oscillatory dynamics such as in power grids
-                    and brain networks. Here we consider a network of Kuramoto oscillators upon which the BTW model is unfolding,
-                    enabling us to study how the feedback between the oscillatory and cascading dynamics can lead to new emergent 
-                    behaviors. We assume that the more out-of-sync a node is with its neighbors the more vulnerable it is and lower its
-                    load-carrying capacity accordingly. And when a node topples and sheds load, its oscillatory phase is reset at random.
-                    This leads to novel cyclic behavior at an emergent, long timescale. The system spends the bulk of its time in 
-                    a synchronized state where load builds up with minimal cascades. Yet, eventually the system reaches a tipping point where a
-                    large cascade triggers a “cascade of larger cascades,” which can be classified as a Dragon King event. The system then
-                    undergoes a short transient back to the synchronous, build-up phase. The coupling between capacity and synchronization 
-                    gives rise to endogenous cascade seeds in addition to the standard exogenous ones, and we show their respective
-                    roles. We establish the phenomena from numerical studies and develop the accompanying mean-field theory to locate
-                    the tipping point, calculate the load in the system, determine the frequency of the long-time oscillations and find the
-                    distribution of cascade sizes during the build-up phase.
-                </div>
-                <div class="visual">
-                    <video autoplay muted loop>
-                        <source src="research-BTWKM.mp4" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
-                </div>
+            <li>
+                In this work, we studied the emergent properties that arise when two seminal models in dynamical systems, the 
+                Bak-Tang-Weisenfeld (BTW) model of sandpile cascades and the Kuramoto model of synchronization in oscillator networks, 
+                are coupled together. The BTW model captures cascades of load shedding and has been used to model brain networks and 
+                electric power grids, but it does not capture the key fact that the nodes in both of these networks are oscillators.
+                We study the interplay between cascading loads and the synchronization of oscillators and show that it 
+                leads to emergent new behaviors and long time-scale organization. It is common to liken the large events 
+                in the BTW model to “black swans” which are massive events generated by 
+                the same underlying mechanism as the smaller events. In contrast, the chain of cascades in our model can be 
+                likened to a “dragon king” which is a massive event that occurs significantly more often than what extrapolation
+                from smaller events would suggest.
+                <br>
+                On the right, you can see an illustration of the coupled BTW-Kuramoto model in action.
+
             </li>
             <li>
                 <cite>
@@ -381,48 +362,31 @@
                 </cite>
             </li>
         </ul>
-        <h3>Convergent Momentum-Space OPE and Bootstrap Equations in Conformal Field Theory</h3>
-        <ul>
-            <li>
-                General principles of quantum field theory imply that there exists an operator product expansion (OPE) for Wightman 
-                functions in Minkowski momentum space that converges for arbitrary kinematics. This convergence is guaranteed to 
-                hold in the sense of a distribution, meaning that it holds for correlation functions smeared by smooth test 
-                functions. The conformal blocks for this OPE are conceptually extremely simple: they are products of 3-point 
-                functions. We construct the conformal blocks in 2-dimensional conformal field theory and show that the OPE in 
-                fact converges pointwise to an ordinary function in a specific kinematic region. Using microcausality, we also 
-                formulate a bootstrap equation directly in terms of momentum space Wightman functions.
-            </li>
-            <li>
-                <cite>
-                    Gillioz, M., Lu, X., Luty, M.A. and <b>Mikaberidze, G.</b>, 2020. Convergent momentum-space OPE and bootstrap equations in conformal field theory. <i>Journal of High Energy Physics</i>, 2020(3), pp.1-22.
-                </cite>
-            </li>
-        </ul>
 
         <h3>Flows on Networks</h3>
+        <video autoplay muted loop>
+            <source src="research-flow.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
         <ul>
-            <li class="projectWrapper">
-                <div class="description">
-                    In this ongoing research project, we study the dynamics of flows on networks under various symmetries and constraints. We have developed novel field 
-                    theoretic analytic tools on networks (as opposed to the common mean-field theory) that captures well the emergent behavior for random walking particles 
-                    on networks, as well as guided shortest path routing.
-                    <br>
-                    Principle Investigator: <b>Raissa D'Souza</b>. Collaborator: Oriol Artime.
-                </div>
-                <div class="visual">
-                    <video autoplay muted loop>
-                        <source src="research-flow.mp4" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
-                </div>
+            <li>
+                In this ongoing research project, we study the dynamics of flows on networks under various symmetries and constraints. We have developed novel field 
+                theoretic analytic tools on networks (as opposed to the common mean-field theory) that captures well the emergent behavior for random walking particles 
+                on networks, as well as guided shortest path routing.
+                <br>
+                Principle Investigator: <b>Raissa D'Souza</b>. 
+                <br>
+                Collaborator: Oriol Artime.
             </li>
         </ul>
 
         <h3>Gerogian Natural Language Pprocessing</h3>
+        <img src="research-LLMKA.png" alt="Georgian Language Models"> 
         <ul>
             <li>
-                This project aims to save the Georgian languages from digital extinction. We are attempting to create modern Large Language Models for Georgian languages
-                by overcoming various obsticles, such as the lack of large datasets, and uniqueness of three Georgian languages which represent a language island.
+                This project aims to save the Georgian languages from digital extinction. We are using deep learning to create modern Large Language Models for Georgian languages. 
+                To achieve this goal, we are attempting to overcoming various obsticles, such as the lack of large datasets, and uniqueness of three Georgian languages
+                which together represent a language island.
                 <br>
                 Project lead: <b>Beso Mikaberidze</b>
             </li>
@@ -788,8 +752,7 @@
                 sections.forEach(section => {
                     const sectionTop = section.offsetTop;
                     const sectionHeight = section.offsetHeight;
-                    
-                    if (Math.abs(scrollPosition-sectionTop)<closestYet && scrollPosition>sectionTop) {
+                    if (Math.abs(scrollPosition-sectionTop)<closestYet && scrollPosition>sectionTop && section.id!='intro') {
                         document.querySelector('.menu-item.bold')?.classList.remove('bold');
                         document.querySelector(`.menu-item[href="#${section.id}"]`).classList.add('bold');
                         closestYet = Math.abs(scrollPosition-sectionTop);
