@@ -11,10 +11,10 @@
         .profile-panel {
             position: fixed;
             --panelWidth: 200px;
-            top: 50px;      /* Adjust the distance from the top as desired */
-            right: 50px;    /* Adjust the distance from the right as desired */
-            width: var(--panelWidth);   /* Ensure the width matches the profile picture width */
-            height: calc(100%-200px);  /* Ensure the height matches the profile picture height */
+            top: 50px;  
+            left: 50px;  
+            width: var(--panelWidth); 
+            height: calc(100%-200px); 
         }
 
         #profileEdgeCanvas {
@@ -140,8 +140,8 @@
             padding: 2em 0;
             font-size: 0.9em;
             border-top: 1px solid #ccc;
-            margin: 2% 10%;
-            margin-right: calc(max(10%, 300px));
+            padding-right: 10%; 
+            margin-left: calc(max(10%, 300px));
         }
 
         /* ---------------------------------------------------------------------------------------------------- MAIN TEXT */
@@ -161,6 +161,8 @@
             padding: 2em 0;
             margin-top: 5em;
             pointer-events: none;
+            margin-right: 10%; 
+            margin-left: calc(max(10%, 300px));
         }
 
         h1 {
@@ -173,10 +175,10 @@
         h2 {
             font-size: 1.5em;
             border-top: 1px solid #ccc;
-            padding-top: 2em;
-            padding: 1% 10%; 
+            padding-top: 1%;
             margin: 0;
-            margin-right: calc(max(10%, 300px));
+            margin-right: 10%; 
+            margin-left: calc(max(10%, 300px));
         }
 
         h3 {
@@ -184,8 +186,9 @@
             /* border-bottom: 1px solid #ccc; */
             margin-top: 0;
             margin-bottom: 0;
-            padding: 1% 10%; 
-            margin-right: calc(max(10%, 300px));
+            padding-top: 1%;
+            padding-right: 10%; 
+            margin-left: calc(max(10%, 300px));
         }
 
         ul {
@@ -193,12 +196,29 @@
             padding: 0;
             margin: 0% 10%;
             padding-bottom: 2%;
-            margin-right: calc(max(10%, 300px));
+            margin-left: calc(max(10%, 300px));
         }
 
         li {
             padding: 0.5em 0;
         }
+        .projectWrapper {
+            display: flex;
+            width: 100%;
+        }
+        .description {
+            flex: 0 0 70%;
+            box-sizing: border-box; 
+        }
+        .visual {
+            flex: 0 0 30%;
+            box-sizing: border-box;
+        }
+        .visual img {
+            width: 100%;
+            height: auto;
+        }
+
         cite {
             counter-increment: citation; /* Increment the counter */
             position: relative;
@@ -241,9 +261,9 @@
             </a>
         </div>
         <div class="menu">
-            <a href="#education" class="menu-item">education</a>
             <a href="#research" class="menu-item">research</a>
             <a href="#teaching" class="menu-item">teaching</a>
+            <a href="#education" class="menu-item">education</a>
         </div>
     </div>
 
@@ -274,35 +294,30 @@
         </li>
     </ul>
 
-    <section id="education">
-        <h2>Education</h2>
-        <ul>
-            <li>Ph.D. in Applied Mathematics (expected in 2024), UC Davis, CA, USA.</li>
-            <li>MS in Physics (2019), UC Davis, CA, USA.</li>
-            <li>BS in Physics (2015), Free University of Tbilisi, Georgia.</li>
-            <li>BS in Computer Science (2014), Free University of Tbilisi, Georgia.</li>
-        </ul>
-    </section>
-
     <section id="research">
         <h2>Selected Research Projects</h2>
         <h3>Consensus Formation Among Mobile Agents in Networks of Heterogeneous Interaction Venues</h3>
         <ul>
-            <li>
-                Exploring the collective behavior of interacting entities is of great interest and importance. Rather than 
-                focusing on static and uniform connections, we examine the co-evolution of diverse mobile agents experiencing 
-                varying interactions across both space and time. Analogous to the social dynamics of intrinsically diverse 
-                individuals who navigate between and interact within various physical or digital locations, agents in our 
-                model traverse a complex network of heterogeneous environments and engage with everyone they encounter. The 
-                precise nature of agents internal dynamics and the various interactions that nodes induce are left 
-                unspecified and can be tailored to suit the requirements of individual applications. We derive effective 
-                dynamical equations for agent states which are instrumental in investigating thresholds of consensus, 
-                devising effective attack strategies to hinder coherence, and designing optimal network structures with 
-                inherent node variations in mind. We demonstrate that agent cohesion can be promoted by increasing agent 
-                density, introducing network heterogeneity, and intelligently designing the network structure, aligning 
-                node degrees with the corresponding interaction strengths they facilitate. Our findings are applied to two 
-                distinct scenarios: the synchronization of brain activities between interacting individuals, as observed in 
-                recent collective MRI scans, and the emergence of consensus in a cusp catastrophe model of opinion dynamics.
+            <li class="projectWrapper">
+                <div class="description">
+                    Exploring the collective behavior of interacting entities is of great interest and importance. Rather than 
+                    focusing on static and uniform connections, we examine the co-evolution of diverse mobile agents experiencing 
+                    varying interactions across both space and time. Analogous to the social dynamics of intrinsically diverse 
+                    individuals who navigate between and interact within various physical or digital locations, agents in our 
+                    model traverse a complex network of heterogeneous environments and engage with everyone they encounter. The 
+                    precise nature of agents internal dynamics and the various interactions that nodes induce are left 
+                    unspecified and can be tailored to suit the requirements of individual applications. We derive effective 
+                    dynamical equations for agent states which are instrumental in investigating thresholds of consensus, 
+                    devising effective attack strategies to hinder coherence, and designing optimal network structures with 
+                    inherent node variations in mind. We demonstrate that agent cohesion can be promoted by increasing agent 
+                    density, introducing network heterogeneity, and intelligently designing the network structure, aligning 
+                    node degrees with the corresponding interaction strengths they facilitate. Our findings are applied to two 
+                    distinct scenarios: the synchronization of brain activities between interacting individuals, as observed in 
+                    recent collective MRI scans, and the emergence of consensus in a cusp catastrophe model of opinion dynamics.
+                </div>
+                <div class="visual">
+                    <img src="research-RWO.gif" alt="consensus among random walkers">
+                </div>
             </li>
             <li>
                 <cite>
@@ -312,13 +327,18 @@
         </ul>
         <h3>Dragon Kings in Self-Organized Criticality Systems</h3>
         <ul>
-            <li>
-                The spontaneous emergence of scale invariance, called self-organized criticality (SOC), is often attributed 
-                to a second-order absorbing-state phase transition (ASPT). Many real-world systems display SOC, yet extreme 
-                events are often overrepresented, causing significant disruption, and are called dragon kings (DK). We show 
-                analytically that the tradeoff between driving impulse and dissipation rate can create DKs in a second-order 
-                ASPT. This establishes that DKs exist in SOC systems, reveals a taxonomy of DKs, and shows that larger 
-                dissipation and smoother driving lower risk of extreme events.
+            <li class="projectWrapper">
+                <div class="description">
+                    The spontaneous emergence of scale invariance, called self-organized criticality (SOC), is often attributed 
+                    to a second-order absorbing-state phase transition (ASPT). Many real-world systems display SOC, yet extreme 
+                    events are often overrepresented, causing significant disruption, and are called dragon kings (DK). We show 
+                    analytically that the tradeoff between driving impulse and dissipation rate can create DKs in a second-order 
+                    ASPT. This establishes that DKs exist in SOC systems, reveals a taxonomy of DKs, and shows that larger 
+                    dissipation and smoother driving lower risk of extreme events.
+                </div>
+                <div class="visual">
+                    <img src="research-DKSOC.png" alt="dragon kings in SOC systems">
+                </div>
             </li>
             <li>
                 <cite>
@@ -328,21 +348,26 @@
         </ul>
         <h3>Sandpile Cascades on Oscillator Networks: The BTW Model Meets Kuramoto</h3>
         <ul>
-            <li>
-                Cascading failures abound in complex systems and the BTW sandpile model provides a theoretical underpinning for
-                their analysis. Yet, it does not account for the possibility of nodes having oscillatory dynamics such as in power grids
-                and brain networks. Here we consider a network of Kuramoto oscillators upon which the BTW model is unfolding,
-                enabling us to study how the feedback between the oscillatory and cascading dynamics can lead to new emergent 
-                behaviors. We assume that the more out-of-sync a node is with its neighbors the more vulnerable it is and lower its
-                load-carrying capacity accordingly. And when a node topples and sheds load, its oscillatory phase is reset at random.
-                This leads to novel cyclic behavior at an emergent, long timescale. The system spends the bulk of its time in 
-                a synchronized state where load builds up with minimal cascades. Yet, eventually the system reaches a tipping point where a
-                large cascade triggers a “cascade of larger cascades,” which can be classified as a Dragon King event. The system then
-                undergoes a short transient back to the synchronous, build-up phase. The coupling between capacity and synchronization 
-                gives rise to endogenous cascade seeds in addition to the standard exogenous ones, and we show their respective
-                roles. We establish the phenomena from numerical studies and develop the accompanying mean-field theory to locate
-                the tipping point, calculate the load in the system, determine the frequency of the long-time oscillations and find the
-                distribution of cascade sizes during the build-up phase.
+            <li class="projectWrapper">
+               <div class="description">
+                    Cascading failures abound in complex systems and the BTW sandpile model provides a theoretical underpinning for
+                    their analysis. Yet, it does not account for the possibility of nodes having oscillatory dynamics such as in power grids
+                    and brain networks. Here we consider a network of Kuramoto oscillators upon which the BTW model is unfolding,
+                    enabling us to study how the feedback between the oscillatory and cascading dynamics can lead to new emergent 
+                    behaviors. We assume that the more out-of-sync a node is with its neighbors the more vulnerable it is and lower its
+                    load-carrying capacity accordingly. And when a node topples and sheds load, its oscillatory phase is reset at random.
+                    This leads to novel cyclic behavior at an emergent, long timescale. The system spends the bulk of its time in 
+                    a synchronized state where load builds up with minimal cascades. Yet, eventually the system reaches a tipping point where a
+                    large cascade triggers a “cascade of larger cascades,” which can be classified as a Dragon King event. The system then
+                    undergoes a short transient back to the synchronous, build-up phase. The coupling between capacity and synchronization 
+                    gives rise to endogenous cascade seeds in addition to the standard exogenous ones, and we show their respective
+                    roles. We establish the phenomena from numerical studies and develop the accompanying mean-field theory to locate
+                    the tipping point, calculate the load in the system, determine the frequency of the long-time oscillations and find the
+                    distribution of cascade sizes during the build-up phase.
+                </div>
+                <div class="visual">
+                    <img src="research-BTWKM.gif" alt="Sandpile Cascades">
+                </div>
             </li>
             <li>
                 <cite>
@@ -370,12 +395,17 @@
 
         <h3>Flows on Networks</h3>
         <ul>
-            <li>
-                In this ongoing research project, we study the dynamics of flows on networks under various symmetries and constraints. We have developed novel field 
-                theoretic analytic tools on networks (as opposed to the common mean-field theory) that captures well the emergent behavior for random walking particles 
-                on networks, as well as guided shortest path routing.
-                <br>
-                Principle Investigator: <b>Raissa D'Souza</b>. Collaborator: Oriol Artime.
+            <li class="projectWrapper">
+                <div class="description">
+                    In this ongoing research project, we study the dynamics of flows on networks under various symmetries and constraints. We have developed novel field 
+                    theoretic analytic tools on networks (as opposed to the common mean-field theory) that captures well the emergent behavior for random walking particles 
+                    on networks, as well as guided shortest path routing.
+                    <br>
+                    Principle Investigator: <b>Raissa D'Souza</b>. Collaborator: Oriol Artime.
+                </div>
+                <div class="visual">
+                    <img src="research-flow.gif" alt="flows on networks">
+                </div>
             </li>
         </ul>
 
@@ -415,6 +445,16 @@
             <li>
                 Teacher and team leader for high-school scientific teams for International Young Physicists' and Naturalists' Tournaments (IYPT and IYNT).
             </li>
+        </ul>
+    </section>
+
+    <section id="education">
+        <h2>Education</h2>
+        <ul>
+            <li>Ph.D. in Applied Mathematics (expected in 2024), UC Davis, CA, USA.</li>
+            <li>MS in Physics (2019), UC Davis, CA, USA.</li>
+            <li>BS in Physics (2015), Free University of Tbilisi, Georgia.</li>
+            <li>BS in Computer Science (2014), Free University of Tbilisi, Georgia.</li>
         </ul>
     </section>
 
@@ -733,20 +773,21 @@
             const menuItems = document.querySelectorAll('.menu-item');
             window.addEventListener('scroll', () => {
                 const sections = document.querySelectorAll('section');
-                const scrollPosition = window.scrollY + window.innerHeight/4;
-                document.querySelector('.menu-item.bold')?.classList.remove('bold');
-
+                const scrollPosition = window.scrollY + window.innerHeight/2;
+                let closestYet = scrollPosition;
                 sections.forEach(section => {
                     const sectionTop = section.offsetTop;
                     const sectionHeight = section.offsetHeight;
                     
-                    let topSectTop = Infinity;
-                    if (scrollPosition >= sectionTop && scrollPosition <= sectionTop + sectionHeight) {
+                    if (Math.abs(scrollPosition-sectionTop)<closestYet && scrollPosition>sectionTop) {
                         document.querySelector('.menu-item.bold')?.classList.remove('bold');
-                        console.log('Current Section ID:', section.id);
                         document.querySelector(`.menu-item[href="#${section.id}"]`).classList.add('bold');
+                        closestYet = Math.abs(scrollPosition-sectionTop);
                     }
                 });
+                if (closestYet == scrollPosition){
+                    document.querySelector('.menu-item.bold')?.classList.remove('bold');
+                }
             });
         });
 
