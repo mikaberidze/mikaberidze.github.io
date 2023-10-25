@@ -112,7 +112,7 @@
         }
 
         .menu-item {
-            margin-bottom: 10vh; /* Increase distance between menu items */
+            margin-bottom: 6vh; /* Increase distance between menu items */
             text-align: center;
             color: #333;
             transition: font-weight 0.3s; /* Smooth transition for font-weight */
@@ -177,6 +177,7 @@
         ul {
             list-style-type: none;
             padding: 0;
+            margin-top: 0;
             padding-bottom: 2%;
         }
 
@@ -189,7 +190,7 @@
         }
 
         section img, video {
-            margin-top: calc(2% + 1em);
+            padding-top: 1%;
             float: right;
             width: calc(min(max(30%, 300px), 90vw - var(--panelWidth)*1.5));
             height: auto;
@@ -257,7 +258,8 @@
             </a>
         </div>
         <div class="menu">
-            <a href="#research" class="menu-item">Research</a>
+            <a href="#research" class="menu-item">Current<br>Research</a>
+            <a href="#publications" class="menu-item">Selected<br>Publications</a>
             <a href="#teaching" class="menu-item">Teaching</a>
             <a href="#education" class="menu-item">Education</a>
         </div>
@@ -272,28 +274,52 @@
     <section id="intro">
         <ul>
             <li>
-                I am a PhD candidate in Applied Mathematics at UC Davis studying emergent dynamical phenomena on complex networks, 
-                drawing inspiration from a variety of sources and applications. Emergence implies that the whole is greater than the sum of its parts.
-                This birth of this surplus complexity is the central focus of my research, and Network Science, studying the interactions between units
-                is the perfect framework for it.
+                I am a PhD candidate in Applied Mathematics at UC Davis studying emergent dynamical phenomena in complex networks, drawing inspiration from a variety of sources and applications. Emergence implies that the whole is greater than the sum of its parts. The birth of this surplus complexity is the central focus of my research, and Network Science, studying the interactions between units, is the perfect framework for it.
             </li>
             <li>
-                Networks manifest themselves everywhere, from quantum network of Feynman diagrams, that represents the fabric of matter to the kinship network that represents 
-                the fabric of the tree of life.
-                From the promising yet worying Deep Neural Networks, to our mysterious brains. 
-                And from the tiny protein machinary driving our cells, to the massive power grids, world-wide-web,
-                and all kinds of logistic networks and supply chains that keep our society running.
+		        Networks manifest themselves everywhere, from quantum network of Feynman diagrams that represents the fabric of matter, to the kinship network that represents the fabric of the tree of life. From the promising yet worying Deep Neural Networks, to our mysterious brains. And from the tiny protein machinery driving our cells, to the massive power grids, world-wide-web, and all kinds of logistic networks and supply chains that keep our society running.
             </li>
-            <li> 
-                My research usually combines numerical simulations with analytical work.
-                I use the mathematical tools from my Applied Math PhD program, the ability to neglect terms without reservation from my MSc in Physics, 
-                and computational skills from my BSc in Computer Science.
+            <li>
+		        My research usually combines numerical simulations with analytical work. I use the mathematical tools from my Applied Math PhD program, the ability to neglect terms without reservation from my MS in Physics, and computational skills from my BS in Computer Science.
             </li>
         </ul>
     </section>
 
+
     <section id="research">
-        <h2>Selected Research Projects</h2>
+        <h2>Current Research</h2>
+        <h3>Flows on Networks</h3>
+        <video autoplay muted loop>
+            <source src="research-flow.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <ul>
+            <li>
+                In this ongoing research project, we study the dynamics of flows on networks under various symmetries and constraints. We have developed novel field 
+                theoretic analytic tools on networks (as opposed to the common mean-field theory) that captures well the emergent behavior for random walking particles 
+                on networks, as well as guided shortest path routing.
+                <br>
+                Principle Investigator: <b>Raissa D'Souza</b>. 
+                <br>
+                Collaborator: Oriol Artime.
+            </li>
+        </ul>
+
+        <h3>Georgian Natural Language Processing</h3>
+        <img src="research-LLMKA.png" alt="Georgian Language Models"> 
+        <ul>
+            <li>
+                This project aims to save the Georgian languages from digital extinction. We are using deep learning to create modern Large Language Models for Georgian languages. 
+                To achieve this goal, we are attempting to overcoming various obsticles, such as the lack of large datasets, and uniqueness of three Georgian languages
+                which together represent a language island.
+                <br>
+                Project lead: <b>Beso Mikaberidze</b>
+            </li>
+        </ul>
+    </section>
+
+    <section id="publications">
+        <h2>Selected Publications</h2>
 
         <h3>Consensus Formation Among Mobile Agents in Networks of Heterogeneous Interaction Venues</h3>
         <video autoplay muted loop>
@@ -308,7 +334,7 @@
                 useful for examining consensus formation, creating strategies to disrupt cohesion, and optimizing network structures. Applications of 
                 these findings include studying synchronized brain activity in group settings and understanding how consensus forms in opinion dynamics.
                 <br>
-                On the right, you can see an illustration of Kuramoto agents moving through a network of locations that facilitate various coupling strengths.
+                The animation illustraties Kuramoto agents moving through a network of locations that facilitate various coupling strengths.
             </li>
             <li>
                 <cite>
@@ -328,7 +354,7 @@
                 By tweaking this balance, we found ways to minimize these disruptions back to the scale-invariant expectations and we analytically found the
                 boundary between the two operating regimes.
                 <br>
-                The figure on the right shows the classification of DK events resulting from our study.
+                The figure shows the classification of DK events resulting from our study.
             </li>
             <li>
                 <cite>
@@ -355,8 +381,7 @@
                 likened to a “dragon king” which is a massive event that occurs significantly more often than what extrapolation
                 from smaller events would suggest.
                 <br>
-                On the right, you can see an illustration of the coupled BTW-Kuramoto model in action.
-
+                The presented animation illustrates the coupled BTW-Kuramoto model in action.
             </li>
             <li>
                 <cite>
@@ -365,32 +390,29 @@
             </li>
         </ul>
 
-        <h3>Flows on Networks</h3>
-        <video autoplay muted loop>
-            <source src="research-flow.mp4" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
+        <h3>Convergent Momentum-Space OPE and Bootstrap Equations in Conformal Field Theory</h3>
+        <img src="research-OPE.png" alt="Operator Product Expansion">
         <ul>
             <li>
-                In this ongoing research project, we study the dynamics of flows on networks under various symmetries and constraints. We have developed novel field 
-                theoretic analytic tools on networks (as opposed to the common mean-field theory) that captures well the emergent behavior for random walking particles 
-                on networks, as well as guided shortest path routing.
-                <br>
-                Principle Investigator: <b>Raissa D'Souza</b>. 
-                <br>
-                Collaborator: Oriol Artime.
+                Conformal Field Theory (CFT) is a type of Quantum Field Theory that is invariant under conformal transformations, that is, generalized scale invariance. CFT is a powerful tool with applications in string theory, quantum gravity, and critical phenomena in statistical physics. The notion of universality classes in statistical physics is closely related to the strict constraints on self-consistent CFTs, and Conformal Bootstrap utilizes this self-consistency to tighten the limits around possible CFTs. In this project, we formulated the conformal bootstrap equations in momentum space and demonstrated that they are convergent. The figure shows the 
+            </li>
+            <li>
+                <cite>
+                    Gillioz, M., Lu, X., Luty, M.A. and <b>Mikaberidze, G.</b>, 2020. Convergent momentum-space OPE and bootstrap equations in conformal field theory. <i>Journal of High Energy Physics</i>, 2020(3), pp.1-22.
+                </cite>
             </li>
         </ul>
 
-        <h3>Gerogian Natural Language Pprocessing</h3>
-        <img src="research-LLMKA.png" alt="Georgian Language Models"> 
+        <h3>Standing electromagnetic solitons in degenerate relativistic plasmas</h3>
+        <img src="research-soliton.png" alt="Plasma Solitons">
         <ul>
             <li>
-                This project aims to save the Georgian languages from digital extinction. We are using deep learning to create modern Large Language Models for Georgian languages. 
-                To achieve this goal, we are attempting to overcoming various obsticles, such as the lack of large datasets, and uniqueness of three Georgian languages
-                which together represent a language island.
-                <br>
-                Project lead: <b>Beso Mikaberidze</b>
+                Plasma, the fourth fundamental state of matter characterized by a large fraction of charged particles, can become degenerate under high pressures where quantum effects, such as Pauli exclusion, become important. Highly relativistic plasmas are observed in the cores of white dwarfs, in magnetosphere of pulsars, in the MeV epoch of the early Universe, and probably in Active Galactic Nuclei. We found standing electro-magnetic solitons by numerically analysing relativistic hydrodynamics and Maxwell equations. 
+            </li>
+            <li>
+                <cite>
+                    <b>Mikaberidze, G.</b> and Berezhiani, V.I., 2015. Standing electromagnetic solitons in degenerate relativistic plasmas. <i>Physics Letters A</i>, 379(42), pp.2730-2734..
+                </cite>
             </li>
         </ul>
     </section>
