@@ -315,17 +315,26 @@
 
 
     <section id="research">
+
         <h2>Ongoing research projects</h2>
-        <h3>Optimal network structures for synchrony</h3>
-        <img src="s-shaped_network.png" alt="a pretty renditioning of a network" class="side_content"> 
+        <!-- (*) NOTE THAT THIS IS IN A WEIRD LOCATION, WHEN ADDING NEW RESEARCH, NEED TO REMEMBER -->
+        <video autoplay muted loop class="side_content">
+            <source src="research-s-shaped.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <h3>Synchrony-optimized networks</h3>
+        <!-- (*) REALLY BELONGS HERE -->
         <ul>
             <li>
-                This project investigates the emergent topological order in networks of oscillators 
-                that are optimally tuned for synchronization under fixed edge-weight budget.
-                By blending analytical insights with machine learning-based optimization, 
-                we aim to uncover general principles for designing highly efficient, 
-                resource-aware networks in natural and engineered systems.
-                <br><br>
+                In this project, we explore how networks can self-optimize for synchronization under 
+                constrained coupling budget. The animation shows a network evolving from a dense, 
+                unstructured web into a sparse, highly organized architecture through gradient descent. 
+                Each edge is adjusted to improve global phase coherence, with no design rules imposed—just 
+                dynamics and an objective. Remarkably, the final network is not densely connected or 
+                short-path but instead long, bipartite, with extremely high monophily, i.e., second-order homophily.
+                This structure emerges purely from optimization and admits surprizingly precise and general analytical treatment.
+            </li>
+            <li>
                 Collaborator: <b>Dane Taylor</b>.
             </li>
         </ul>
