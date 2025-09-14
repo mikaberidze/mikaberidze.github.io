@@ -87,16 +87,16 @@
 
         /* circular layout for desktop */
         .image-links a:nth-child(1) {
-            --angle: 80deg;
+            --angle: 45deg;
         }
         .image-links a:nth-child(2) {
-            --angle: 40deg;
+            --angle: 20deg;
         }
         .image-links a:nth-child(3) {
-            --angle: -40deg;
+            --angle: -20deg;
         }
         .image-links a:nth-child(4) {
-            --angle: -80deg;
+            --angle: -45deg;
         }
         /* .image-links a:nth-child(5) {
             --angle: -50deg;
@@ -807,7 +807,6 @@
             const canvas = isMobile ? document.getElementById('mobileEdgeCanvas') : document.getElementById('profileEdgeCanvas');
             const ctx = canvas.getContext('2d');
             const mainPic = isMobile ? document.getElementById('mobile-profile-pic') : document.getElementById('overlayCanvas');
-
             const linkImages = Array.from(currentProfile.querySelectorAll('.image-links a'))
                 .filter(link => link.offsetParent !== null);
 
