@@ -258,6 +258,9 @@
             text-decoration: none;
         }
         @media (max-width: 600px) {
+            :root {
+                --panelWidth: min(80vw, 200px);
+            }
             .profile-panel {
                 display: none;
             }
@@ -776,7 +779,7 @@
         // ----------------------------------------------------------------------------------------- Profile Pannel and Navigation
         const profilePanel = document.querySelector('.profile-panel');
         const mainPic = document.querySelector('#overlayCanvas');
-        const linkImages = document.querySelectorAll('.image-links a');
+        const linkImages = profilePanel.querySelectorAll('.image-links a');
         const profileEdgeCanvas = document.getElementById('profileEdgeCanvas');
         const profileCtx = profileEdgeCanvas.getContext('2d');
 
