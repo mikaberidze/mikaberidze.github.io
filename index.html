@@ -20,10 +20,14 @@
         }
         .profile-panel {
             position: fixed;
-            top: calc(var(--panelWidth)/4);  
-            left: calc(var(--panelWidth)/4);  
-            width: var(--panelWidth); 
-            height: calc(100%-200px); 
+            top: calc(var(--panelWidth)/4);
+            left: calc(var(--panelWidth)/4);
+            width: var(--panelWidth);
+            height: calc(100%-200px);
+        }
+
+        .mobile-profile {
+            display: none;
         }
 
         #profileEdgeCanvas {
@@ -46,6 +50,15 @@
         }
         
         #profile-pic {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        #mobile-profile-pic {
             position: absolute;
             top: 0;
             left: 0;
@@ -244,6 +257,25 @@
         .gallery a {
             text-decoration: none;
         }
+        @media (max-width: 600px) {
+            .profile-panel {
+                display: none;
+            }
+            .mobile-profile {
+                display: block;
+                position: relative;
+                width: var(--panelWidth);
+                height: var(--panelWidth);
+                margin: 1em auto;
+            }
+            header, section, footer {
+                margin-left: 5%;
+                margin-right: 5%;
+            }
+            .side_content {
+                width: 100%;
+            }
+        }
     </style>
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css">
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -255,6 +287,23 @@
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T8CG4CDB"
         height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
+    <div class="mobile-profile">
+        <img src="guga.jpg" alt="Guram Mikaberidze" id="mobile-profile-pic">
+        <div class="image-links">
+            <a href="https://scholar.google.com/citations?user=cOkx0_IAAAAJ&hl=en&oi=ao" target="_blank">
+                <img src="icon_scholar_google.png" alt="Google Scholar Logo">
+            </a>
+            <a href="https://www.researchgate.net/profile/Guram-Mikaberidze" target="_blank">
+                <img src="icon_researchgate.png" alt="ResearchGate Logo">
+            </a>
+            <a href="https://gitlab.com/mikaberidze" target="_blank">
+                <img src="icon_gitlab.png" alt="Gitlab Logo">
+            </a>
+            <a href="https://orcid.org/0000-0001-6776-3481" target="_blank">
+                <img src="icon_orchid.png" alt="Gitlab Logo">
+            </a>
+        </div>
+    </div>
     <!-- ---------------------------------------------------------------------------------- Profile / menu Pane -->
     <div class="profile-panel">
         <canvas id="profileEdgeCanvas"></canvas>
