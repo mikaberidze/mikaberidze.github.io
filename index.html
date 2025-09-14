@@ -85,7 +85,7 @@
             z-index: 4;
         }
 
-        /* circular layout */
+        /* circular layout for desktop */
         .image-links a:nth-child(1) {
             --angle: 45deg;
         }
@@ -271,6 +271,26 @@
                 height: var(--panelWidth);
                 margin: 1em auto;
             }
+            #mobileEdgeCanvas {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -1;
+            }
+            .image-links a:nth-child(1) {
+                --angle: 45deg;
+            }
+            .image-links a:nth-child(2) {
+                --angle: 15deg;
+            }
+            .image-links a:nth-child(3) {
+                --angle: -15deg;
+            }
+            .image-links a:nth-child(4) {
+                --angle: -45deg;
+            }
             header, section, footer {
                 margin-left: 5%;
                 margin-right: 5%;
@@ -291,6 +311,7 @@
         height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
     <div class="mobile-profile">
+        <canvas id="mobileEdgeCanvas"></canvas>
         <img src="guga.jpg" alt="Guram Mikaberidze" id="mobile-profile-pic">
         <div class="image-links">
             <a href="https://scholar.google.com/citations?user=cOkx0_IAAAAJ&hl=en&oi=ao" target="_blank">
@@ -777,24 +798,30 @@
 
 
         // ----------------------------------------------------------------------------------------- Profile Pannel and Navigation
-        const profilePanel = document.querySelector('.profile-panel');
-        const mainPic = document.querySelector('#overlayCanvas');
-        const linkImages = profilePanel.querySelectorAll('.image-links a');
-        const profileEdgeCanvas = document.getElementById('profileEdgeCanvas');
-        const profileCtx = profileEdgeCanvas.getContext('2d');
-
         function drawEdges() {
-            // Clear the canvas first
-            profileCtx.clearRect(0, 0, profileEdgeCanvas.width, profileEdgeCanvas.height);
-            let line_color = "gray";
-            profileCtx.strokeStyle = line_color;
-            
-            const canvasRect = profileEdgeCanvas.getBoundingClientRect();
-            const profilePanelRect = profilePanel.getBoundingClientRect();
+            const profilePanel = document.querySelector('.profile-panel');
+            const mobileProfile = document.querySelector('.mobile-profile');
+            const isMobile = window.getComputedStyle(mobileProfile).display !== 'none';
 
-            // Adjust canvas size to match the profilePanel's size
-            profileEdgeCanvas.width = profilePanelRect.width;
-            profileEdgeCanvas.height = profilePanelRect.height;
+            const currentProfile = isMobile ? mobileProfile : profilePanel;
+            const canvas = isMobile ? document.getElementById('mobileEdgeCanvas') : document.getElementById('profileEdgeCanvas');
+            const ctx = canvas.getContext('2d');
+            const mainPic = isMobile ? document.getElementById('mobile-profile-pic') : document.getElementById('overlayCanvas');
+
+            const linkImages = Array.from(currentProfile.querySelectorAll('.image-links a'))
+                .filter(link => link.offsetParent !== null);
+
+            // Clear the canvas first
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let line_color = "gray";
+            ctx.strokeStyle = line_color;
+
+            const canvasRect = canvas.getBoundingClientRect();
+            const profileRect = currentProfile.getBoundingClientRect();
+
+            // Adjust canvas size to match the current profile's size
+            canvas.width = profileRect.width;
+            canvas.height = profileRect.height;
 
             const mainPicRect = mainPic.getBoundingClientRect();
             const mainPicCenter = {
@@ -809,49 +836,51 @@
                     y: rect.top + rect.height / 2 - canvasRect.top
                 };
 
-                profileCtx.beginPath();
-                profileCtx.moveTo(mainPicCenter.x, mainPicCenter.y);
-                profileCtx.lineTo(linkCenter.x, linkCenter.y);
-                profileCtx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(mainPicCenter.x, mainPicCenter.y);
+                ctx.lineTo(linkCenter.x, linkCenter.y);
+                ctx.stroke();
             });
 
-            profileCtx.beginPath();
-            profileCtx.moveTo(mainPicCenter.x, mainPicCenter.y);
-            profileCtx.lineTo(mainPicCenter.x, profileEdgeCanvas.height);
-            profileCtx.stroke();
-            
-            // Draw the circles
-            document.querySelectorAll('.menu-item').forEach(div => {
-                const rect = div.getBoundingClientRect();
-                const circleRadius = 3;
+            if (!isMobile) {
+                ctx.beginPath();
+                ctx.moveTo(mainPicCenter.x, mainPicCenter.y);
+                ctx.lineTo(mainPicCenter.x, canvas.height);
+                ctx.stroke();
 
-                // Calculate circle's position
-                const circleX = rect.left + rect.width / 2 - canvasRect.left;
-                const circleY = rect.bottom - canvasRect.top;
+                // Draw the circles
+                document.querySelectorAll('.menu-item').forEach(div => {
+                    const rect = div.getBoundingClientRect();
+                    const circleRadius = 3;
 
-                // Remove segment of line from behind the text
-                // Set line color
-                profileCtx.strokeStyle = '#f8f8f8';
-                // Set line thickness
-                profileCtx.lineWidth = 20; 
-                profileCtx.beginPath();
-                profileCtx.moveTo(mainPicCenter.x, circleY);
-                profileCtx.lineTo(mainPicCenter.x, rect.top - canvasRect.top);
-                profileCtx.stroke();
-                
+                    // Calculate circle's position
+                    const circleX = rect.left + rect.width / 2 - canvasRect.left;
+                    const circleY = rect.bottom - canvasRect.top;
 
-                // Set line color
-                profileCtx.strokeStyle = line_color;
-                profileCtx.fillStyle = line_color;
-                // Set line thickness
-                profileCtx.lineWidth = 1; 
+                    // Remove segment of line from behind the text
+                    // Set line color
+                    ctx.strokeStyle = '#f8f8f8';
+                    // Set line thickness
+                    ctx.lineWidth = 20;
+                    ctx.beginPath();
+                    ctx.moveTo(mainPicCenter.x, circleY);
+                    ctx.lineTo(mainPicCenter.x, rect.top - canvasRect.top);
+                    ctx.stroke();
 
-                // Draw the circle
-                profileCtx.beginPath();
-                profileCtx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
-                profileCtx.fill();
-                profileCtx.closePath();
-            })
+
+                    // Set line color
+                    ctx.strokeStyle = line_color;
+                    ctx.fillStyle = line_color;
+                    // Set line thickness
+                    ctx.lineWidth = 1;
+
+                    // Draw the circle
+                    ctx.beginPath();
+                    ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.closePath();
+                })
+            }
         }
 
         document.addEventListener("DOMContentLoaded", () => {
