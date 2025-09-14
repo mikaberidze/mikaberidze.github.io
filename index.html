@@ -39,6 +39,16 @@
             z-index: -1
         }
 
+        /* Mobile connector canvas */
+        #mobileEdgeCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
         #triangulationCanvas, #overlayCanvas, #backgroundCanvas {
             position: absolute;
             top: 0;
@@ -271,6 +281,11 @@
                 height: var(--panelWidth);
                 margin: 1em auto;
             }
+            /* Mobile-specific angle distribution for icon links */
+            .mobile-profile .image-links a:nth-child(1) { --angle: 45deg; }
+            .mobile-profile .image-links a:nth-child(2) { --angle: 15deg; }
+            .mobile-profile .image-links a:nth-child(3) { --angle: -15deg; }
+            .mobile-profile .image-links a:nth-child(4) { --angle: -45deg; }
             header, section, footer {
                 margin-left: 5%;
                 margin-right: 5%;
@@ -291,6 +306,7 @@
         height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
     <div class="mobile-profile">
+        <canvas id="mobileEdgeCanvas"></canvas>
         <img src="guga.jpg" alt="Guram Mikaberidze" id="mobile-profile-pic">
         <div class="image-links">
             <a href="https://scholar.google.com/citations?user=cOkx0_IAAAAJ&hl=en&oi=ao" target="_blank">
@@ -778,80 +794,103 @@
 
         // ----------------------------------------------------------------------------------------- Profile Pannel and Navigation
         const profilePanel = document.querySelector('.profile-panel');
-        const mainPic = document.querySelector('#overlayCanvas');
-        const linkImages = profilePanel.querySelectorAll('.image-links a');
+        const desktopMainPic = document.querySelector('#overlayCanvas');
+        const desktopLinkImages = profilePanel.querySelectorAll('.image-links a');
         const profileEdgeCanvas = document.getElementById('profileEdgeCanvas');
         const profileCtx = profileEdgeCanvas.getContext('2d');
 
-        function drawEdges() {
-            // Clear the canvas first
-            profileCtx.clearRect(0, 0, profileEdgeCanvas.width, profileEdgeCanvas.height);
-            let line_color = "gray";
-            profileCtx.strokeStyle = line_color;
-            
-            const canvasRect = profileEdgeCanvas.getBoundingClientRect();
-            const profilePanelRect = profilePanel.getBoundingClientRect();
+        const mobileProfile = document.querySelector('.mobile-profile');
+        const mobileMainPic = document.getElementById('mobile-profile-pic');
+        const mobileLinkImages = mobileProfile.querySelectorAll('.image-links a');
+        const mobileEdgeCanvas = document.getElementById('mobileEdgeCanvas');
+        const mobileCtx = mobileEdgeCanvas.getContext('2d');
 
-            // Adjust canvas size to match the profilePanel's size
-            profileEdgeCanvas.width = profilePanelRect.width;
-            profileEdgeCanvas.height = profilePanelRect.height;
+        function drawConnectorSet({container, canvas, ctx, mainEl, links, drawMenu = false}) {
+            // Clear
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const lineColor = 'gray';
+            ctx.strokeStyle = lineColor;
 
-            const mainPicRect = mainPic.getBoundingClientRect();
-            const mainPicCenter = {
-                x: mainPicRect.left + mainPicRect.width / 2 - canvasRect.left,
-                y: mainPicRect.top + mainPicRect.height / 2 - canvasRect.top
+            // Size canvas to container
+            const containerRect = container.getBoundingClientRect();
+            canvas.width = containerRect.width;
+            canvas.height = containerRect.height;
+
+            const canvasRect = canvas.getBoundingClientRect();
+            const mainRect = mainEl.getBoundingClientRect();
+            const mainCenter = {
+                x: mainRect.left + mainRect.width / 2 - canvasRect.left,
+                y: mainRect.top + mainRect.height / 2 - canvasRect.top,
             };
 
-            linkImages.forEach(link => {
+            links.forEach(link => {
                 const rect = link.getBoundingClientRect();
                 const linkCenter = {
                     x: rect.left + rect.width / 2 - canvasRect.left,
-                    y: rect.top + rect.height / 2 - canvasRect.top
+                    y: rect.top + rect.height / 2 - canvasRect.top,
                 };
-
-                profileCtx.beginPath();
-                profileCtx.moveTo(mainPicCenter.x, mainPicCenter.y);
-                profileCtx.lineTo(linkCenter.x, linkCenter.y);
-                profileCtx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(mainCenter.x, mainCenter.y);
+                ctx.lineTo(linkCenter.x, linkCenter.y);
+                ctx.lineWidth = 1;
+                ctx.stroke();
             });
 
-            profileCtx.beginPath();
-            profileCtx.moveTo(mainPicCenter.x, mainPicCenter.y);
-            profileCtx.lineTo(mainPicCenter.x, profileEdgeCanvas.height);
-            profileCtx.stroke();
-            
-            // Draw the circles
-            document.querySelectorAll('.menu-item').forEach(div => {
-                const rect = div.getBoundingClientRect();
-                const circleRadius = 3;
+            // Vertical trunk and menu circles (desktop only)
+            if (drawMenu) {
+                ctx.beginPath();
+                ctx.moveTo(mainCenter.x, mainCenter.y);
+                ctx.lineTo(mainCenter.x, canvas.height);
+                ctx.stroke();
 
-                // Calculate circle's position
-                const circleX = rect.left + rect.width / 2 - canvasRect.left;
-                const circleY = rect.bottom - canvasRect.top;
+                document.querySelectorAll('.menu-item').forEach(div => {
+                    const rect = div.getBoundingClientRect();
+                    const circleRadius = 3;
+                    const circleX = rect.left + rect.width / 2 - canvasRect.left;
+                    const circleY = rect.bottom - canvasRect.top;
 
-                // Remove segment of line from behind the text
-                // Set line color
-                profileCtx.strokeStyle = '#f8f8f8';
-                // Set line thickness
-                profileCtx.lineWidth = 20; 
-                profileCtx.beginPath();
-                profileCtx.moveTo(mainPicCenter.x, circleY);
-                profileCtx.lineTo(mainPicCenter.x, rect.top - canvasRect.top);
-                profileCtx.stroke();
-                
+                    // erase line behind text
+                    ctx.strokeStyle = '#f8f8f8';
+                    ctx.lineWidth = 20;
+                    ctx.beginPath();
+                    ctx.moveTo(mainCenter.x, circleY);
+                    ctx.lineTo(mainCenter.x, rect.top - canvasRect.top);
+                    ctx.stroke();
 
-                // Set line color
-                profileCtx.strokeStyle = line_color;
-                profileCtx.fillStyle = line_color;
-                // Set line thickness
-                profileCtx.lineWidth = 1; 
+                    // circle
+                    ctx.strokeStyle = lineColor;
+                    ctx.fillStyle = lineColor;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.closePath();
+                });
+            }
+        }
 
-                // Draw the circle
-                profileCtx.beginPath();
-                profileCtx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
-                profileCtx.fill();
-                profileCtx.closePath();
-            })
+        function drawEdges() {
+            const isMobile = window.matchMedia('(max-width: 600px)').matches;
+            if (!isMobile && profilePanel && desktopMainPic) {
+                drawConnectorSet({
+                    container: profilePanel,
+                    canvas: profileEdgeCanvas,
+                    ctx: profileCtx,
+                    mainEl: desktopMainPic,
+                    links: desktopLinkImages,
+                    drawMenu: true
+                });
+            }
+            if (isMobile && mobileProfile && mobileMainPic) {
+                drawConnectorSet({
+                    container: mobileProfile,
+                    canvas: mobileEdgeCanvas,
+                    ctx: mobileCtx,
+                    mainEl: mobileMainPic,
+                    links: mobileLinkImages,
+                    drawMenu: false
+                });
+            }
         }
 
         document.addEventListener("DOMContentLoaded", () => {
