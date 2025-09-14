@@ -805,42 +805,93 @@
         const mobileEdgeCanvas = document.getElementById('mobileEdgeCanvas');
         const mobileCtx = mobileEdgeCanvas.getContext('2d');
 
-        function drawConnectorSet({container, canvas, ctx, mainEl, links, drawMenu = false}) {
-            // Clear
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function drawConnectorSet({ container, canvas, ctx, mainEl, links, drawMenu = false, overshootPx = 0, fitToBounds = false }) {
             const lineColor = 'gray';
             ctx.strokeStyle = lineColor;
 
-            // Size canvas to container
+            // Measure targets in viewport coordinates
             const containerRect = container.getBoundingClientRect();
-            canvas.width = containerRect.width;
-            canvas.height = containerRect.height;
-
-            const canvasRect = canvas.getBoundingClientRect();
             const mainRect = mainEl.getBoundingClientRect();
+            const mainCenterAbs = {
+                x: mainRect.left + mainRect.width / 2,
+                y: mainRect.top + mainRect.height / 2,
+            };
+            const linkCentersAbs = Array.from(links).map(link => {
+                const targetEl = link.querySelector('img') || link;
+                const rect = targetEl.getBoundingClientRect();
+                return {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2,
+                };
+            });
+
+            // Compute canvas CSS size/pos to cover all points
+            let cssLeft = 0, cssTop = 0, cssW, cssH;
+            if (fitToBounds) {
+                const xs = [mainCenterAbs.x, ...linkCentersAbs.map(p => p.x)];
+                const ys = [mainCenterAbs.y, ...linkCentersAbs.map(p => p.y)];
+                const minX = Math.min(...xs);
+                const maxX = Math.max(...xs);
+                const minY = Math.min(...ys);
+                const maxY = Math.max(...ys);
+                cssLeft = (minX - containerRect.left);
+                cssTop = (minY - containerRect.top);
+                cssW = Math.ceil(maxX - minX);
+                cssH = Math.ceil(maxY - minY);
+            } else {
+                cssLeft = 0;
+                cssTop = 0;
+                cssW = Math.ceil(containerRect.width);
+                cssH = Math.ceil(containerRect.height);
+            }
+            canvas.style.left = `${cssLeft}px`;
+            canvas.style.top = `${cssTop}px`;
+            canvas.style.width = `${cssW}px`;
+            canvas.style.height = `${cssH}px`;
+
+            // HiDPI: match backing store to CSS pixels
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = Math.max(1, Math.round(cssW * dpr));
+            canvas.height = Math.max(1, Math.round(cssH * dpr));
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // use CSS pixel coordinates
+
+            // Convert to canvas-local CSS coordinates
+            const canvasRect = canvas.getBoundingClientRect();
             const mainCenter = {
-                x: mainRect.left + mainRect.width / 2 - canvasRect.left,
-                y: mainRect.top + mainRect.height / 2 - canvasRect.top,
+                x: mainCenterAbs.x - canvasRect.left,
+                y: mainCenterAbs.y - canvasRect.top,
             };
 
-            links.forEach(link => {
-                const rect = link.getBoundingClientRect();
+            // Draw connectors
+            linkCentersAbs.forEach(cAbs => {
                 const linkCenter = {
-                    x: rect.left + rect.width / 2 - canvasRect.left,
-                    y: rect.top + rect.height / 2 - canvasRect.top,
+                    x: cAbs.x - canvasRect.left,
+                    y: cAbs.y - canvasRect.top,
                 };
+                let endX = linkCenter.x;
+                let endY = linkCenter.y;
+                if (overshootPx > 0) {
+                    const dx = linkCenter.x - mainCenter.x;
+                    const dy = linkCenter.y - mainCenter.y;
+                    const d = Math.hypot(dx, dy) || 1;
+                    endX = linkCenter.x + (dx / d) * overshootPx;
+                    endY = linkCenter.y + (dy / d) * overshootPx;
+                }
                 ctx.beginPath();
                 ctx.moveTo(mainCenter.x, mainCenter.y);
-                ctx.lineTo(linkCenter.x, linkCenter.y);
+                ctx.lineTo(endX, endY);
                 ctx.lineWidth = 1;
+                ctx.strokeStyle = lineColor;
                 ctx.stroke();
             });
 
-            // Vertical trunk and menu circles (desktop only)
+            // Desktop trunk + circles
             if (drawMenu) {
                 ctx.beginPath();
                 ctx.moveTo(mainCenter.x, mainCenter.y);
-                ctx.lineTo(mainCenter.x, canvas.height);
+                ctx.lineTo(mainCenter.x, cssH);
                 ctx.stroke();
 
                 document.querySelectorAll('.menu-item').forEach(div => {
@@ -878,7 +929,9 @@
                     ctx: profileCtx,
                     mainEl: desktopMainPic,
                     links: desktopLinkImages,
-                    drawMenu: true
+                    drawMenu: true,
+                    overshootPx: 0,
+                    fitToBounds: false
                 });
             }
             if (isMobile && mobileProfile && mobileMainPic) {
@@ -888,7 +941,9 @@
                     ctx: mobileCtx,
                     mainEl: mobileMainPic,
                     links: mobileLinkImages,
-                    drawMenu: false
+                    drawMenu: false,
+                    overshootPx: 0,
+                    fitToBounds: true
                 });
             }
         }
