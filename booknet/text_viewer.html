@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Source Text Viewer</title>
+    <style>
+      html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #111827; background: #f9fafb; }
+      .app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+      .topbar { display: flex; gap: 12px; align-items: center; padding: 10px 14px; background: #fff; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 10; }
+      .topbar .title { font-weight: 600; color: #111827; }
+      .topbar .muted { color: #6b7280; }
+      .content { overflow: auto; padding: 16px; }
+      .chunks { max-width: 980px; margin: 0 auto; }
+      .chunk { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+      .chunk.highlight { background: #fff9c4; /* pale yellow */ outline: 2px solid #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.2); }
+      .raw { white-space: pre-wrap; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+      .controls { margin-left: auto; display: flex; gap: 8px; }
+      .btn { background: #111827; color: #f9fafb; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+      .btn:disabled { background: #9ca3af; cursor: default; }
+      a { color: #2563eb; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="topbar">
+        <div class="title" id="title">Source Text</div>
+        <div class="muted" id="subtitle"></div>
+        <div class="controls">
+          <button class="btn" id="prevBtn">Prev chunk</button>
+          <button class="btn" id="nextBtn">Next chunk</button>
+          <a id="downloadLink" href="#" target="_blank" rel="noopener">Open raw text</a>
+        </div>
+      </div>
+      <div class="content">
+        <div id="container" class="chunks"></div>
+      </div>
+    </div>
+
+    <script>
+      function getQuery() {
+        const u = new URL(window.location.href);
+        const src = u.searchParams.get('src') || '';
+        const chunk = Number(u.searchParams.get('chunk') || '1');
+        return { src, chunk: Number.isFinite(chunk) && chunk > 0 ? chunk : 1 };
+      }
+
+      function setQuery(q) {
+        const u = new URL(window.location.href);
+        u.searchParams.set('src', q.src);
+        u.searchParams.set('chunk', String(q.chunk));
+        window.history.replaceState({}, '', u);
+      }
+
+      function renderChunks(chunks, activeIdx) {
+        const container = document.getElementById('container');
+        container.innerHTML = '';
+        let activeEl = null;
+        for (let i = 0; i < chunks.length; i++) {
+          const div = document.createElement('div');
+          div.className = 'chunk' + (i + 1 === activeIdx ? ' highlight' : '');
+          div.id = `chunk-${i+1}`;
+          const pre = document.createElement('pre');
+          pre.textContent = chunks[i];
+          div.appendChild(pre);
+          container.appendChild(div);
+          if (i + 1 === activeIdx) activeEl = div;
+        }
+        if (activeEl) setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 0);
+      }
+
+      async function init() {
+        const { src, chunk } = getQuery();
+        const title = document.getElementById('title');
+        const subtitle = document.getElementById('subtitle');
+        const downloadLink = document.getElementById('downloadLink');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        title.textContent = src || 'Source Text';
+        subtitle.textContent = `Chunk ${chunk}`;
+        const rawPath = `./data/${encodeURIComponent(src)}.txt`;
+        const chunksPath = `./data/${encodeURIComponent(src)}.chunks.json`;
+        downloadLink.href = rawPath;
+
+        let chunks = null;
+        try {
+          const res = await fetch(chunksPath, { cache: 'no-store' });
+          if (res.ok) {
+            chunks = await res.json();
+          }
+        } catch (e) {}
+
+        if (Array.isArray(chunks) && chunks.length) {
+          renderChunks(chunks, Math.min(Math.max(1, chunk), chunks.length));
+          prevBtn.disabled = chunk <= 1;
+          nextBtn.disabled = chunk >= chunks.length;
+          prevBtn.onclick = () => {
+            const q = getQuery();
+            q.chunk = Math.max(1, q.chunk - 1);
+            setQuery(q);
+            subtitle.textContent = `Chunk ${q.chunk}`;
+            renderChunks(chunks, q.chunk);
+          };
+          nextBtn.onclick = () => {
+            const q = getQuery();
+            q.chunk = Math.min(chunks.length, q.chunk + 1);
+            setQuery(q);
+            subtitle.textContent = `Chunk ${q.chunk}`;
+            renderChunks(chunks, q.chunk);
+          };
+        } else {
+          // Fallback: show raw text without chunk highlighting
+          const container = document.getElementById('container');
+          container.className = '';
+          try {
+            const res = await fetch(rawPath, { cache: 'no-store' });
+            const txt = res.ok ? await res.text() : 'Failed to load raw text.';
+            const pre = document.createElement('pre');
+            pre.className = 'raw';
+            pre.textContent = txt;
+            container.appendChild(pre);
+          } catch (e) {
+            const pre = document.createElement('pre');
+            pre.className = 'raw';
+            pre.textContent = 'Failed to load raw text.';
+            container.appendChild(pre);
+          }
+          prevBtn.disabled = true; nextBtn.disabled = true;
+        }
+      }
+
+      init();
+    </script>
+  </body>
+  </html>

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Character Network Viewer</title>
+    <style>
+      html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #1f2937; }
+      .app { display: grid; grid-template-rows: 1fr auto; height: 100vh; overflow: hidden; }
+      .main { display: grid; grid-template-columns: 1fr 320px; gap: 12px; padding: 12px 12px 0; box-sizing: border-box; min-height: 0; overflow: hidden; }
+      .stage { position: relative; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, #fff, #f9fafb); }
+      .sidebar { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; overflow-y: auto; background: #ffffff; overscroll-behavior: contain; }
+      .sidebar h2 { margin: 0 0 8px; font-size: 18px; }
+      .sidebar .muted { color: #6b7280; font-size: 12px; }
+      .sidebar .event-list { list-style: none; padding: 0; margin: 8px 0 0; }
+      .sidebar .event-item { padding: 6px 8px; border-radius: 6px; border: 1px solid transparent; cursor: default; }
+      .sidebar .event-item:hover { background: #f9fafb; border-color: #e5e7eb; }
+      .sidebar .event-item .meta { color: #6b7280; font-size: 12px; }
+      .sidebar .evidence { margin-top: 8px; padding: 8px; background: #f3f4f6; border-radius: 6px; color: #374151; font-size: 13px; display: none; }
+
+      .bottom-bar { position: sticky; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 10px 12px; box-shadow: 0 -2px 6px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px; }
+      .bottom-bar .label { min-width: 200px; color: #374151; }
+      input[type=range] { width: 100%; }
+
+      /* Tooltip for node hover */
+      .tooltip { position: fixed; pointer-events: none; background: #111827; color: #f9fafb; padding: 8px 10px; font-size: 12px; border-radius: 6px; max-width: 360px; box-shadow: 0 8px 16px rgba(0,0,0,0.15); opacity: 0; transition: opacity 80ms ease-out; z-index: 50; }
+
+      /* SVG node styles */
+      .node { cursor: pointer; }
+      .node circle { fill: #3b82f6; stroke: #fff; stroke-width: 1.5px; }
+      .node.inactive circle { fill: #9ca3af; }
+      .node text { font-size: 11px; fill: #111827; user-select: none; }
+
+      /* Edge styles */
+      .edge { cursor: pointer; }
+      /* Edge colors and widths are set dynamically in app.js; keep only opacity here */
+      .edge line { opacity: 0.9; }
+      .edge:hover line { opacity: 1; }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="main">
+        <div class="stage" id="stage">
+          <svg id="network" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="tooltip" id="tooltip"></div>
+        </div>
+        <aside class="sidebar" id="sidebar">
+          <h2 id="sidebarTitle">Character Details</h2>
+          <div class="muted" id="sidebarHint">Click a node to see its timeline up to the selected progress.</div>
+          <div id="charPanel" style="display:none;">
+            <div id="charHeader"></div>
+            <div class="muted" id="charStatus"></div>
+            <ul class="event-list" id="eventList"></ul>
+            <div class="evidence" id="evidenceBox"></div>
+          </div>
+          <div id="interPanel" style="display:none;">
+            <div id="interHeader"></div>
+            <div class="muted" id="interStatus"></div>
+            <ul class="event-list" id="interEventList"></ul>
+            <div class="evidence" id="interEvidenceBox"></div>
+          </div>
+        </aside>
+      </div>
+      <div class="bottom-bar">
+        <div class="label" id="progressLabel">Progress: 0% • Chunk 0/0</div>
+        <input id="progressSlider" type="range" min="0" max="100" step="1" value="0" />
+      </div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+  </html>
