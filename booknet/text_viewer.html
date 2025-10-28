@@ -5,45 +5,101 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Source Text Viewer</title>
     <style>
-      html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #111827; background: #f9fafb; }
-      .app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
-      .topbar { display: flex; gap: 12px; align-items: center; padding: 10px 14px; background: #fff; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 10; }
-      .topbar .title { font-weight: 600; color: #111827; }
-      .topbar .muted { color: #6b7280; }
-      .content { overflow: auto; padding: 16px; }
-      .chunks { max-width: 980px; margin: 0 auto; }
-      .chunk { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
-      .chunk.highlight { background: #fff9c4; /* pale yellow */ outline: 2px solid #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.2); }
-      .raw { white-space: pre-wrap; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
-      .controls { margin-left: auto; display: flex; gap: 8px; }
-      .btn { background: #111827; color: #f9fafb; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
-      .btn:disabled { background: #9ca3af; cursor: default; }
+      html, body {
+        height: 100%;
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        color: #111827;
+        background: #f9fafb;
+        overflow-x: hidden;           /* no horizontal scroll */
+        scroll-behavior: smooth;      /* smooth scrolling */
+      }
+
+      .app {
+        height: 100vh;
+        display: grid;
+        grid-template-rows: 1fr;      /* no top bar row */
+      }
+
+      .content {
+        overflow-y: auto;
+        overflow-x: hidden;           /* contain horizontally */
+      }
+
+      .chunks {
+        max-width: 980px;             /* horizontally contained */
+        margin: 0 auto;
+        padding: 16px;                /* page padding */
+      }
+
+      /* Seamless chunks: no white boxes, borders, or shadows */
+      .chunk {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        padding: 0;
+        margin: 0;                    /* remove visible segmentation */
+        box-shadow: none;
+      }
+
+      /* Indicated chunk: emphasize text via weight only */
+      .chunk.highlight pre { font-weight: 700; }
+
+      /* Dim chunks outside active range */
+      .chunk.dim {
+        opacity: 0.45;
+        filter: grayscale(10%);
+        transition: opacity 160ms ease;
+      }
+      .chunk.highlight { opacity: 1; filter: none; }
+
+      /* Raw fallback also seamless */
+      .raw {
+        white-space: pre-wrap;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+
+      /* Text wrapping to prevent horizontal overflow */
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        margin: 0;
+        font: inherit;
+      }
+
       a { color: #2563eb; text-decoration: none; }
       a:hover { text-decoration: underline; }
     </style>
   </head>
   <body>
     <div class="app">
-      <div class="topbar">
-        <div class="title" id="title">Source Text</div>
-        <div class="muted" id="subtitle"></div>
-        <div class="controls">
-          <button class="btn" id="prevBtn">Prev chunk</button>
-          <button class="btn" id="nextBtn">Next chunk</button>
-          <a id="downloadLink" href="#" target="_blank" rel="noopener">Open raw text</a>
-        </div>
-      </div>
+      <!-- Top panel removed -->
       <div class="content">
         <div id="container" class="chunks"></div>
       </div>
     </div>
 
     <script>
+      const state = {
+        src: '',
+        chunkEls: [],
+        activeChunk: null,
+        activeRange: { start: 1, end: Infinity },
+      };
+
+      const container = document.getElementById('container');
+
       function getQuery() {
         const u = new URL(window.location.href);
         const src = u.searchParams.get('src') || '';
         const chunk = Number(u.searchParams.get('chunk') || '1');
-        return { src, chunk: Number.isFinite(chunk) && chunk > 0 ? chunk : 1 };
+        const nohighlight = u.searchParams.get('nohighlight') === '1' || u.searchParams.get('hl') === '0';
+        return { src, chunk: Number.isFinite(chunk) && chunk > 0 ? chunk : 1, nohighlight };
       }
 
       function setQuery(q) {
@@ -53,73 +109,168 @@
         window.history.replaceState({}, '', u);
       }
 
-      function renderChunks(chunks, activeIdx) {
-        const container = document.getElementById('container');
+      function storageKey(src) {
+        return src ? `booknet:lastChunk:${src}` : 'booknet:lastChunk';
+      }
+
+      function rememberChunk(src, chunk) {
+        try {
+          window.sessionStorage.setItem(storageKey(src), String(chunk));
+        } catch {}
+      }
+
+      function readLastChunk(src) {
+        try {
+          const raw = window.sessionStorage.getItem(storageKey(src));
+          const num = Number(raw);
+          return Number.isFinite(num) ? num : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function buildChunks(chunks) {
+        if (state.chunkEls.length) return;
         container.innerHTML = '';
-        let activeEl = null;
+        const frag = document.createDocumentFragment();
         for (let i = 0; i < chunks.length; i++) {
           const div = document.createElement('div');
-          div.className = 'chunk' + (i + 1 === activeIdx ? ' highlight' : '');
-          div.id = `chunk-${i+1}`;
+          div.className = 'chunk';
+          div.id = `chunk-${i + 1}`;
           const pre = document.createElement('pre');
-          pre.textContent = chunks[i];
+          pre.textContent = normalizeSoftNewlines(chunks[i]);
           div.appendChild(pre);
-          container.appendChild(div);
-          if (i + 1 === activeIdx) activeEl = div;
+          frag.appendChild(div);
+          state.chunkEls.push(div);
         }
-        if (activeEl) setTimeout(() => activeEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 0);
+        container.appendChild(frag);
+        applyRangeDim();
+      }
+
+      function normalizeSoftNewlines(text) {
+        if (typeof text !== 'string' || !text.length) return text || '';
+        // Unify line endings
+        let t = text.replace(/\r\n?/g, '\n');
+        // Split into paragraphs on two-or-more newlines, then
+        // replace single newlines inside paragraphs with spaces.
+        const paras = t.split(/\n{2,}/);
+        for (let i = 0; i < paras.length; i++) {
+          paras[i] = paras[i].replace(/\n/g, ' ');
+        }
+        return paras.join('\n\n');
+      }
+
+      function clampChunk(idx) {
+        const total = state.chunkEls.length;
+        if (!total) return 1;
+        const num = Number(idx);
+        if (!Number.isFinite(num)) return 1;
+        return Math.min(Math.max(1, Math.round(num)), total);
+      }
+
+      function scrollToChunk(idx, behavior = 'auto') {
+        const el = state.chunkEls[idx - 1];
+        if (el) el.scrollIntoView({ block: 'center', behavior });
+      }
+
+      function setActiveChunk(idx, options = {}) {
+        if (!state.chunkEls.length) return;
+        const target = clampChunk(idx);
+        if (state.activeChunk && state.activeChunk !== target) {
+          const prevEl = state.chunkEls[state.activeChunk - 1];
+          if (prevEl) prevEl.classList.remove('highlight');
+        }
+        const el = state.chunkEls[target - 1];
+        if (!el) return;
+        el.classList.add('highlight');
+        if (options.scroll !== false) {
+          scrollToChunk(target, options.behavior || 'smooth');
+        }
+        state.activeChunk = target;
+        rememberChunk(state.src, target);
+        // Ensure highlight isn’t dimmed
+        applyRangeDim();
+      }
+
+      function setActiveRange(start, end) {
+        const total = state.chunkEls.length || Number.POSITIVE_INFINITY;
+        let s = Number(start), e = Number(end);
+        if (!Number.isFinite(s)) s = 1;
+        if (!Number.isFinite(e)) e = total;
+        s = Math.max(1, Math.round(s));
+        e = Math.max(1, Math.round(e));
+        if (e < s) [s, e] = [e, s];
+        state.activeRange = { start: s, end: e };
+        applyRangeDim();
+      }
+
+      function applyRangeDim() {
+        if (!state.chunkEls.length) return;
+        const start = Number(state.activeRange?.start) || 1;
+        const end = Number(state.activeRange?.end) || state.chunkEls.length;
+        for (let i = 0; i < state.chunkEls.length; i++) {
+          const idx = i + 1;
+          const el = state.chunkEls[i];
+          const inRange = idx >= start && idx <= end;
+          if (!inRange) {
+            el.classList.add('dim');
+          } else {
+            el.classList.remove('dim');
+          }
+        }
       }
 
       async function init() {
-        const { src, chunk } = getQuery();
-        const title = document.getElementById('title');
-        const subtitle = document.getElementById('subtitle');
-        const downloadLink = document.getElementById('downloadLink');
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
+        const { src, chunk, nohighlight } = getQuery();
+        state.src = src;
 
-        title.textContent = src || 'Source Text';
-        subtitle.textContent = `Chunk ${chunk}`;
         const rawPath = `./data/${encodeURIComponent(src)}.txt`;
         const chunksPath = `./data/${encodeURIComponent(src)}.chunks.json`;
-        downloadLink.href = rawPath;
 
         let chunks = null;
         try {
           const res = await fetch(chunksPath, { cache: 'no-store' });
-          if (res.ok) {
-            chunks = await res.json();
-          }
+          if (res.ok) chunks = await res.json();
         } catch (e) {}
 
         if (Array.isArray(chunks) && chunks.length) {
-          renderChunks(chunks, Math.min(Math.max(1, chunk), chunks.length));
-          prevBtn.disabled = chunk <= 1;
-          nextBtn.disabled = chunk >= chunks.length;
-          prevBtn.onclick = () => {
-            const q = getQuery();
-            q.chunk = Math.max(1, q.chunk - 1);
-            setQuery(q);
-            subtitle.textContent = `Chunk ${q.chunk}`;
-            renderChunks(chunks, q.chunk);
-          };
-          nextBtn.onclick = () => {
-            const q = getQuery();
-            q.chunk = Math.min(chunks.length, q.chunk + 1);
-            setQuery(q);
-            subtitle.textContent = `Chunk ${q.chunk}`;
-            renderChunks(chunks, q.chunk);
-          };
+          buildChunks(chunks);
+          const boundedTarget = clampChunk(Math.min(Math.max(1, chunk), chunks.length));
+
+          const previous = readLastChunk(state.src);
+          if (Number.isFinite(previous)) {
+            const clampedPrev = clampChunk(previous);
+            if (clampedPrev !== boundedTarget) {
+              scrollToChunk(clampedPrev, 'auto');
+              if (!nohighlight) window.requestAnimationFrame(() => setActiveChunk(boundedTarget, { scroll: true, behavior: 'smooth' }));
+              else window.requestAnimationFrame(() => scrollToChunk(boundedTarget, 'smooth'));
+            } else {
+              if (!nohighlight) setActiveChunk(boundedTarget, { scroll: true, behavior: 'smooth' });
+              else scrollToChunk(boundedTarget, 'smooth');
+            }
+          } else {
+            if (!nohighlight) setActiveChunk(boundedTarget, { scroll: true, behavior: 'smooth' });
+            else scrollToChunk(boundedTarget, 'smooth');
+          }
+
+          window.addEventListener('keydown', (e) => {
+            if (!['ArrowLeft','ArrowRight','a','d','A','D'].includes(e.key)) return;
+            e.preventDefault();
+            const direction = (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') ? -1 : 1;
+            const current = state.activeChunk || boundedTarget;
+            const next = clampChunk(current + direction);
+            if (next === current) return;
+            setQuery({ src: state.src, chunk: next });
+            setActiveChunk(next, { scroll: true, behavior: 'smooth' });
+          });
         } else {
-          // Fallback: show raw text without chunk highlighting
-          const container = document.getElementById('container');
-          container.className = '';
+          container.className = 'chunks';
           try {
             const res = await fetch(rawPath, { cache: 'no-store' });
             const txt = res.ok ? await res.text() : 'Failed to load raw text.';
             const pre = document.createElement('pre');
             pre.className = 'raw';
-            pre.textContent = txt;
+            pre.textContent = normalizeSoftNewlines(txt);
             container.appendChild(pre);
           } catch (e) {
             const pre = document.createElement('pre');
@@ -127,11 +278,41 @@
             pre.textContent = 'Failed to load raw text.';
             container.appendChild(pre);
           }
-          prevBtn.disabled = true; nextBtn.disabled = true;
         }
       }
+
+      // Listen for range and active-chunk updates from parent
+      window.addEventListener('message', (ev) => {
+        const data = ev?.data;
+        if (!data || !data.type) return;
+        if (data.type === 'booknet:setRange') {
+          const start = data?.payload?.start;
+          const end = data?.payload?.end;
+          setActiveRange(start, end);
+          return;
+        }
+        if (data.type === 'booknet:setActiveChunk') {
+          const chunk = Number(data?.payload?.chunk);
+          if (Number.isFinite(chunk) && chunk > 0) setActiveChunk(chunk, { scroll: true, behavior: 'smooth' });
+          return;
+        }
+        if (data.type === 'booknet:clearActiveChunk') {
+          if (state.activeChunk != null) {
+            const prevEl = state.chunkEls[state.activeChunk - 1];
+            if (prevEl) prevEl.classList.remove('highlight');
+            state.activeChunk = null;
+          }
+          return;
+        }
+        if (data.type === 'booknet:scrollToChunk') {
+          const chunk = Number(data?.payload?.chunk);
+          const target = clampChunk(chunk);
+          scrollToChunk(target, 'smooth');
+          return;
+        }
+      });
 
       init();
     </script>
   </body>
-  </html>
+</html>

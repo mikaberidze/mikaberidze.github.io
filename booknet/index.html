@@ -7,9 +7,9 @@
     <style>
       html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #1f2937; }
       .app { display: grid; grid-template-rows: 1fr auto; height: 100vh; overflow: hidden; }
-      .main { display: grid; grid-template-columns: 1fr 320px; gap: 12px; padding: 12px 12px 0; box-sizing: border-box; min-height: 0; overflow: hidden; }
-      .stage { position: relative; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, #fff, #f9fafb); }
-      .sidebar { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; overflow-y: auto; background: #ffffff; overscroll-behavior: contain; }
+      .main { display: flex; gap: 0; padding: 12px 12px 0; box-sizing: border-box; min-height: 0; overflow: hidden; }
+      .stage { position: relative; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, #fff, #f9fafb); flex: 1 1 auto; min-width: 260px; }
+      .sidebar { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; overflow-y: auto; background: #ffffff; overscroll-behavior: contain; flex: 0 0 320px; max-width: 420px; min-width: 240px; display: flex; flex-direction: column; }
       .sidebar h2 { margin: 0 0 8px; font-size: 18px; }
       .sidebar .muted { color: #6b7280; font-size: 12px; }
       .sidebar .event-list { list-style: none; padding: 0; margin: 8px 0 0; }
@@ -17,17 +17,54 @@
       .sidebar .event-item:hover { background: #f9fafb; border-color: #e5e7eb; }
       .sidebar .event-item .meta { color: #6b7280; font-size: 12px; }
       .sidebar .evidence { margin-top: 8px; padding: 8px; background: #f3f4f6; border-radius: 6px; color: #374151; font-size: 13px; display: none; }
+      #textDock { display: none; padding: 0; flex: 0 0 360px; min-width: 260px; max-width: 520px; position: relative; }
+      .main.show-text-dock #textDock { display: flex; flex-direction: column; }
+      .text-dock-close {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 999px;
+        background: rgba(17,24,39,0.85);
+        color: #f9fafb;
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(15,23,42,0.2);
+        z-index: 2;
+      }
+      .text-dock-close:hover { background: rgba(17,24,39,0.95); }
+      .text-dock-close:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+      #textFrame { border: 0; width: 100%; flex: 1; min-height: 320px; }
+      .resize-handle { width: 10px; cursor: col-resize; position: relative; flex: 0 0 10px; }
+      .resize-handle::after { content: ''; position: absolute; left: 50%; top: 12px; bottom: 12px; width: 2px; transform: translateX(-50%); background: #d1d5db; border-radius: 999px; }
+      .resize-handle:hover::after, .resize-handle.dragging::after { background: #9ca3af; }
+      #handleDockStage { display: none; }
+      .main.show-text-dock #handleDockStage { display: block; }
+
 
       .bottom-bar { position: sticky; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 10px 12px; box-shadow: 0 -2px 6px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px; }
       .bottom-bar .label { min-width: 200px; color: #374151; }
       input[type=range] { width: 100%; }
+      .dual-range { position: relative; height: 32px; display: grid; align-items: center; width: 100%; }
+      .dual-range .track { position: absolute; left: 0; right: 0; height: 6px; top: 50%; transform: translateY(-50%); background: linear-gradient(to right, #e5e7eb 0%, #e5e7eb 100%); border-radius: 9999px; }
+      .dual-range input[type=range] { position: absolute; left: 0; right: 0; top: 0; bottom: 0; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; height: 32px; }
+      .dual-range input[type=range]::-webkit-slider-runnable-track { height: 6px; background: transparent; }
+      .dual-range input[type=range]::-moz-range-track { height: 6px; background: transparent; }
+      .dual-range input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; height: 16px; width: 16px; border-radius: 9999px; background: #3b82f6; border: 2px solid #ffffff; box-shadow: 0 0 0 1px #9ca3af; pointer-events: auto; cursor: pointer; margin-top: -5px; }
+      .dual-range input[type=range]::-moz-range-thumb { height: 16px; width: 16px; border-radius: 9999px; background: #3b82f6; border: 2px solid #ffffff; box-shadow: 0 0 0 1px #9ca3af; pointer-events: auto; cursor: pointer; }
 
       /* Tooltip for node hover */
       .tooltip { position: fixed; pointer-events: none; background: #111827; color: #f9fafb; padding: 8px 10px; font-size: 12px; border-radius: 6px; max-width: 360px; box-shadow: 0 8px 16px rgba(0,0,0,0.15); opacity: 0; transition: opacity 80ms ease-out; z-index: 50; }
 
       /* SVG node styles */
       .node { cursor: pointer; }
-      .node circle { fill: #3b82f6; stroke: #fff; stroke-width: 1.5px; }
+      .node circle { fill: #3b82f6; stroke: #fff; stroke-width: 1px; }
       .node.inactive circle { fill: #9ca3af; }
       .node text { font-size: 11px; fill: #111827; user-select: none; }
 
@@ -36,38 +73,87 @@
       /* Edge colors and widths are set dynamically in app.js; keep only opacity here */
       .edge line { opacity: 0.9; }
       .edge:hover line { opacity: 1; }
+
+      /* Sidebar mini charts */
+      .charts { margin: 6px 0 8px; }
+      .chart-block { margin: 6px 0 10px; }
+      .chart-title { font-size: 11px; color: #6b7280; margin: 2px 0 4px; }
+      .chart-area { height: 84px; border: 1px solid #e5e7eb; border-radius: 6px; background: #f9fafb; overflow: hidden; }
+      .chart-area svg { width: 100%; height: 100%; display: block; }
     </style>
   </head>
   <body>
     <div class="app">
-      <div class="main">
+      <div class="main" id="mainLayout">
+        <!-- FAR LEFT: Text Dock -->
+        <aside class="sidebar text-dock" id="textDock">
+          <button class="text-dock-close" id="textCloseBtn" type="button" aria-label="Close text panel">×</button>
+          <iframe id="textFrame" title="Source text viewer"></iframe>
+        </aside>
+
+        <!-- handle between text dock and stage -->
+        <div class="resize-handle" id="handleDockStage" data-handle="dock-stage" role="separator" aria-label="Resize source text panel"></div>
+
+        <!-- MIDDLE: Stage -->
         <div class="stage" id="stage">
           <svg id="network" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"></svg>
           <div class="tooltip" id="tooltip"></div>
         </div>
+
+        <!-- handle between stage and right sidebar -->
+        <div class="resize-handle" id="handleStageSidebar" data-handle="stage-sidebar" role="separator" aria-label="Resize character panel"></div>
+
+        <!-- RIGHT: Character Sidebar -->
         <aside class="sidebar" id="sidebar">
           <h2 id="sidebarTitle">Character Details</h2>
-          <div class="muted" id="sidebarHint">Click a node to see its timeline up to the selected progress.</div>
+          <div class="muted" id="sidebarHint">Click a node or edge to see facts within the selected range.</div>
           <div id="charPanel" style="display:none;">
             <div id="charHeader"></div>
+            <div id="charSummary" style="margin: 4px 0 6px; color: #374151; font-size: 13px;"></div>
+            <!-- Character charts: activity + interactions -->
+            <div id="charCharts" class="charts">
+              <div class="chart-block">
+                <div class="chart-title">Character activity</div>
+                <div id="charFactHist" class="chart-area" aria-label="Character activity histogram"></div>
+              </div>
+              <div class="chart-block">
+                <div class="chart-title">Interactions</div>
+                <div id="charInterHist" class="chart-area" aria-label="Character interactions histogram"></div>
+              </div>
+            </div>
             <div class="muted" id="charStatus"></div>
             <ul class="event-list" id="eventList"></ul>
-            <div class="evidence" id="evidenceBox"></div>
           </div>
           <div id="interPanel" style="display:none;">
             <div id="interHeader"></div>
+            <div id="interSummary" style="margin: 4px 0 6px; color: #374151; font-size: 13px;"></div>
+            <!-- Relationship charts: facts + sentiment over time -->
+            <div id="interCharts" class="charts">
+              <div class="chart-block">
+                <div class="chart-title">Relationship facts</div>
+                <div id="interFactHist" class="chart-area" aria-label="Relationship facts histogram"></div>
+              </div>
+              <div class="chart-block">
+                <div class="chart-title">Sentiment over time</div>
+                <div id="interSentChart" class="chart-area" aria-label="Relationship sentiment chart"></div>
+              </div>
+            </div>
             <div class="muted" id="interStatus"></div>
             <ul class="event-list" id="interEventList"></ul>
-            <div class="evidence" id="interEvidenceBox"></div>
           </div>
         </aside>
       </div>
+
       <div class="bottom-bar">
-        <div class="label" id="progressLabel">Progress: 0% • Chunk 0/0</div>
-        <input id="progressSlider" type="range" min="0" max="100" step="1" value="0" />
+        <div class="label" id="progressLabel" style="flex: 0 0 380px; min-width: 320px; white-space: nowrap;">Active: 0%–0% • Chunks 0–0/0</div>
+        <div class="dual-range" id="rangeWrap">
+          <div class="track" id="rangeTrack"></div>
+          <input id="rangeStart" type="range" min="0" max="100" step="1" value="0" />
+          <input id="rangeEnd" type="range" min="1" max="100" step="1" value="1" />
+        </div>
       </div>
     </div>
 
-    <script src="./app.js"></script>
+    <script type="module" src="./app.js"></script>
   </body>
   </html>
