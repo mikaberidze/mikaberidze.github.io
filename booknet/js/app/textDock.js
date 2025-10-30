@@ -1,0 +1,190 @@
+// Controls the optional source text dock and iframe messaging.
+
+import { state } from './state.js';
+
+export function createTextDockController({
+  mainLayout,
+  textDock,
+  textFrame,
+  textCloseBtn,
+  toggleTextDockBtn,
+  applyPaneWidths,
+}) {
+  function isDockOpen() {
+    return Boolean(mainLayout?.classList.contains('show-text-dock'));
+  }
+
+  function updateDockToggleButton() {
+    if (!toggleTextDockBtn) return;
+    const open = isDockOpen();
+    toggleTextDockBtn.textContent = open ? '<' : '>';
+    toggleTextDockBtn.setAttribute('aria-label', open ? 'Collapse source text panel' : 'Expand source text panel');
+    toggleTextDockBtn.setAttribute('title', open ? 'Hide source text' : 'Show source text');
+  }
+
+  function showTextDock() {
+    if (mainLayout) mainLayout.classList.add('show-text-dock');
+    applyPaneWidths({ updateBounds: true });
+    updateDockToggleButton();
+  }
+
+  function hideTextDock() {
+    if (mainLayout) mainLayout.classList.remove('show-text-dock');
+    applyPaneWidths({ updateBounds: true });
+    updateDockToggleButton();
+  }
+
+  function getTextViewerUrl(chunkId, opts = {}) {
+    if (!state.data?.sourceName || !Number.isFinite(chunkId) || chunkId < 1) return null;
+    const params = new URLSearchParams();
+    params.set('src', String(state.data.sourceName));
+    if (state.book) params.set('book', state.book);
+    params.set('chunk', String(chunkId));
+    if (opts.noHighlight) params.set('nohighlight', '1');
+    if (opts.noScroll) params.set('nosnap', '1');
+    return `text_viewer.html?${params.toString()}`;
+  }
+
+  function sendRangeToTextDock() {
+    if (!textFrame || !textFrame.contentWindow) return;
+    const base = state.base || 0;
+    const S = Number(state.startChunk || 0);
+    const E = Number(state.chunk || 0);
+    const startAbs = base + S;
+    const endAbs = base + Math.max(S, E - 1);
+    try {
+      textFrame.contentWindow.postMessage({
+        type: 'booknet:setRange',
+        payload: { start: startAbs, end: endAbs },
+      }, '*');
+    } catch {}
+  }
+
+  function sendActiveChunkToTextDock() {
+    if (!textFrame || !textFrame.contentWindow) return;
+    const chunk = Number(textFrame.dataset.currentChunk || 0);
+    if (!Number.isFinite(chunk) || chunk < 1) return;
+    try {
+      textFrame.contentWindow.postMessage({
+        type: 'booknet:setActiveChunk',
+        payload: { chunk },
+      }, '*');
+    } catch {}
+  }
+
+  function sendClearActiveChunkToTextDock() {
+    if (!textFrame || !textFrame.contentWindow) return;
+    try {
+      textFrame.contentWindow.postMessage({ type: 'booknet:clearActiveChunk' }, '*');
+    } catch {}
+  }
+
+  function sendScrollToChunkToTextDock() {
+    if (!textFrame || !textFrame.contentWindow) return;
+    const chunk = Number(textFrame.dataset.currentChunk || 0);
+    if (!Number.isFinite(chunk) || chunk < 1) return;
+    try {
+      textFrame.contentWindow.postMessage({
+        type: 'booknet:scrollToChunk',
+        payload: { chunk },
+      }, '*');
+    } catch {}
+  }
+
+  function openTextDock(chunkId, options = {}) {
+    const { setActiveChunk = true, scroll = true } = options;
+    const fallbackChunk = Number((state.base || 0) + (state.startChunk || 0));
+    const requestedChunk = Number(chunkId);
+    const chunk = Number.isFinite(requestedChunk) && requestedChunk > 0
+      ? requestedChunk
+      : (Number.isFinite(fallbackChunk) && fallbackChunk > 0 ? fallbackChunk : 1);
+    const url = getTextViewerUrl(chunk, { noHighlight: !setActiveChunk, noScroll: !scroll });
+    if (!url) return;
+
+    if (!mainLayout || !textDock || !textFrame) {
+      window.open(url, '_blank');
+      return;
+    }
+
+    const desiredSrc = String(state.data?.sourceName || '');
+    const currentSrc = textFrame.dataset.currentSrc || '';
+    textFrame.dataset.currentChunk = String(chunk);
+
+    if (!textFrame.dataset.currentUrl || currentSrc !== desiredSrc) {
+      textFrame.src = url;
+      textFrame.dataset.currentUrl = url;
+      textFrame.dataset.currentSrc = desiredSrc;
+      textFrame.dataset.suppressNextActiveChunk = setActiveChunk ? '' : '1';
+      textFrame.dataset.suppressNextScroll = scroll ? '' : '1';
+    } else {
+      try { sendRangeToTextDock(); } catch {}
+      if (setActiveChunk) {
+        try { sendActiveChunkToTextDock(); } catch {}
+      } else {
+        try { sendClearActiveChunkToTextDock(); } catch {}
+        if (scroll) { try { sendScrollToChunkToTextDock(); } catch {} }
+      }
+    }
+    showTextDock();
+    sendRangeToTextDock();
+  }
+
+  if (textCloseBtn) textCloseBtn.addEventListener('click', hideTextDock);
+
+  if (toggleTextDockBtn) {
+    const stopAll = (ev) => { ev.stopPropagation(); };
+    toggleTextDockBtn.addEventListener('pointerdown', stopAll);
+    toggleTextDockBtn.addEventListener('mousedown', stopAll);
+
+    const handleToggle = () => {
+      if (isDockOpen()) {
+        hideTextDock();
+      } else if (state?.data?.sourceName) {
+        openTextDock((state.base || 0) + (state.startChunk || 0), { setActiveChunk: false, scroll: false });
+      } else {
+        showTextDock();
+      }
+    };
+
+    toggleTextDockBtn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      handleToggle();
+    });
+    toggleTextDockBtn.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        handleToggle();
+      }
+    });
+  }
+
+  if (textFrame) {
+    textFrame.addEventListener('load', () => {
+      sendRangeToTextDock();
+      const suppressActive = textFrame.dataset.suppressNextActiveChunk === '1';
+      const suppressScroll = textFrame.dataset.suppressNextScroll === '1';
+      if (suppressActive) {
+        sendClearActiveChunkToTextDock();
+        if (!suppressScroll) sendScrollToChunkToTextDock();
+        textFrame.dataset.suppressNextActiveChunk = '';
+        textFrame.dataset.suppressNextScroll = '';
+      } else {
+        sendActiveChunkToTextDock();
+      }
+    });
+  }
+
+  updateDockToggleButton();
+
+  return {
+    showTextDock,
+    hideTextDock,
+    openTextDock,
+    updateDockToggleButton,
+    sendRangeToTextDock,
+    sendActiveChunkToTextDock,
+    sendClearActiveChunkToTextDock,
+    sendScrollToChunkToTextDock,
+    getTextViewerUrl,
+  };
+}

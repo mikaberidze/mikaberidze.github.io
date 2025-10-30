@@ -28,10 +28,29 @@ export const sim = {
 };
 
 export function updateSimBoundsFromStage(stageEl, svgEl) {
+  const hadBounds = !!sim.bbox;
+  const prevCenterX = sim.center.x;
+  const prevCenterY = sim.center.y;
   const bbox = stageEl.getBoundingClientRect();
   sim.bbox = bbox;
-  sim.center.x = bbox.width / 2;
-  sim.center.y = bbox.height / 2;
+  const nextCenterX = bbox.width / 2;
+  const nextCenterY = bbox.height / 2;
+  if (hadBounds) {
+    const dx = nextCenterX - prevCenterX;
+    const dy = nextCenterY - prevCenterY;
+    if (dx || dy) {
+      for (const node of sim.nodes.values()) {
+        node.x += dx;
+        node.y += dy;
+        if (node.fixed) {
+          node.fx += dx;
+          node.fy += dy;
+        }
+      }
+    }
+  }
+  sim.center.x = nextCenterX;
+  sim.center.y = nextCenterY;
   sim.center.R = Math.min(bbox.width, bbox.height) * sim.params.boundaryRadiusScale;
   svgEl.setAttribute('viewBox', `0 0 ${bbox.width} ${bbox.height}`);
 }

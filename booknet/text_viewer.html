@@ -99,7 +99,9 @@
         const src = u.searchParams.get('src') || '';
         const chunk = Number(u.searchParams.get('chunk') || '1');
         const nohighlight = u.searchParams.get('nohighlight') === '1' || u.searchParams.get('hl') === '0';
-        return { src, chunk: Number.isFinite(chunk) && chunk > 0 ? chunk : 1, nohighlight };
+        const nosnap = u.searchParams.get('nosnap') === '1';
+        const book = u.searchParams.get('book') || u.searchParams.get('folder') || '';
+        return { src, book, chunk: Number.isFinite(chunk) && chunk > 0 ? chunk : 1, nohighlight, nosnap };
       }
 
       function setQuery(q) {
@@ -221,11 +223,15 @@
       }
 
       async function init() {
-        const { src, chunk, nohighlight } = getQuery();
+        const { src, book, chunk, nohighlight, nosnap } = getQuery();
         state.src = src;
 
-        const rawPath = `./data/${encodeURIComponent(src)}.txt`;
-        const chunksPath = `./data/${encodeURIComponent(src)}.chunks.json`;
+        const rawPath = book
+          ? `./data/${encodeURIComponent(book)}/${encodeURIComponent(src)}.txt`
+          : `./data/${encodeURIComponent(src)}.txt`;
+        const chunksPath = book
+          ? `./data/${encodeURIComponent(book)}/${encodeURIComponent(src)}.chunks.json`
+          : `./data/${encodeURIComponent(src)}.chunks.json`;
 
         let chunks = null;
         try {
@@ -238,19 +244,21 @@
           const boundedTarget = clampChunk(Math.min(Math.max(1, chunk), chunks.length));
 
           const previous = readLastChunk(state.src);
-          if (Number.isFinite(previous)) {
-            const clampedPrev = clampChunk(previous);
-            if (clampedPrev !== boundedTarget) {
-              scrollToChunk(clampedPrev, 'auto');
-              if (!nohighlight) window.requestAnimationFrame(() => setActiveChunk(boundedTarget, { scroll: true, behavior: 'smooth' }));
-              else window.requestAnimationFrame(() => scrollToChunk(boundedTarget, 'smooth'));
+          if (!nosnap) {
+            if (Number.isFinite(previous)) {
+              const clampedPrev = clampChunk(previous);
+              if (clampedPrev !== boundedTarget) {
+                scrollToChunk(clampedPrev, 'auto');
+                if (!nohighlight) window.requestAnimationFrame(() => setActiveChunk(boundedTarget, { scroll: true, behavior: 'smooth' }));
+                else window.requestAnimationFrame(() => scrollToChunk(boundedTarget, 'smooth'));
+              } else {
+                if (!nohighlight) setActiveChunk(boundedTarget, { scroll: true, behavior: 'smooth' });
+                else scrollToChunk(boundedTarget, 'smooth');
+              }
             } else {
               if (!nohighlight) setActiveChunk(boundedTarget, { scroll: true, behavior: 'smooth' });
               else scrollToChunk(boundedTarget, 'smooth');
             }
-          } else {
-            if (!nohighlight) setActiveChunk(boundedTarget, { scroll: true, behavior: 'smooth' });
-            else scrollToChunk(boundedTarget, 'smooth');
           }
 
           window.addEventListener('keydown', (e) => {

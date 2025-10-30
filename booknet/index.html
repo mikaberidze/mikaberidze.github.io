@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Character Network Viewer</title>
     <style>
-      html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #1f2937; }
-      .app { display: grid; grid-template-rows: 1fr auto; height: 100vh; overflow: hidden; }
-      .main { display: flex; gap: 0; padding: 12px 12px 0; box-sizing: border-box; min-height: 0; overflow: hidden; }
-      .stage { position: relative; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, #fff, #f9fafb); flex: 1 1 auto; min-width: 260px; }
-      .sidebar { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; overflow-y: auto; background: #ffffff; overscroll-behavior: contain; flex: 0 0 320px; max-width: 420px; min-width: 240px; display: flex; flex-direction: column; }
+      :root { --app-viewport-height: 100vh; }
+      html, body { height: 100%; min-height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #1f2937; }
+      .app { display: grid; grid-template-rows: 1fr auto; height: var(--app-viewport-height, 100vh); min-height: 100%; overflow: hidden; }
+      .main { display: flex; gap: 0; padding: 12px 12px 0; box-sizing: border-box; min-height: 0; overflow: auto; }
+      .stage { position: relative; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, #fff, #f9fafb); flex: 1 1 auto; min-width: 150px; }
+      .sidebar { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; overflow-y: auto; background: #ffffff; overscroll-behavior: contain; flex: 0 0 320px; max-width: 1500px; min-width: 100px; display: flex; flex-direction: column; }
       .sidebar h2 { margin: 0 0 8px; font-size: 18px; }
       .sidebar .muted { color: #6b7280; font-size: 12px; }
       .sidebar .event-list { list-style: none; padding: 0; margin: 8px 0 0; }
@@ -17,7 +18,7 @@
       .sidebar .event-item:hover { background: #f9fafb; border-color: #e5e7eb; }
       .sidebar .event-item .meta { color: #6b7280; font-size: 12px; }
       .sidebar .evidence { margin-top: 8px; padding: 8px; background: #f3f4f6; border-radius: 6px; color: #374151; font-size: 13px; display: none; }
-      #textDock { display: none; padding: 0; flex: 0 0 360px; min-width: 260px; max-width: 520px; position: relative; }
+      #textDock { display: none; padding: 0; flex: 0 0 360px; min-width: 100px; max-width: 1500px; position: relative; }
       .main.show-text-dock #textDock { display: flex; flex-direction: column; }
       .text-dock-close {
         position: absolute;
@@ -41,14 +42,40 @@
       .text-dock-close:hover { background: rgba(17,24,39,0.95); }
       .text-dock-close:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
       #textFrame { border: 0; width: 100%; flex: 1; min-height: 320px; }
-      .resize-handle { width: 10px; cursor: col-resize; position: relative; flex: 0 0 10px; }
+      .resize-handle { width: 10px; cursor: col-resize; position: relative; flex: 0 0 10px; touch-action: none; }
       .resize-handle::after { content: ''; position: absolute; left: 50%; top: 12px; bottom: 12px; width: 2px; transform: translateX(-50%); background: #d1d5db; border-radius: 999px; }
-      .resize-handle:hover::after, .resize-handle.dragging::after { background: #9ca3af; }
-      #handleDockStage { display: none; }
-      .main.show-text-dock #handleDockStage { display: block; }
+      /* Highlight only for active resizable handles */
+      #handleStageSidebar:hover::after, #handleStageSidebar.dragging::after { background: #9ca3af; }
+      .main.show-text-dock #handleDockStage:hover::after, #handleDockStage.dragging::after { background: #9ca3af; }
+      /* Always keep the dock handle visible so the toggle is accessible */
+      #handleDockStage { display: block; }
+
+      /* Dock toggle button on the dock-stage handle */
+      .dock-toggle-btn {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 999px;
+        background: rgba(17,24,39,0.85);
+        color: #f9fafb;
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(15,23,42,0.2);
+        z-index: 3;
+      }
+      .dock-toggle-btn:hover { background: rgba(17,24,39,0.95); }
+      .dock-toggle-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
 
 
-      .bottom-bar { position: sticky; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 10px 12px; box-shadow: 0 -2px 6px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px; }
+      .bottom-bar { position: sticky; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -2px 6px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px; }
       .bottom-bar .label { min-width: 200px; color: #374151; }
       input[type=range] { width: 100%; }
       .dual-range { position: relative; height: 32px; display: grid; align-items: center; width: 100%; }
@@ -68,11 +95,30 @@
       .node.inactive circle { fill: #9ca3af; }
       .node text { font-size: 11px; fill: #111827; user-select: none; }
 
+      /* Node highlight when hovering from sidebar list */
+      .node.highlight circle { fill: #f59e0b; }
+      .node.highlight text { font-weight: 700; }
+
       /* Edge styles */
       .edge { cursor: pointer; }
       /* Edge colors and widths are set dynamically in app.js; keep only opacity here */
       .edge line { opacity: 0.9; }
       .edge:hover line { opacity: 1; }
+      .edge.highlight line { opacity: 1; filter: saturate(1.2); stroke-width: 3px; }
+
+      /* Tabs in character panel */
+      #charHeader { font-weight: 700; font-size: 16px; margin: 2px 0 4px; }
+      .sidebar .home-btn, .sidebar .back-btn { width: 24px; height: 24px; border: none; border-radius: 6px; background: rgba(17,24,39,0.85); color: #f9fafb; cursor: pointer; font-size: 14px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(15,23,42,0.2); }
+      .sidebar .home-btn { margin-right: 6px; }
+      .sidebar .home-btn:hover, .sidebar .back-btn:hover { background: rgba(17,24,39,0.95); }
+      .sidebar .home-btn:focus-visible, .sidebar .back-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+      .sidebar .back-btn[disabled] { opacity: 0.6; cursor: default; background: rgba(17,24,39,0.6); color: #e5e7eb; }
+      .sidebar .title-row { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
+      .tabs { display: flex; gap: 6px; margin: 6px 0 8px; }
+      .tabs button { border: 1px solid #e5e7eb; background: #f9fafb; padding: 6px 10px; border-radius: 999px; cursor: pointer; font-size: 12px; color: #374151; }
+      .tabs button[aria-selected="true"] { background: #111827; color: #f9fafb; border-color: #111827; }
+      .tab-view { display: none; }
+      .tab-view.active { display: block; }
 
       /* Sidebar mini charts */
       .charts { margin: 6px 0 8px; }
@@ -87,12 +133,13 @@
       <div class="main" id="mainLayout">
         <!-- FAR LEFT: Text Dock -->
         <aside class="sidebar text-dock" id="textDock">
-          <button class="text-dock-close" id="textCloseBtn" type="button" aria-label="Close text panel">×</button>
           <iframe id="textFrame" title="Source text viewer"></iframe>
         </aside>
 
         <!-- handle between text dock and stage -->
-        <div class="resize-handle" id="handleDockStage" data-handle="dock-stage" role="separator" aria-label="Resize source text panel"></div>
+        <div class="resize-handle" id="handleDockStage" data-handle="dock-stage" role="separator" aria-label="Resize source text panel">
+          <button class="dock-toggle-btn" id="toggleTextDockBtn" type="button" aria-label="Expand source text panel" title="Show source text">&gt;</button>
+        </div>
 
         <!-- MIDDLE: Stage -->
         <div class="stage" id="stage">
@@ -105,24 +152,46 @@
 
         <!-- RIGHT: Character Sidebar -->
         <aside class="sidebar" id="sidebar">
-          <h2 id="sidebarTitle">Character Details</h2>
+          <div class="title-row">
+            <button id="sidebarBackBtn" class="back-btn" type="button" aria-label="Go back" title="Go back">←</button>
+            <button id="sidebarHomeBtn" class="home-btn" type="button" aria-label="Show active characters" title="Show active characters">⌂</button>
+            <h2 id="sidebarTitle" style="margin: 0">Character Details</h2>
+          </div>
           <div class="muted" id="sidebarHint">Click a node or edge to see facts within the selected range.</div>
+          <!-- Browse panel shown when no selection is active -->
+          <div id="browsePanel" style="display:none;">
+            <div class="muted" id="browseStatus"></div>
+            <ul class="event-list" id="browseList"></ul>
+          </div>
           <div id="charPanel" style="display:none;">
-            <div id="charHeader"></div>
-            <div id="charSummary" style="margin: 4px 0 6px; color: #374151; font-size: 13px;"></div>
-            <!-- Character charts: activity + interactions -->
-            <div id="charCharts" class="charts">
+          <div id="charHeader"></div>
+          <div id="charSummary" style="margin: 4px 0 6px; color: #374151; font-size: 13px;"></div>
+          <div class="tabs" id="charTabs" role="tablist" aria-label="Character views">
+            <button id="tabFacts" role="tab" aria-selected="true" aria-controls="viewFacts">Facts</button>
+            <button id="tabRels" role="tab" aria-selected="false" aria-controls="viewRels">Relationships</button>
+          </div>
+          <!-- Facts view -->
+          <div id="viewFacts" class="tab-view active" role="tabpanel" aria-labelledby="tabFacts">
+            <div class="charts">
               <div class="chart-block">
                 <div class="chart-title">Character activity</div>
                 <div id="charFactHist" class="chart-area" aria-label="Character activity histogram"></div>
               </div>
+            </div>
+            <div class="muted" id="charStatus"></div>
+            <ul class="event-list" id="eventList"></ul>
+          </div>
+          <!-- Relationships view -->
+          <div id="viewRels" class="tab-view" role="tabpanel" aria-labelledby="tabRels">
+            <div class="charts">
               <div class="chart-block">
                 <div class="chart-title">Interactions</div>
                 <div id="charInterHist" class="chart-area" aria-label="Character interactions histogram"></div>
               </div>
             </div>
-            <div class="muted" id="charStatus"></div>
-            <ul class="event-list" id="eventList"></ul>
+            <div class="muted" id="charRelStatus"></div>
+            <ul class="event-list" id="relList"></ul>
+          </div>
           </div>
           <div id="interPanel" style="display:none;">
             <div id="interHeader"></div>
