@@ -17,6 +17,8 @@ let labelsLayer = null;
 let highlightLayer = null;
 let promotedEdgeId = null;
 const promotedNodeIds = new Set();
+const LONG_PRESS_DELAY_MS = 450;
+const LONG_PRESS_MOVE_TOLERANCE = 12;
 
 export function initDomGraph({ svg, stage, tooltip }) {
   svgEl = svg; stageEl = stage; tooltipEl = tooltip;
@@ -66,22 +68,86 @@ export function upsertEdgeDom(e, handlers) {
     line.style.stroke = colorForScore(e.score);
     line.style.strokeWidth = `${edgeStrokeWidth(e.weight)}px`;
     group.appendChild(line);
+    const pressState = {
+      timer: null,
+      active: false,
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      suppressClick: false,
+    };
+    entry = { group, line, handlers, press: pressState };
+    const getHandlers = () => entry.handlers || handlers;
+    const cancelPress = (hide) => {
+      if (pressState.timer) {
+        clearTimeout(pressState.timer);
+        pressState.timer = null;
+      }
+      const wasActive = pressState.active;
+      pressState.active = false;
+      pressState.pointerId = null;
+      if (hide && tooltipEl) tooltipEl.style.opacity = '0';
+      pressState.suppressClick = wasActive;
+    };
     group.addEventListener('mousemove', (ev) => {
-      const text = handlers?.getTooltipText?.(e.id) || '';
+      const h = getHandlers();
+      const text = h?.getTooltipText?.(e.id) || '';
       if (!text) return;
       tooltipEl.textContent = text;
       tooltipEl.style.opacity = '1';
       positionTooltip(tooltipEl, ev.clientX, ev.clientY);
     });
-    group.addEventListener('mouseleave', () => { tooltipEl.style.opacity = '0'; });
-    group.addEventListener('click', () => { handlers?.onClick?.(e.id); });
+    group.addEventListener('mouseleave', () => { cancelPress(true); });
+    group.addEventListener('pointerdown', (ev) => {
+      if (ev.pointerType !== 'touch' && ev.pointerType !== 'pen') return;
+      cancelPress(false);
+      pressState.pointerId = ev.pointerId;
+      pressState.startX = ev.clientX;
+      pressState.startY = ev.clientY;
+      pressState.timer = window.setTimeout(() => {
+        pressState.timer = null;
+        const h = getHandlers();
+        const text = h?.getTooltipText?.(e.id) || '';
+        if (!text) return;
+        pressState.active = true;
+        pressState.suppressClick = true;
+        tooltipEl.textContent = text;
+        tooltipEl.style.opacity = '1';
+        positionTooltip(tooltipEl, pressState.startX, pressState.startY + 10);
+      }, LONG_PRESS_DELAY_MS);
+    });
+    group.addEventListener('pointermove', (ev) => {
+      if (pressState.pointerId == null || ev.pointerId !== pressState.pointerId) return;
+      if (!pressState.timer && !pressState.active) return;
+      const dx = Math.abs(ev.clientX - pressState.startX);
+      const dy = Math.abs(ev.clientY - pressState.startY);
+      if (dx > LONG_PRESS_MOVE_TOLERANCE || dy > LONG_PRESS_MOVE_TOLERANCE) {
+        cancelPress(true);
+        return;
+      }
+      if (pressState.active) positionTooltip(tooltipEl, ev.clientX, ev.clientY + 10);
+    });
+    const finishPress = (ev) => {
+      if (pressState.pointerId == null || ev.pointerId !== pressState.pointerId) return;
+      cancelPress(true);
+    };
+    group.addEventListener('pointerup', finishPress);
+    group.addEventListener('pointercancel', finishPress);
+    group.addEventListener('click', (ev) => {
+      if (pressState.suppressClick) {
+        pressState.suppressClick = false;
+        return;
+      }
+      const h = getHandlers();
+      h?.onClick?.(e.id);
+    });
     ensureLayers();
     edgesLayer.appendChild(group);
-    entry = { group, line };
     dom.edges.set(edgeKey, entry);
   } else {
     entry.group.setAttribute('data-a', String(e.a));
     entry.group.setAttribute('data-b', String(e.b));
+    entry.handlers = handlers;
   }
   entry.line.style.stroke = colorForScore(e.score);
   entry.line.style.strokeWidth = `${edgeStrokeWidth(e.weight)}px`;
@@ -173,31 +239,99 @@ export function upsertNodeDom(n, labelText, handlers) {
     label.style.pointerEvents = 'none';
     ensureLayers();
     labelsLayer.appendChild(label);
-
+    const pressState = {
+      timer: null,
+      active: false,
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      suppressClick: false,
+    };
+    const dragState = { pointerId: null };
+    entry = { group, circle, label, handlers, press: pressState, drag: dragState };
+    const getHandlers = () => entry.handlers || handlers;
+    const cancelPress = (hide) => {
+      if (pressState.timer) {
+        clearTimeout(pressState.timer);
+        pressState.timer = null;
+      }
+      const wasActive = pressState.active;
+      pressState.active = false;
+      pressState.pointerId = null;
+      if (hide && tooltipEl) tooltipEl.style.opacity = '0';
+      pressState.suppressClick = wasActive;
+    };
     group.addEventListener('mousemove', (ev) => {
-      const text = handlers?.getTooltipText?.(n.id) || '';
+      const h = getHandlers();
+      const text = h?.getTooltipText?.(n.id) || '';
       if (!text) return;
       tooltipEl.textContent = text;
       tooltipEl.style.opacity = '1';
       positionTooltip(tooltipEl, ev.clientX, ev.clientY);
     });
-    group.addEventListener('mouseleave', () => { tooltipEl.style.opacity = '0'; });
-    group.addEventListener('click', () => { handlers?.onClick?.(n.id); });
+    group.addEventListener('mouseleave', () => { cancelPress(true); });
+    group.addEventListener('click', () => {
+      if (pressState.suppressClick) {
+        pressState.suppressClick = false;
+        return;
+      }
+      const h = getHandlers();
+      h?.onClick?.(n.id);
+    });
 
-    // Drag behavior
+    // Drag + long-press behavior
     group.addEventListener('pointerdown', (ev) => {
       ev.preventDefault();
-      group.setPointerCapture(ev.pointerId);
+      tooltipEl.style.opacity = '0';
+      dragState.pointerId = ev.pointerId;
+      try { group.setPointerCapture(ev.pointerId); } catch {}
       n.fixed = true;
       const pt = clientToSVG(svgEl, ev.clientX, ev.clientY);
       n.fx = pt.x; n.fy = pt.y; n.vx = 0; n.vy = 0;
+      if (ev.pointerType === 'touch' || ev.pointerType === 'pen') {
+        cancelPress(false);
+        pressState.pointerId = ev.pointerId;
+        pressState.startX = ev.clientX;
+        pressState.startY = ev.clientY;
+        pressState.timer = window.setTimeout(() => {
+          pressState.timer = null;
+          const h = getHandlers();
+          const text = h?.getTooltipText?.(n.id) || '';
+          if (!text) return;
+          pressState.active = true;
+          pressState.suppressClick = true;
+          tooltipEl.textContent = text;
+          tooltipEl.style.opacity = '1';
+          positionTooltip(tooltipEl, pressState.startX, pressState.startY + 10);
+        }, LONG_PRESS_DELAY_MS);
+      } else {
+        cancelPress(true);
+      }
     });
     group.addEventListener('pointermove', (ev) => {
-      if (!n.fixed) return;
-      const pt = clientToSVG(svgEl, ev.clientX, ev.clientY);
-      n.fx = pt.x; n.fy = pt.y;
+      if (dragState.pointerId != null && ev.pointerId === dragState.pointerId) {
+        if (pressState.pointerId === ev.pointerId) {
+          if (pressState.timer || pressState.active) {
+            const dx = Math.abs(ev.clientX - pressState.startX);
+            const dy = Math.abs(ev.clientY - pressState.startY);
+            if (dx > LONG_PRESS_MOVE_TOLERANCE || dy > LONG_PRESS_MOVE_TOLERANCE) {
+              cancelPress(true);
+            } else if (pressState.active) {
+              positionTooltip(tooltipEl, ev.clientX, ev.clientY + 10);
+            }
+          }
+        }
+        if (n.fixed) {
+          const pt = clientToSVG(svgEl, ev.clientX, ev.clientY);
+          n.fx = pt.x; n.fy = pt.y;
+        }
+      }
     });
-    const endDrag = () => {
+    const endDrag = (ev) => {
+      if (dragState.pointerId == null || ev.pointerId !== dragState.pointerId) return;
+      cancelPress(true);
+      dragState.pointerId = null;
+      try { group.releasePointerCapture?.(ev.pointerId); } catch {}
       if (!n.fixed) return;
       n.fixed = false;
       reheatSimulation();
@@ -207,10 +341,10 @@ export function upsertNodeDom(n, labelText, handlers) {
 
     ensureLayers();
     nodesLayer.appendChild(group);
-    entry = { group, circle, label };
     dom.nodes.set(nodeKey, entry);
   }
   if (labelText != null) entry.label.textContent = labelText;
+  entry.handlers = handlers;
   return entry;
 }
 

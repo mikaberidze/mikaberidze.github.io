@@ -39,6 +39,8 @@ export function createTextDockController({
 
   // --- Zoom controls for text iframe ---
   const ZOOM_KEY = 'booknet:textDockZoom';
+  const MIN_ZOOM = 0.5;   // 50%
+  const MAX_ZOOM = 2.0;   // 200%
   let zoom = 1.0;
   try {
     const saved = Number(window.localStorage.getItem(ZOOM_KEY));
@@ -46,10 +48,15 @@ export function createTextDockController({
   } catch {}
 
   function clampZoom(z) {
-    const min = 0.02; // ~2%
-    const max = 2.0; // 200%
     if (!Number.isFinite(z)) return 1.0;
-    return Math.min(max, Math.max(min, z));
+    return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+  }
+
+  function updateZoomButtons() {
+    try {
+      if (textZoomOutBtn) textZoomOutBtn.disabled = (zoom <= MIN_ZOOM + 1e-9);
+      if (textZoomInBtn) textZoomInBtn.disabled = (zoom >= MAX_ZOOM - 1e-9);
+    } catch {}
   }
 
   function persistZoom() {
@@ -59,6 +66,7 @@ export function createTextDockController({
   function setZoom(z) {
     zoom = clampZoom(z);
     persistZoom();
+    updateZoomButtons();
     sendZoomToTextDock();
   }
 
@@ -93,6 +101,8 @@ export function createTextDockController({
   if (textZoomOutBtn) {
     textZoomOutBtn.addEventListener('click', (e) => { e.preventDefault(); nudgeZoom(-1); });
   }
+  // Initialize zoom button states on startup
+  updateZoomButtons();
 
   function getTextViewerUrl(chunkId, opts = {}) {
     if (!state.data?.sourceName || !Number.isFinite(chunkId) || chunkId < 1) return null;
@@ -223,6 +233,7 @@ export function createTextDockController({
       sendRangeToTextDock();
       // Apply persisted zoom to the freshly loaded iframe document
       try { sendZoomToTextDock(); } catch {}
+      updateZoomButtons();
       const suppressActive = textFrame.dataset.suppressNextActiveChunk === '1';
       const suppressScroll = textFrame.dataset.suppressNextScroll === '1';
       if (suppressActive) {

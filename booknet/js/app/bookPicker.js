@@ -114,11 +114,28 @@ export function createBookPicker(stage, options = {}) {
         list.appendChild(empty);
       } else {
         const current = state.book || '';
+        const OPEN_ICON = './favicon.png';
+        const CLOSED_ICON = './favicon_closed.png';
+        const bookButtons = [];
+
+        const updateIcons = (activeName) => {
+          const target = activeName || current;
+          for (const entry of bookButtons) {
+            const isActive = entry.name === target;
+            entry.icon.src = isActive ? OPEN_ICON : CLOSED_ICON;
+            entry.btn.setAttribute('data-open', isActive ? '1' : '0');
+            entry.btn.setAttribute('aria-current', isActive ? 'true' : 'false');
+          }
+        };
+
         for (const name of books) {
           const btn = document.createElement('button');
           btn.type = 'button';
-          btn.textContent = name + (current && current === name ? ' •' : '');
+          btn.setAttribute('data-book', name);
           Object.assign(btn.style, {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
             textAlign: 'left',
             padding: '10px 12px',
             borderRadius: '8px',
@@ -127,16 +144,43 @@ export function createBookPicker(stage, options = {}) {
             cursor: 'pointer',
             fontSize: '14px',
           });
-          btn.addEventListener('mouseenter', () => { btn.style.background = '#f3f4f6'; });
-          btn.addEventListener('mouseleave', () => { btn.style.background = '#f9fafb'; });
+          btn.addEventListener('pointerenter', () => {
+            btn.style.background = '#f3f4f6';
+            updateIcons(name);
+          });
+          btn.addEventListener('pointerleave', () => {
+            btn.style.background = '#f9fafb';
+            updateIcons(current);
+          });
+          btn.addEventListener('focus', () => updateIcons(name));
+          btn.addEventListener('blur', () => updateIcons(current));
           btn.addEventListener('click', () => {
             const url = new URL(window.location.href);
             url.searchParams.set('book', name);
             url.searchParams.delete('folder');
             window.location.href = url.toString();
           });
+
+          const icon = document.createElement('img');
+          icon.width = 20;
+          icon.height = 20;
+          icon.decoding = 'async';
+          icon.loading = 'lazy';
+          icon.alt = '';
+          icon.setAttribute('aria-hidden', 'true');
+
+          const label = document.createElement('span');
+          label.textContent = name;
+          label.style.flex = '1 1 auto';
+          label.style.display = 'inline-block';
+
+          btn.appendChild(icon);
+          btn.appendChild(label);
+          bookButtons.push({ btn, icon, name });
           list.appendChild(btn);
         }
+
+        updateIcons(current);
       }
 
       const footer = document.createElement('div');

@@ -13,7 +13,8 @@
         color: #111827;
         background: #f9fafb;
         overflow-x: hidden;           /* no horizontal scroll */
-        scroll-behavior: smooth;      /* smooth scrolling */
+        /* Avoid global smooth scroll to keep control in JS */
+        /* scroll-behavior intentionally omitted here */
         -webkit-text-size-adjust: none; /* prevent auto text inflation on small sizes */
         text-size-adjust: none;
       }
@@ -28,8 +29,8 @@
         overflow-y: auto;
         overflow-x: hidden;             /* contain horizontally */
         scrollbar-gutter: stable both-edges; /* reserve scrollbar space even on overlay UIs */
-        padding-left: 8px;              /* tighter fixed left gutter */
-        padding-right: 24px;            /* generous right gutter to avoid overlay */
+        padding-left: 2px;              /* further reduced left gutter */
+        padding-right: 14px;            /* slightly increased right gutter */
         box-sizing: border-box;
       }
 
@@ -37,7 +38,6 @@
         max-width: 980px;               /* horizontally contained */
         margin: 0;                      /* anchor to left so left gutter is stable */
         padding: 0;                     /* padding handled by parent so it stays unscaled */
-        transform-origin: top left;     /* for manual scaling */
       }
 
       /* Seamless chunks: no white boxes, borders, or shadows */
@@ -99,10 +99,10 @@
         activeChunk: null,
         activeRange: { start: 1, end: Infinity },
         zoomPct: 100,
-        baseMaxWidthPx: 980,
       };
 
       const container = document.getElementById('container');
+      const scrollHost = container?.closest('.content') || container?.parentElement || null;
 
       function getQuery() {
         const u = new URL(window.location.href);
@@ -182,27 +182,120 @@
 
       function scrollToChunk(idx, behavior = 'auto') {
         const el = state.chunkEls[idx - 1];
-        if (el) el.scrollIntoView({ block: 'center', behavior });
+        if (!el) return;
+        const scroller = scrollHost;
+        if (!scroller || typeof scroller.scrollTo !== 'function') {
+          el.scrollIntoView({ block: 'start', behavior });
+          return;
+        }
+        // Single-pass precise scroll using visual delta and current scale.
+        const pad = 6; // desired visual padding from top (in CSS pixels)
+        const elRect = el.getBoundingClientRect();
+        const scRect = scroller.getBoundingClientRect();
+        const deltaPx = (elRect.top - scRect.top) - pad; // visual pixels
+        const targetTop = scroller.scrollTop + deltaPx;
+        const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+        const clampedTop = Math.min(Math.max(0, targetTop), maxTop);
+        scroller.scrollTo({ top: clampedTop, behavior: behavior === 'smooth' ? 'smooth' : 'auto' });
       }
+
+      // Ensure scrolling occurs after any pending layout/zoom changes apply
+      function scheduleScrollToChunk(idx, behavior = 'auto') {
+        requestAnimationFrame(() => scrollToChunk(idx, behavior));
+      }
+
+      function captureScrollAnchor(scroller) {
+        if (!scroller) return null;
+        const scRect = scroller.getBoundingClientRect();
+        const anchorX = Math.round(scRect.left + 6);
+        const anchorY = Math.round(scRect.top + 3);
+        const visualOffset = anchorY - scRect.top;
+        let marker = null;
+        try {
+          let range = null;
+          if (document.caretRangeFromPoint) {
+            range = document.caretRangeFromPoint(anchorX, anchorY);
+          } else if (document.caretPositionFromPoint) {
+            const pos = document.caretPositionFromPoint(anchorX, anchorY);
+            if (pos) {
+              range = document.createRange();
+              range.setStart(pos.offsetNode, pos.offset);
+              range.collapse(true);
+            }
+          }
+          if (range) {
+            marker = document.createElement('span');
+            marker.setAttribute('data-scroll-anchor', '');
+            marker.style.cssText = 'display:inline-block;width:0;height:0;padding:0;margin:0;border:0;';
+            range.insertNode(marker);
+          }
+        } catch {}
+        return {
+          marker,
+          scRect,
+          visualOffset,
+          prevScrollTop: scroller.scrollTop,
+          prevScrollHeight: scroller.scrollHeight,
+          clientHeight: scroller.clientHeight,
+        };
+      }
+
+      function restoreScrollAnchor(scroller, anchor) {
+        if (!scroller || !anchor) return;
+        const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+        let usedMarker = false;
+        if (anchor.marker && anchor.scRect) {
+          try {
+            const scRect = scroller.getBoundingClientRect();
+            const markerRect = anchor.marker.getBoundingClientRect();
+            const deltaPx = (markerRect.top - scRect.top) - anchor.visualOffset;
+            const targetTop = scroller.scrollTop + deltaPx;
+            scroller.scrollTo({ top: Math.min(Math.max(0, targetTop), maxTop), behavior: 'auto' });
+            usedMarker = true;
+          } catch {}
+        }
+        if (anchor.marker && anchor.marker.parentNode) {
+          try { anchor.marker.parentNode.removeChild(anchor.marker); } catch {}
+        }
+        if (usedMarker) return;
+
+        const prevScrollable = Math.max(0, Number(anchor.prevScrollHeight || 0) - Number(anchor.clientHeight || 0));
+        const prevTop = Number(anchor.prevScrollTop);
+        if (prevScrollable > 0 && Number.isFinite(prevTop)) {
+          const ratio = Math.min(Math.max(prevTop / prevScrollable, 0), 1);
+          const newScrollable = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+          const targetTop = ratio * newScrollable;
+          scroller.scrollTo({ top: Math.min(Math.max(0, targetTop), maxTop), behavior: 'auto' });
+          return;
+        }
+        if (Number.isFinite(prevTop)) {
+          scroller.scrollTo({ top: Math.min(Math.max(0, prevTop), maxTop), behavior: 'auto' });
+        }
+      }
+
+      const MIN_ZOOM_PCT = 50; // do not allow reduction below 50%
 
       function applyZoomPct(pct) {
         const p = Number(pct);
         if (!Number.isFinite(p) || p <= 0) return;
-        state.zoomPct = Math.max(1, Math.round(p));
-        const s = state.zoomPct / 100;
-        // Prefer transform scaling of the content container to bypass
-        // browser minimum font-size limits while keeping width constant.
+
+        const scroller = scrollHost;
+        let anchor = null;
+        if (scroller) anchor = captureScrollAnchor(scroller);
+
+        state.zoomPct = Math.max(MIN_ZOOM_PCT, Math.round(p));
         if (container) {
-          container.style.transform = `scale(${s})`;
-          container.style.transformOrigin = 'top left';
-          container.style.width = (100 / s) + '%';
-          if (Number.isFinite(state.baseMaxWidthPx)) {
-            container.style.maxWidth = (state.baseMaxWidthPx / s) + 'px';
-          }
+          container.style.removeProperty('transform');
+          container.style.removeProperty('width');
+          container.style.removeProperty('maxWidth');
+          container.style.fontSize = `${state.zoomPct}%`;
         }
-        // Keep base font-size at 100% to avoid min-font-size clamping side-effects
-        document.documentElement.style.fontSize = '100%';
-        document.body.style.fontSize = '100%';
+        document.documentElement.style.removeProperty('font-size');
+        document.body.style.removeProperty('font-size');
+
+        if (scroller) {
+          requestAnimationFrame(() => restoreScrollAnchor(scroller, anchor));
+        }
       }
 
       function setActiveChunk(idx, options = {}) {
@@ -216,7 +309,7 @@
         if (!el) return;
         el.classList.add('highlight');
         if (options.scroll !== false) {
-          scrollToChunk(target, options.behavior || 'smooth');
+          scheduleScrollToChunk(target, options.behavior || 'smooth');
         }
         state.activeChunk = target;
         rememberChunk(state.src, target);
@@ -255,13 +348,6 @@
       async function init() {
         const { src, book, chunk, nohighlight, nosnap } = getQuery();
         state.src = src;
-        // Capture base max-width from CSS for correct scaling
-        try {
-          const cs = window.getComputedStyle(container);
-          const mw = parseFloat(cs.maxWidth || '980');
-          if (Number.isFinite(mw) && mw > 0) state.baseMaxWidthPx = mw;
-        } catch {}
-
         const rawPath = book
           ? `./data/${encodeURIComponent(book)}/${encodeURIComponent(src)}.txt`
           : `./data/${encodeURIComponent(src)}.txt`;
@@ -284,16 +370,16 @@
             if (Number.isFinite(previous)) {
               const clampedPrev = clampChunk(previous);
               if (clampedPrev !== boundedTarget) {
-                scrollToChunk(clampedPrev, 'auto');
+                scheduleScrollToChunk(clampedPrev, 'auto');
                 if (!nohighlight) window.requestAnimationFrame(() => setActiveChunk(boundedTarget, { scroll: true, behavior: 'smooth' }));
                 else window.requestAnimationFrame(() => scrollToChunk(boundedTarget, 'smooth'));
               } else {
                 if (!nohighlight) setActiveChunk(boundedTarget, { scroll: true, behavior: 'smooth' });
-                else scrollToChunk(boundedTarget, 'smooth');
+                else scheduleScrollToChunk(boundedTarget, 'smooth');
               }
             } else {
               if (!nohighlight) setActiveChunk(boundedTarget, { scroll: true, behavior: 'smooth' });
-              else scrollToChunk(boundedTarget, 'smooth');
+              else scheduleScrollToChunk(boundedTarget, 'smooth');
             }
           }
 
@@ -356,7 +442,7 @@
         if (data.type === 'booknet:scrollToChunk') {
           const chunk = Number(data?.payload?.chunk);
           const target = clampChunk(chunk);
-          scrollToChunk(target, 'smooth');
+          scheduleScrollToChunk(target, 'smooth');
           return;
         }
       });

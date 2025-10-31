@@ -53,6 +53,85 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
   } = elements;
 
   let tabsInitialized = false;
+  const LONG_PRESS_DELAY_MS = 450;
+  const LONG_PRESS_MOVE_TOLERANCE = 12;
+  const isCoarsePointer = (ev) => ev.pointerType === 'touch' || ev.pointerType === 'pen';
+
+  function installLongPressTooltip(el, opts) {
+    if (!el || !tooltip) {
+      return {
+        shouldSuppressClick: () => false,
+        clearSuppressClick: () => {},
+        cancel: () => {},
+      };
+    }
+    const options = typeof opts === 'function' ? { getText: opts } : (opts || {});
+    const getTextFn = options.getText || (() => '');
+    const onActivate = typeof options.onActivate === 'function' ? options.onActivate : () => {};
+    const onDeactivate = typeof options.onDeactivate === 'function' ? options.onDeactivate : () => {};
+    const state = { timer: null, active: false, pointerId: null, startX: 0, startY: 0 };
+    let suppressClick = false;
+    const cancel = (hide) => {
+      if (state.timer) {
+        clearTimeout(state.timer);
+        state.timer = null;
+      }
+      const wasActive = state.active;
+      state.active = false;
+      state.pointerId = null;
+      if (hide && tooltip) tooltip.style.opacity = '0';
+      suppressClick = wasActive;
+      if (wasActive) onDeactivate();
+    };
+    const trigger = () => {
+      const text = typeof getTextFn === 'function' ? (getTextFn() || '') : '';
+      if (!text) return false;
+      suppressClick = true;
+      state.active = true;
+      tooltip.textContent = text;
+      tooltip.style.opacity = '1';
+      positionTooltip(tooltip, state.startX, state.startY + 10);
+       onActivate();
+      return true;
+    };
+    el.addEventListener('pointerdown', (ev) => {
+      if (!isCoarsePointer(ev)) {
+        cancel(true);
+        return;
+      }
+      cancel(false);
+      state.pointerId = ev.pointerId;
+      state.startX = ev.clientX;
+      state.startY = ev.clientY;
+      state.timer = window.setTimeout(() => {
+        state.timer = null;
+        trigger();
+      }, LONG_PRESS_DELAY_MS);
+    });
+    el.addEventListener('pointermove', (ev) => {
+      if (state.pointerId == null || ev.pointerId !== state.pointerId) return;
+      if (!state.timer && !state.active) return;
+      const dx = Math.abs(ev.clientX - state.startX);
+      const dy = Math.abs(ev.clientY - state.startY);
+      if (dx > LONG_PRESS_MOVE_TOLERANCE || dy > LONG_PRESS_MOVE_TOLERANCE) {
+        cancel(true);
+        return;
+      }
+      if (state.active) positionTooltip(tooltip, ev.clientX, ev.clientY + 10);
+    });
+    const finish = (ev) => {
+      if (state.pointerId == null || ev.pointerId !== state.pointerId) return;
+      cancel(true);
+    };
+    el.addEventListener('pointerup', finish);
+    el.addEventListener('pointercancel', finish);
+    el.addEventListener('pointerleave', () => { cancel(true); });
+    return {
+      shouldSuppressClick: () => suppressClick,
+      clearSuppressClick: () => { suppressClick = false; },
+      cancel,
+    };
+  }
 
   function clearNodeHighlights() {
     if (!dom || !dom.nodes) return;
@@ -77,10 +156,20 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
       tooltip.style.opacity = '1';
       positionTooltip(tooltip, e.clientX, e.clientY);
     });
-    li.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+    const press = installLongPressTooltip(li, () => hoverText || '');
+    li.addEventListener('mouseleave', () => {
+      tooltip.style.opacity = '0';
+      press.cancel(true);
+    });
     if (state.data && state.data.sourceName && typeof chunkId === 'number') {
       li.style.cursor = 'pointer';
       li.addEventListener('click', (ev) => {
+        if (press.shouldSuppressClick()) {
+          press.clearSuppressClick();
+          ev.preventDefault();
+          ev.stopPropagation();
+          return;
+        }
         ev.stopPropagation();
         if (ev.metaKey || ev.ctrlKey) {
           const url = getTextViewerUrl?.(chunkId);
@@ -220,6 +309,7 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
         meta.className = 'meta';
         meta.textContent = `weight ${r.weight} • sentiment ${Number(r.score).toFixed(2)}`;
         li.appendChild(meta);
+        const press = installLongPressTooltip(li, () => r.summary || '');
         li.addEventListener('mousemove', (e) => {
           tooltip.textContent = r.summary || '';
           tooltip.style.opacity = '1';
@@ -231,11 +321,18 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
         });
         li.addEventListener('mouseleave', () => {
           tooltip.style.opacity = '0';
+          press.cancel(true);
           if (state.selectedEdgeId === r.id) return;
           setNodeHighlight(r.a === ch.id ? r.b : r.a, false);
           setEdgeHighlight(r.id, false);
         });
         li.addEventListener('click', (ev) => {
+          if (press.shouldSuppressClick()) {
+            press.clearSuppressClick();
+            ev.preventDefault();
+            ev.stopPropagation();
+            return;
+          }
           ev.stopPropagation();
           navigateTo({ type: 'edge', id: r.id }, { push: true });
         });
@@ -317,6 +414,21 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
         el.textContent = name;
         el.style.cursor = 'pointer';
         el.style.fontWeight = '600';
+        const press = installLongPressTooltip(el, {
+          getText: () => {
+            try {
+              const ch = (data.characters || []).find((c) => c.id === id);
+              return ch ? (getCurrentSummary(ch, upTo) || '') : '';
+            } catch {
+              return '';
+            }
+          },
+          onActivate: () => { setNodeHighlight(id, true); },
+          onDeactivate: () => {
+            if (state.selectedId === id || state.selectedEdgeId === inter.id) return;
+            setNodeHighlight(id, false);
+          },
+        });
         el.addEventListener('mouseenter', () => setNodeHighlight(id, true));
         el.addEventListener('mousemove', (ev) => {
           try {
@@ -331,10 +443,17 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
         });
         el.addEventListener('mouseleave', () => {
           tooltip.style.opacity = '0';
+          press.cancel(true);
           if (state.selectedId === id || state.selectedEdgeId === inter.id) return;
           setNodeHighlight(id, false);
         });
         el.addEventListener('click', (ev) => {
+          if (press.shouldSuppressClick()) {
+            press.clearSuppressClick();
+            ev.preventDefault();
+            ev.stopPropagation();
+            return;
+          }
           ev.stopPropagation();
           navigateTo({ type: 'node', id }, { push: true });
         });
@@ -399,6 +518,20 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
       meta.className = 'meta';
       meta.textContent = `${count} fact${count === 1 ? '' : 's'}`;
       li.appendChild(meta);
+      const press = installLongPressTooltip(li, {
+        getText: () => getCurrentSummary(ch, upTo) || '',
+        onActivate: () => setNodeHighlight(ch.id, true),
+        onDeactivate: () => {
+          if (state.selectedId === ch.id) return;
+          if (state.selectedEdgeId) {
+            try {
+              const inter = (state.data?.interactions || []).find((it) => it.id === state.selectedEdgeId);
+              if (inter && (inter.a_id === ch.id || inter.b_id === ch.id)) return;
+            } catch {}
+          }
+          setNodeHighlight(ch.id, false);
+        },
+      });
       li.addEventListener('mousemove', (e) => {
         const text = getCurrentSummary(ch, upTo) || '';
         if (text) {
@@ -410,6 +543,7 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
       });
       li.addEventListener('mouseleave', () => {
         tooltip.style.opacity = '0';
+        press.cancel(true);
         if (state.selectedId === ch.id) return;
         if (state.selectedEdgeId) {
           try {
@@ -420,6 +554,12 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
         setNodeHighlight(ch.id, false);
       });
       li.addEventListener('click', (ev) => {
+        if (press.shouldSuppressClick()) {
+          press.clearSuppressClick();
+          ev.preventDefault();
+          ev.stopPropagation();
+          return;
+        }
         ev.stopPropagation();
         setNodeHighlight(ch.id, false);
         navigateTo({ type: 'node', id: ch.id }, { push: true });

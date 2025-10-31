@@ -62,6 +62,8 @@
       }
       .text-dock-zoom-btn:hover { background: rgba(17,24,39,0.95); }
       .text-dock-zoom-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+      .text-dock-zoom-btn[disabled] { opacity: 0.5; cursor: default; background: rgba(17,24,39,0.6); }
+      .text-dock-zoom-btn[disabled]:hover { background: rgba(17,24,39,0.6); }
       .text-dock-meta {
         margin-left: 8px;
         color: #374151;
@@ -135,6 +137,18 @@
 
       /* Tooltip for node hover */
       .tooltip { position: fixed; pointer-events: none; background: #111827; color: #f9fafb; padding: 8px 10px; font-size: 12px; border-radius: 6px; max-width: 360px; box-shadow: 0 8px 16px rgba(0,0,0,0.15); opacity: 0; transition: opacity 80ms ease-out; z-index: 50; }
+      button { touch-action: manipulation; }
+      #network { touch-action: none; }
+      @media (pointer: coarse) {
+        .dual-range { --thumb-size: 24px; --track-height: 10px; height: 40px; }
+        .dual-range .center-handle { width: 20px; height: 20px; border-radius: 4px; }
+        .text-dock-bar { flex-wrap: wrap; row-gap: 6px; }
+        .text-dock-meta { font-size: 14px; }
+      }
+      @media (max-width: 640px) {
+        .bottom-bar { flex-direction: column; align-items: stretch; gap: 8px; }
+        .bottom-bar .label { text-align: center; }
+      }
 
       /* SVG node styles */
       .node { cursor: pointer; }

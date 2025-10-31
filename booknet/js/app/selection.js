@@ -14,7 +14,10 @@ export function createSelectionController({
   const rangeWrap = rangeTrack?.parentElement || null;
   const centerHandle = document.createElement('div');
   centerHandle.className = 'center-handle';
-  if (rangeWrap) rangeWrap.appendChild(centerHandle);
+  if (rangeWrap) {
+    rangeWrap.appendChild(centerHandle);
+    centerHandle.style.touchAction = 'none';
+  }
 
   const DEFAULT_THUMB_SIZE = 16;
   function getThumbSize() {
@@ -139,14 +142,19 @@ export function createSelectionController({
       total,
       length: L,
       center: (S + E) / 2,
+      pointerId: ev.pointerId,
+      moved: false,
     };
-    window.addEventListener('pointermove', onCenterPointerMove);
-    window.addEventListener('pointerup', onCenterPointerUp, { once: true });
+    window.addEventListener('pointermove', onCenterPointerMove, { passive: false });
+    window.addEventListener('pointerup', onCenterPointerUp);
+    window.addEventListener('pointercancel', onCenterPointerUp);
   }
 
   function onCenterPointerMove(ev) {
-    if (!centerDrag) return;
+    if (!centerDrag || ev.pointerId !== centerDrag.pointerId) return;
+    ev.preventDefault();
     const dx = ev.clientX - centerDrag.startX;
+    if (!centerDrag.moved && Math.abs(dx) > 1) centerDrag.moved = true;
     const unitsDelta = (dx / centerDrag.width) * centerDrag.total;
     const minC = centerDrag.length / 2;
     const maxC = centerDrag.total - (centerDrag.length / 2);
@@ -164,8 +172,11 @@ export function createSelectionController({
   }
 
   function onCenterPointerUp(ev) {
+    if (!centerDrag || ev.pointerId !== centerDrag.pointerId) return;
     try { centerHandle.releasePointerCapture?.(ev.pointerId); } catch {}
     window.removeEventListener('pointermove', onCenterPointerMove);
+    window.removeEventListener('pointerup', onCenterPointerUp);
+    window.removeEventListener('pointercancel', onCenterPointerUp);
     centerHandle.classList.remove('dragging');
     centerDrag = null;
   }
