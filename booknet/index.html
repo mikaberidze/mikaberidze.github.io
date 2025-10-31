@@ -42,6 +42,25 @@
       .text-dock-close:hover { background: rgba(17,24,39,0.95); }
       .text-dock-close:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
       #textFrame { border: 0; width: 100%; flex: 1; min-height: 320px; }
+      /* Text dock toolbar */
+      .text-dock-bar { display: flex; align-items: center; gap: 6px; padding: 8px; border-bottom: 1px solid #e5e7eb; background: #ffffff; z-index: 1; }
+      .text-dock-zoom-btn {
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 999px;
+        background: rgba(17,24,39,0.85);
+        color: #f9fafb;
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(15,23,42,0.2);
+      }
+      .text-dock-zoom-btn:hover { background: rgba(17,24,39,0.95); }
+      .text-dock-zoom-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
       .resize-handle { width: 10px; cursor: col-resize; position: relative; flex: 0 0 10px; touch-action: none; }
       .resize-handle::after { content: ''; position: absolute; left: 50%; top: 12px; bottom: 12px; width: 2px; transform: translateX(-50%); background: #d1d5db; border-radius: 999px; }
       /* Highlight only for active resizable handles */
@@ -76,15 +95,32 @@
 
 
       .bottom-bar { position: sticky; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -2px 6px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px; }
-      .bottom-bar .label { min-width: 200px; color: #374151; }
+      .bottom-bar .label { min-width: 0; color: #374151; }
       input[type=range] { width: 100%; }
-      .dual-range { position: relative; height: 32px; display: grid; align-items: center; width: 100%; }
-      .dual-range .track { position: absolute; left: 0; right: 0; height: 6px; top: 50%; transform: translateY(-50%); background: linear-gradient(to right, #e5e7eb 0%, #e5e7eb 100%); border-radius: 9999px; }
+      .dual-range { position: relative; height: 32px; display: grid; align-items: center; flex: 1 1 auto; min-width: 120px; width: auto; --thumb-size: 16px; --track-height: 6px; }
+      .dual-range .track { position: absolute; left: 0; right: 0; height: var(--track-height); top: 50%; transform: translateY(-50%); background: linear-gradient(to right, #e5e7eb 0%, #e5e7eb 100%); border-radius: 9999px; }
       .dual-range input[type=range] { position: absolute; left: 0; right: 0; top: 0; bottom: 0; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; height: 32px; }
       .dual-range input[type=range]::-webkit-slider-runnable-track { height: 6px; background: transparent; }
       .dual-range input[type=range]::-moz-range-track { height: 6px; background: transparent; }
-      .dual-range input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; height: 16px; width: 16px; border-radius: 9999px; background: #3b82f6; border: 2px solid #ffffff; box-shadow: 0 0 0 1px #9ca3af; pointer-events: auto; cursor: pointer; margin-top: -5px; }
-      .dual-range input[type=range]::-moz-range-thumb { height: 16px; width: 16px; border-radius: 9999px; background: #3b82f6; border: 2px solid #ffffff; box-shadow: 0 0 0 1px #9ca3af; pointer-events: auto; cursor: pointer; }
+      .dual-range input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; height: var(--thumb-size); width: var(--thumb-size); border-radius: 9999px; background: #3b82f6; border: 2px solid #ffffff; box-shadow: 0 0 0 1px #9ca3af; pointer-events: auto; cursor: pointer; margin-top: calc((var(--track-height) - var(--thumb-size)) / 2); }
+      .dual-range input[type=range]::-moz-range-thumb { height: var(--thumb-size); width: var(--thumb-size); border-radius: 9999px; background: #3b82f6; border: 2px solid #ffffff; box-shadow: 0 0 0 1px #9ca3af; pointer-events: auto; cursor: pointer; }
+
+      /* Center drag handle: sits above end handles, square-ish and shorter */
+      .dual-range .center-handle {
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        background: #1d4ed8; /* slightly darker than end handles */
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 0 1px #6b7280;
+        z-index: 2; /* above the range thumbs */
+        pointer-events: auto;
+        cursor: grab;
+      }
+      .dual-range .center-handle.dragging { cursor: grabbing; }
 
       /* Tooltip for node hover */
       .tooltip { position: fixed; pointer-events: none; background: #111827; color: #f9fafb; padding: 8px 10px; font-size: 12px; border-radius: 6px; max-width: 360px; box-shadow: 0 8px 16px rgba(0,0,0,0.15); opacity: 0; transition: opacity 80ms ease-out; z-index: 50; }
@@ -133,6 +169,10 @@
       <div class="main" id="mainLayout">
         <!-- FAR LEFT: Text Dock -->
         <aside class="sidebar text-dock" id="textDock">
+          <div class="text-dock-bar" role="toolbar" aria-label="Text controls">
+            <button id="textZoomOutBtn" class="text-dock-zoom-btn" type="button" aria-label="Decrease text size" title="Decrease text size">−</button>
+            <button id="textZoomInBtn" class="text-dock-zoom-btn" type="button" aria-label="Increase text size" title="Increase text size">+</button>
+          </div>
           <iframe id="textFrame" title="Source text viewer"></iframe>
         </aside>
 
@@ -214,7 +254,7 @@
       </div>
 
       <div class="bottom-bar">
-        <div class="label" id="progressLabel" style="flex: 0 0 380px; min-width: 320px; white-space: nowrap;">Active: 0%–0% • Chunks 0–0/0</div>
+        <div class="label" id="progressLabel" style="white-space: nowrap;">Active: 0%–0% • Chunks 0–0/0</div>
         <div class="dual-range" id="rangeWrap">
           <div class="track" id="rangeTrack"></div>
           <input id="rangeStart" type="range" min="0" max="100" step="1" value="0" />

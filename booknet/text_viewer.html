@@ -13,6 +13,8 @@
         background: #f9fafb;
         overflow-x: hidden;           /* no horizontal scroll */
         scroll-behavior: smooth;      /* smooth scrolling */
+        -webkit-text-size-adjust: none; /* prevent auto text inflation on small sizes */
+        text-size-adjust: none;
       }
 
       .app {
@@ -23,13 +25,18 @@
 
       .content {
         overflow-y: auto;
-        overflow-x: hidden;           /* contain horizontally */
+        overflow-x: hidden;             /* contain horizontally */
+        scrollbar-gutter: stable both-edges; /* reserve scrollbar space even on overlay UIs */
+        padding-left: 8px;              /* tighter fixed left gutter */
+        padding-right: 24px;            /* generous right gutter to avoid overlay */
+        box-sizing: border-box;
       }
 
       .chunks {
-        max-width: 980px;             /* horizontally contained */
-        margin: 0 auto;
-        padding: 16px;                /* page padding */
+        max-width: 980px;               /* horizontally contained */
+        margin: 0;                      /* anchor to left so left gutter is stable */
+        padding: 0;                     /* padding handled by parent so it stays unscaled */
+        transform-origin: top left;     /* for manual scaling */
       }
 
       /* Seamless chunks: no white boxes, borders, or shadows */
@@ -90,6 +97,8 @@
         chunkEls: [],
         activeChunk: null,
         activeRange: { start: 1, end: Infinity },
+        zoomPct: 100,
+        baseMaxWidthPx: 980,
       };
 
       const container = document.getElementById('container');
@@ -175,6 +184,26 @@
         if (el) el.scrollIntoView({ block: 'center', behavior });
       }
 
+      function applyZoomPct(pct) {
+        const p = Number(pct);
+        if (!Number.isFinite(p) || p <= 0) return;
+        state.zoomPct = Math.max(1, Math.round(p));
+        const s = state.zoomPct / 100;
+        // Prefer transform scaling of the content container to bypass
+        // browser minimum font-size limits while keeping width constant.
+        if (container) {
+          container.style.transform = `scale(${s})`;
+          container.style.transformOrigin = 'top left';
+          container.style.width = (100 / s) + '%';
+          if (Number.isFinite(state.baseMaxWidthPx)) {
+            container.style.maxWidth = (state.baseMaxWidthPx / s) + 'px';
+          }
+        }
+        // Keep base font-size at 100% to avoid min-font-size clamping side-effects
+        document.documentElement.style.fontSize = '100%';
+        document.body.style.fontSize = '100%';
+      }
+
       function setActiveChunk(idx, options = {}) {
         if (!state.chunkEls.length) return;
         const target = clampChunk(idx);
@@ -225,6 +254,12 @@
       async function init() {
         const { src, book, chunk, nohighlight, nosnap } = getQuery();
         state.src = src;
+        // Capture base max-width from CSS for correct scaling
+        try {
+          const cs = window.getComputedStyle(container);
+          const mw = parseFloat(cs.maxWidth || '980');
+          if (Number.isFinite(mw) && mw > 0) state.baseMaxWidthPx = mw;
+        } catch {}
 
         const rawPath = book
           ? `./data/${encodeURIComponent(book)}/${encodeURIComponent(src)}.txt`
@@ -299,6 +334,11 @@
           setActiveRange(start, end);
           return;
         }
+        if (data.type === 'booknet:setZoomPct') {
+          const pct = data?.payload?.pct;
+          applyZoomPct(pct);
+          return;
+        }
         if (data.type === 'booknet:setActiveChunk') {
           const chunk = Number(data?.payload?.chunk);
           if (Number.isFinite(chunk) && chunk > 0) setActiveChunk(chunk, { scroll: true, behavior: 'smooth' });
@@ -321,6 +361,8 @@
       });
 
       init();
+      // Apply default zoom once (in case parent hasn't sent yet)
+      applyZoomPct(state.zoomPct);
     </script>
   </body>
 </html>

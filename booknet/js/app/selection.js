@@ -10,6 +10,49 @@ export function createSelectionController({
   onSelectionChange,
   sendRangeToTextDock,
 }) {
+  // Create a center handle that drags the active selection as a fixed-length window
+  const rangeWrap = rangeTrack?.parentElement || null;
+  const centerHandle = document.createElement('div');
+  centerHandle.className = 'center-handle';
+  if (rangeWrap) rangeWrap.appendChild(centerHandle);
+
+  const DEFAULT_THUMB_SIZE = 16;
+  function getThumbSize() {
+    if (!rangeWrap || typeof window === 'undefined') return DEFAULT_THUMB_SIZE;
+    const styles = window.getComputedStyle(rangeWrap);
+    if (!styles) return DEFAULT_THUMB_SIZE;
+    const raw = styles.getPropertyValue('--thumb-size') || styles.getPropertyValue('--slider-thumb-size');
+    const size = parseFloat(raw);
+    return Number.isFinite(size) ? size : DEFAULT_THUMB_SIZE;
+  }
+
+  function positionCenterHandle(pStart, pEnd) {
+    if (!rangeWrap || !rangeTrack) return;
+    const left = Math.min(pStart, pEnd);
+    const right = Math.max(pStart, pEnd);
+    if (!Number.isFinite(left) || !Number.isFinite(right) || right <= left) {
+      centerHandle.style.display = 'none';
+      return;
+    }
+    const centerPercent = (left + right) / 2;
+
+    const trackRect = rangeTrack.getBoundingClientRect();
+    const wrapRect = rangeWrap.getBoundingClientRect();
+    if (!trackRect || !wrapRect || !wrapRect.width) {
+      centerHandle.style.display = 'none';
+      return;
+    }
+
+    const thumbSize = getThumbSize();
+    const usableWidth = Math.max(0, trackRect.width - thumbSize);
+    const clampedPercent = Math.min(100, Math.max(0, centerPercent));
+    const trackOffset = trackRect.left - wrapRect.left;
+    const xInTrack = (thumbSize / 2) + (usableWidth * (clampedPercent / 100));
+    const xInWrap = trackOffset + xInTrack;
+
+    centerHandle.style.display = 'block';
+    centerHandle.style.left = `${xInWrap}px`;
+  }
   function updateRangeTrackFill(pStart, pEnd) {
     if (!rangeTrack) return;
     const left = Math.min(pStart, pEnd);
@@ -35,6 +78,8 @@ export function createSelectionController({
       progressLabel.textContent = `Active: ${Math.round(startPercent)}%–${Math.round(endPercent)}% • Chunks ${startLabel}–${endInclusiveLabel}/${denomInclusive}`;
     }
     updateRangeTrackFill(startPercent, endPercent);
+    // Geometrically center the handle between the rendered start/end handles
+    positionCenterHandle(startPercent, endPercent);
   }
 
   function clampSelection(N, S, E, moved) {
@@ -73,6 +118,59 @@ export function createSelectionController({
     const nextE = Number(rangeEnd?.value ?? state.chunk);
     setSelection(nextS, nextE, moved);
   }
+
+  // Fixed-length center dragging logic
+  let centerDrag = null;
+  function onCenterPointerDown(ev) {
+    if (!rangeWrap || !Number.isFinite(state.N)) return;
+    ev.preventDefault();
+    try { centerHandle.setPointerCapture?.(ev.pointerId); } catch {}
+    const rect = rangeWrap.getBoundingClientRect();
+    const thumbSize = getThumbSize();
+    const usableWidth = Math.max(1, rect.width - thumbSize);
+    const total = Math.max(1, Math.floor(Number(state.N || 0)));
+    const S = Number(state.startChunk || 0);
+    const E = Number(state.chunk || 0);
+    const L = Math.max(1, E - S);
+    centerHandle.classList.add('dragging');
+    centerDrag = {
+      startX: ev.clientX,
+      width: usableWidth,
+      total,
+      length: L,
+      center: (S + E) / 2,
+    };
+    window.addEventListener('pointermove', onCenterPointerMove);
+    window.addEventListener('pointerup', onCenterPointerUp, { once: true });
+  }
+
+  function onCenterPointerMove(ev) {
+    if (!centerDrag) return;
+    const dx = ev.clientX - centerDrag.startX;
+    const unitsDelta = (dx / centerDrag.width) * centerDrag.total;
+    const minC = centerDrag.length / 2;
+    const maxC = centerDrag.total - (centerDrag.length / 2);
+    let c = centerDrag.center + unitsDelta;
+    if (c < minC) c = minC;
+    if (c > maxC) c = maxC;
+    let s = Math.round(c - (centerDrag.length / 2));
+    if (s < 0) s = 0;
+    let e = s + centerDrag.length;
+    if (e > centerDrag.total) {
+      e = centerDrag.total;
+      s = e - centerDrag.length;
+    }
+    setSelection(s, e, 'center');
+  }
+
+  function onCenterPointerUp(ev) {
+    try { centerHandle.releasePointerCapture?.(ev.pointerId); } catch {}
+    window.removeEventListener('pointermove', onCenterPointerMove);
+    centerHandle.classList.remove('dragging');
+    centerDrag = null;
+  }
+
+  centerHandle.addEventListener('pointerdown', onCenterPointerDown);
 
   return {
     setSelection,

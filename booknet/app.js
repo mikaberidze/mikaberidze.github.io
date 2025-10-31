@@ -56,6 +56,41 @@ async function fetchFirst(urls) {
   throw new Error('No data source resolved');
 }
 
+async function fetchOptionalJson(url) {
+  if (!url) return null;
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeLayoutMap(raw) {
+  const map = new Map();
+  if (!raw || typeof raw !== 'object') return map;
+  const addNode = (id, x, y) => {
+    if (id == null) return;
+    const nx = Number(x);
+    const ny = Number(y);
+    if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+    map.set(String(id), { x: nx, y: ny });
+  };
+  if (Array.isArray(raw.nodes)) {
+    for (const node of raw.nodes) addNode(node?.id, node?.x, node?.y);
+  } else {
+    for (const [id, pos] of Object.entries(raw)) addNode(id, pos?.x, pos?.y);
+  }
+  return map;
+}
+
+function isDesignerMode() {
+  if (typeof window === 'undefined') return false;
+  const hash = String(window.location.hash || '').toLowerCase();
+  return hash.includes('designer');
+}
+
 const elements = collectDomElements();
 setupViewportHeight();
 initDomGraph({ svg: elements.svg, stage: elements.stage, tooltip: elements.tooltip });
@@ -65,7 +100,66 @@ const navigation = createNavigation({
   sidebarHomeBtn: elements.sidebarHomeBtn,
 });
 
-const bookPicker = createBookPicker(elements.stage);
+function handleSaveLayout() {
+  try {
+    const chars = Array.isArray(state.data?.characters) ? state.data.characters : [];
+    const layoutMap = state.layout instanceof Map
+      ? new Map(state.layout)
+      : normalizeLayoutMap(state.layout || {});
+    // Compute current stage center to save coordinates relative to it
+    const bbox = elements.stage?.getBoundingClientRect?.() ? elements.stage.getBoundingClientRect() : { width: 0, height: 0 };
+    const cx = (bbox.width || 0) / 2;
+    const cy = (bbox.height || 0) / 2;
+    const seen = new Set();
+    const nodes = [];
+    const absMap = new Map();
+    const add = (id, x, y) => {
+      if (id == null) return;
+      const nx = Number(x);
+      const ny = Number(y);
+      if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+      const key = String(id);
+      if (seen.has(key)) return;
+      seen.add(key);
+      // Store relative to canvas center
+      nodes.push({ id: key, x: nx - cx, y: ny - cy });
+      // Keep absolute positions in memory
+      absMap.set(key, { x: nx, y: ny });
+    };
+    for (const ch of chars) {
+      const key = ch?.id;
+      const simNode = sim.nodes.get(key);
+      if (simNode) add(key, simNode.x, simNode.y);
+      else {
+        const seed = layoutMap.get(String(key));
+        if (seed) add(key, seed.x, seed.y);
+      }
+    }
+    for (const node of sim.nodes.values()) {
+      add(node.id, node.x, node.y);
+    }
+    if (!nodes.length) return;
+    const safeBase = (state.book || 'layout').replace(/[^a-z0-9._-]+/gi, '_').replace(/^_+|_+$/g, '') || 'layout';
+    const payload = { coordSpace: 'center', nodes };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${safeBase}_layout.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    // Keep absolute coordinates in state for seeding and simulation
+    state.layout = absMap;
+  } catch (err) {
+    console.error('Failed to export layout:', err);
+  }
+}
+
+const bookPicker = createBookPicker(elements.stage, { onSaveLayout: handleSaveLayout });
+bookPicker.setDesignerMode(isDesignerMode());
+window.addEventListener('hashchange', () => { bookPicker.setDesignerMode(isDesignerMode()); });
 
 let handlePaneResize = () => {};
 const paneLayout = createPaneLayoutController({
@@ -83,6 +177,8 @@ const textDock = createTextDockController({
   textDock: elements.textDock,
   textFrame: elements.textFrame,
   textCloseBtn: elements.textCloseBtn,
+  textZoomInBtn: elements.textZoomInBtn,
+  textZoomOutBtn: elements.textZoomOutBtn,
   toggleTextDockBtn: elements.toggleTextDockBtn,
   applyPaneWidths: paneLayout.applyPaneWidths,
 });
@@ -105,6 +201,8 @@ handlePaneResize = () => {
   graph.updateBounds();
   graph.reheat();
   graph.render();
+  // Keep the center handle aligned during pane/handle drags
+  try { selection.updateProgressUI(state.startChunk, state.chunk, state.N); } catch {}
   sidebar.renderSidebar();
 };
 
@@ -136,6 +234,8 @@ if (elements.svg) {
 window.addEventListener('resize', () => {
   graph.updateBounds();
   graph.render();
+  // Recenter the square handle on viewport resize
+  try { selection.updateProgressUI(state.startChunk, state.chunk, state.N); } catch {}
 });
 
 window.graph = {
@@ -172,6 +272,51 @@ async function init() {
 
     const data = await fetchFirst(candidates);
     state.data = data;
+
+    const fallbackLayout = computeLayout(data.characters || [], elements.stage);
+    const layoutUrl = state.book
+      ? `./data/${encBook}/layout.json`
+      : './data/layout.json';
+    const layoutRaw = await fetchOptionalJson(layoutUrl);
+    const layoutOverrides = normalizeLayoutMap(layoutRaw);
+    // Decide if loaded coordinates are explicitly relative (new format) or absolute (legacy)
+    try {
+      const bbox = elements.stage?.getBoundingClientRect?.() ? elements.stage.getBoundingClientRect() : { width: 0, height: 0 };
+      const w = Number(bbox.width || 0);
+      const h = Number(bbox.height || 0);
+      const cx = w / 2;
+      const cy = h / 2;
+      const coordSpace = String(layoutRaw?.coordSpace || '').toLowerCase();
+      let assumeRelative;
+      if (coordSpace === 'center') {
+        assumeRelative = true;
+      } else if (coordSpace === 'corner') {
+        assumeRelative = false;
+      } else {
+        // Heuristic fallback for legacy files without coordSpace marker
+        let hasNegative = false;
+        let allWithinStage = true;
+        for (const [, pos] of layoutOverrides) {
+          const px = Number(pos?.x), py = Number(pos?.y);
+          if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
+          if (px < 0 || py < 0) hasNegative = true;
+          if (!(px >= 0 && px <= w && py >= 0 && py <= h)) allWithinStage = false;
+        }
+        // If all coords are within current stage and non-negative, assume old absolute format
+        assumeRelative = !(allWithinStage && !hasNegative);
+      }
+      for (const [id, pos] of layoutOverrides) {
+        const px = Number(pos?.x), py = Number(pos?.y);
+        if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
+        if (assumeRelative) fallbackLayout.set(id, { x: cx + px, y: cy + py });
+        else fallbackLayout.set(id, { x: px, y: py });
+      }
+    } catch {
+      // Fallback: if bounding box cannot be read, use raw positions as-is
+      for (const [id, pos] of layoutOverrides) {
+        fallbackLayout.set(id, pos);
+      }
+    }
 
     let minId = Infinity;
     let maxId = -Infinity;
@@ -212,7 +357,7 @@ async function init() {
       elements.rangeEnd.step = '1';
     }
 
-    state.layout = computeLayout(data.characters || [], elements.stage);
+    state.layout = fallbackLayout;
     graph.updateBounds();
     clearSVG();
     selection.setSelection(0, state.N);

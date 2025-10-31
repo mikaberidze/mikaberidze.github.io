@@ -7,6 +7,8 @@ export function createTextDockController({
   textDock,
   textFrame,
   textCloseBtn,
+  textZoomInBtn,
+  textZoomOutBtn,
   toggleTextDockBtn,
   applyPaneWidths,
 }) {
@@ -32,6 +34,55 @@ export function createTextDockController({
     if (mainLayout) mainLayout.classList.remove('show-text-dock');
     applyPaneWidths({ updateBounds: true });
     updateDockToggleButton();
+  }
+
+  // --- Zoom controls for text iframe ---
+  const ZOOM_KEY = 'booknet:textDockZoom';
+  let zoom = 1.0;
+  try {
+    const saved = Number(window.localStorage.getItem(ZOOM_KEY));
+    if (Number.isFinite(saved) && saved > 0) zoom = saved;
+  } catch {}
+
+  function clampZoom(z) {
+    const min = 0.02; // ~2%
+    const max = 2.0; // 200%
+    if (!Number.isFinite(z)) return 1.0;
+    return Math.min(max, Math.max(min, z));
+  }
+
+  function persistZoom() {
+    try { window.localStorage.setItem(ZOOM_KEY, String(zoom)); } catch {}
+  }
+
+  function setZoom(z) {
+    zoom = clampZoom(z);
+    persistZoom();
+    sendZoomToTextDock();
+  }
+
+  function nudgeZoom(delta) {
+    // Finer steps when already small for better control
+    const step = zoom >= 1 ? 0.1 : (zoom >= 0.2 ? 0.05 : 0.02);
+    setZoom(zoom + (Math.sign(delta || 0) || 1) * step);
+  }
+
+  function sendZoomToTextDock() {
+    if (!textFrame || !textFrame.contentWindow) return;
+    const pct = Math.round(zoom * 100);
+    try {
+      textFrame.contentWindow.postMessage({
+        type: 'booknet:setZoomPct',
+        payload: { pct },
+      }, '*');
+    } catch {}
+  }
+
+  if (textZoomInBtn) {
+    textZoomInBtn.addEventListener('click', (e) => { e.preventDefault(); nudgeZoom(+1); });
+  }
+  if (textZoomOutBtn) {
+    textZoomOutBtn.addEventListener('click', (e) => { e.preventDefault(); nudgeZoom(-1); });
   }
 
   function getTextViewerUrl(chunkId, opts = {}) {
@@ -161,6 +212,8 @@ export function createTextDockController({
   if (textFrame) {
     textFrame.addEventListener('load', () => {
       sendRangeToTextDock();
+      // Apply persisted zoom to the freshly loaded iframe document
+      try { sendZoomToTextDock(); } catch {}
       const suppressActive = textFrame.dataset.suppressNextActiveChunk === '1';
       const suppressScroll = textFrame.dataset.suppressNextScroll === '1';
       if (suppressActive) {
@@ -186,5 +239,7 @@ export function createTextDockController({
     sendClearActiveChunkToTextDock,
     sendScrollToChunkToTextDock,
     getTextViewerUrl,
+    setZoom,
+    nudgeZoom,
   };
 }

@@ -2,7 +2,9 @@
 
 import { state } from './state.js';
 
-export function createBookPicker(stage) {
+export function createBookPicker(stage, options = {}) {
+  const { onSaveLayout } = options || {};
+
   const sourceBadge = document.createElement('div');
   sourceBadge.id = 'sourceBadge';
   Object.assign(sourceBadge.style, {
@@ -25,7 +27,34 @@ export function createBookPicker(stage) {
   sourceBadge.setAttribute('title', 'Choose a book');
   sourceBadge.style.display = 'none';
 
+  const saveLayoutBtn = document.createElement('button');
+  saveLayoutBtn.type = 'button';
+  saveLayoutBtn.id = 'saveLayoutBtn';
+  saveLayoutBtn.textContent = 'Save layout';
+  Object.assign(saveLayoutBtn.style, {
+    position: 'absolute',
+    top: '40px',
+    left: '8px',
+    background: 'rgba(17,24,39,0.85)',
+    color: '#f9fafb',
+    padding: '4px 10px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    border: 'none',
+    cursor: 'pointer',
+    lineHeight: '1',
+    zIndex: 10,
+    boxShadow: '0 2px 6px rgba(15,23,42,0.2)',
+    display: 'none',
+  });
+  saveLayoutBtn.setAttribute('aria-label', 'Download current layout');
+  saveLayoutBtn.setAttribute('title', 'Download current layout');
+  saveLayoutBtn.addEventListener('mouseenter', () => { saveLayoutBtn.style.background = 'rgba(17,24,39,0.95)'; });
+  saveLayoutBtn.addEventListener('mouseleave', () => { saveLayoutBtn.style.background = 'rgba(17,24,39,0.85)'; });
+  saveLayoutBtn.addEventListener('click', () => { onSaveLayout?.(); });
+
   if (stage) stage.appendChild(sourceBadge);
+  if (stage) stage.appendChild(saveLayoutBtn);
 
   let bookPickerEl = null;
 
@@ -155,9 +184,14 @@ export function createBookPicker(stage) {
     // When no book is selected (empty text), show a friendly prompt
     // so users can open the picker directly.
     const label = text && String(text).trim() ? String(text) : 'Select a book';
-    sourceBadge.textContent = label;
+    // Move triangle to the beginning
+    sourceBadge.textContent = `▼ ${label}`;
     sourceBadge.style.display = 'block';
   }
 
-  return { sourceBadge, showBookPicker, updateSourceBadge };
+  function setDesignerMode(on) {
+    saveLayoutBtn.style.display = on ? 'block' : 'none';
+  }
+
+  return { sourceBadge, saveLayoutBtn, showBookPicker, updateSourceBadge, setDesignerMode };
 }

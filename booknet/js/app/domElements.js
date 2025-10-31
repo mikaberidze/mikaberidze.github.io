@@ -38,6 +38,8 @@ export function collectDomElements() {
     textDock: document.getElementById('textDock'),
     textFrame: document.getElementById('textFrame'),
     textCloseBtn: document.getElementById('textCloseBtn'),
+    textZoomInBtn: document.getElementById('textZoomInBtn'),
+    textZoomOutBtn: document.getElementById('textZoomOutBtn'),
     handleStageSidebar: document.getElementById('handleStageSidebar'),
     handleDockStage: document.getElementById('handleDockStage'),
     toggleTextDockBtn: document.getElementById('toggleTextDockBtn'),
