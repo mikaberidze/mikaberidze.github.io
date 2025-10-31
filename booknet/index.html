@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Character Network Viewer</title>
+    <link rel="icon" type="image/png" href="./favicon.png" />
     <style>
       :root { --app-viewport-height: 100vh; }
       html, body { height: 100%; min-height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #1f2937; }
@@ -61,6 +62,16 @@
       }
       .text-dock-zoom-btn:hover { background: rgba(17,24,39,0.95); }
       .text-dock-zoom-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+      .text-dock-meta {
+        margin-left: 8px;
+        color: #374151;
+        font-size: 13px;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1 1 auto;
+      }
       .resize-handle { width: 10px; cursor: col-resize; position: relative; flex: 0 0 10px; touch-action: none; }
       .resize-handle::after { content: ''; position: absolute; left: 50%; top: 12px; bottom: 12px; width: 2px; transform: translateX(-50%); background: #d1d5db; border-radius: 999px; }
       /* Highlight only for active resizable handles */
@@ -172,6 +183,7 @@
           <div class="text-dock-bar" role="toolbar" aria-label="Text controls">
             <button id="textZoomOutBtn" class="text-dock-zoom-btn" type="button" aria-label="Decrease text size" title="Decrease text size">−</button>
             <button id="textZoomInBtn" class="text-dock-zoom-btn" type="button" aria-label="Increase text size" title="Increase text size">+</button>
+            <div id="textMeta" class="text-dock-meta" aria-live="polite" title=""></div>
           </div>
           <iframe id="textFrame" title="Source text viewer"></iframe>
         </aside>

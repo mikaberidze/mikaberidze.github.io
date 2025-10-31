@@ -40,6 +40,7 @@ export function collectDomElements() {
     textCloseBtn: document.getElementById('textCloseBtn'),
     textZoomInBtn: document.getElementById('textZoomInBtn'),
     textZoomOutBtn: document.getElementById('textZoomOutBtn'),
+    textMeta: document.getElementById('textMeta'),
     handleStageSidebar: document.getElementById('handleStageSidebar'),
     handleDockStage: document.getElementById('handleDockStage'),
     toggleTextDockBtn: document.getElementById('toggleTextDockBtn'),

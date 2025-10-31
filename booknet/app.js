@@ -176,6 +176,7 @@ const textDock = createTextDockController({
   mainLayout: elements.mainLayout,
   textDock: elements.textDock,
   textFrame: elements.textFrame,
+  textMeta: elements.textMeta,
   textCloseBtn: elements.textCloseBtn,
   textZoomInBtn: elements.textZoomInBtn,
   textZoomOutBtn: elements.textZoomOutBtn,
@@ -341,7 +342,9 @@ async function init() {
     // If no specific book is selected via URL, keep the badge as a
     // neutral prompt rather than showing the default dataset title.
     if (state.book) {
-      bookPicker.updateSourceBadge(String(data?.sourceName || state.book));
+      const label = String(data?.sourceName || state.book);
+      bookPicker.updateSourceBadge(label);
+      try { textDock.updateBookMeta(label); } catch {}
     } else {
       bookPicker.updateSourceBadge('');
     }

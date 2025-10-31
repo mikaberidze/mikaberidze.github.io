@@ -6,6 +6,7 @@ export function createTextDockController({
   mainLayout,
   textDock,
   textFrame,
+  textMeta,
   textCloseBtn,
   textZoomInBtn,
   textZoomOutBtn,
@@ -76,6 +77,14 @@ export function createTextDockController({
         payload: { pct },
       }, '*');
     } catch {}
+  }
+
+  // --- Book metadata label in toolbar ---
+  function updateBookMeta(text) {
+    if (!textMeta) return;
+    const label = String(text || '').trim();
+    textMeta.textContent = label;
+    textMeta.title = label;
   }
 
   if (textZoomInBtn) {
@@ -234,6 +243,7 @@ export function createTextDockController({
     hideTextDock,
     openTextDock,
     updateDockToggleButton,
+    updateBookMeta,
     sendRangeToTextDock,
     sendActiveChunkToTextDock,
     sendClearActiveChunkToTextDock,
