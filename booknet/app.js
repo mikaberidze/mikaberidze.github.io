@@ -222,6 +222,22 @@ const selection = createSelectionController({
 if (elements.rangeStart) elements.rangeStart.addEventListener('input', selection.handleSliderInput);
 if (elements.rangeEnd) elements.rangeEnd.addEventListener('input', selection.handleSliderInput);
 
+// Clear the active chunk highlight in the text dock when clicking anywhere
+// outside the left text panel. Use capturing phase so clears happen before
+// other handlers (e.g., clicking a fact which then sets a new highlight).
+if (typeof document !== 'undefined') {
+  document.addEventListener('pointerdown', (ev) => {
+    try {
+      const t = ev.target;
+      const insideDock = elements?.textDock && elements.textDock.contains(t);
+      const insideResize = !!(t && typeof t.closest === 'function' && (t.closest('.resize-handle') || t.closest('.resize-overlay')));
+      if (!insideDock && !insideResize) {
+        try { textDock.sendClearActiveChunkToTextDock(); } catch {}
+      }
+    } catch {}
+  }, true);
+}
+
 if (elements.svg) {
   elements.svg.addEventListener('click', (ev) => {
     if (ev.target === elements.svg) {
