@@ -360,7 +360,9 @@ async function init() {
     state.layout = fallbackLayout;
     graph.updateBounds();
     clearSVG();
-    selection.setSelection(0, state.N);
+    // Default to a 0–20 chunk window (end is exclusive)
+    const defaultEnd = Math.min(20, Math.max(1, state.N));
+    selection.setSelection(0, defaultEnd);
     sidebar.renderSidebar();
     graph.ensureAnimation();
   } catch (err) {
