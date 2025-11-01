@@ -83,52 +83,110 @@
             left: 0;
             width: 100%;
             height: 100%;
+            --iconSize: calc(var(--panelWidth)*40/200);
+            --iconHitbox: calc(var(--panelWidth)*60/200);
+            --iconShift: calc(var(--panelWidth)*10/200);
+        }
+
+        .image-links > * {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: calc(var(--panelWidth)/2);
+            left: 50%;
+            width: var(--iconHitbox);
+            height: var(--iconHitbox);
+            transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--panelWidth)*125/200)) rotate(calc(-1*var(--angle)));
+            border-radius: 50%;
+        }
+
+        .image-links > a {
+            overflow: hidden;
         }
 
         .image-links img {
             display: block;
-            width: calc(var(--panelWidth)*40/200);
-            height: calc(var(--panelWidth)*40/200);
+            width: var(--iconSize);
+            height: var(--iconSize);
             border-radius: 50%;
             transition: transform 0.1s linear;
-            --shift: calc(var(--panelWidth)*10/200);
             z-index: 4;
         }
 
         /* circular layout */
-        .image-links a:nth-child(1) {
+        .image-links > *:nth-child(1) {
             --angle: 50deg;
         }
-        .image-links a:nth-child(2) {
+        .image-links > *:nth-child(2) {
             --angle: 25deg;
         }
-        .image-links a:nth-child(3) {
+        .image-links > *:nth-child(3) {
             --angle: -25deg;
         }
-        .image-links a:nth-child(4) {
+        .image-links > *:nth-child(4) {
             --angle: -50deg;
         }
-        /* .image-links a:nth-child(5) {
+        /* .image-links > *:nth-child(5) {
             --angle: -50deg;
         } */
 
-        .image-links a {
-            display: flex;         
-            align-items: center; 
-            justify-content: center; 
-            position: absolute;
-            top: calc(var(--panelWidth)/2);
-            left: 50%;
-            width: calc(var(--panelWidth)*60/200);
-            height: calc(var(--panelWidth)*60/200);
-            transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--panelWidth)*125/200)) rotate(calc(-1*var(--angle)));
-            border-radius: 50%;
-            overflow: hidden;
+        .image-links > a:hover img{
+            transform: translateX(calc(-1*var(--iconShift)*sin(var(--angle)))) translateY(calc(var(--iconShift)*cos(var(--angle))));
         }
 
-        /* hover link logo animation */
-        .image-links a:hover img{
-            transform: translateX(calc(-1*var(--shift)*sin(var(--angle)))) translateY(calc(var(--shift)*cos(var(--angle))));
+        .icon-bundle {
+            position: absolute;
+            overflow: visible;
+            --githubShift: var(--iconShift);
+            --gitlabShift: calc(var(--iconShift) + var(--iconSize) * 1.15);
+        }
+
+        .icon-bundle a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: var(--iconSize);
+            height: var(--iconSize);
+            border-radius: 50%;
+            overflow: hidden;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s linear;
+            z-index: 4;
+        }
+
+        .icon-bundle a img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .icon-bundle .github-icon {
+            z-index: 5;
+        }
+
+        .icon-bundle:hover .github-icon,
+        .icon-bundle.bundle-active .github-icon,
+        .icon-bundle:focus-within .github-icon {
+            transform: translate(-50%, -50%) translateX(calc(-1*var(--githubShift)*sin(var(--angle)))) translateY(calc(var(--githubShift)*cos(var(--angle))));
+        }
+
+        .icon-bundle:hover .gitlab-icon,
+        .icon-bundle.bundle-active .gitlab-icon,
+        .icon-bundle:focus-within .gitlab-icon {
+            transform: translate(-50%, -50%) translateX(calc(-1*var(--gitlabShift)*sin(var(--angle)))) translateY(calc(var(--gitlabShift)*cos(var(--angle))));
+        }
+
+        @media (hover: none) {
+            .image-links .icon-bundle .github-icon {
+                transform: translate(-50%, -50%) translateX(calc(-1*var(--githubShift)*sin(var(--angle)))) translateY(calc(var(--githubShift)*cos(var(--angle))));
+            }
+
+            .image-links .icon-bundle .gitlab-icon {
+                transform: translate(-50%, -50%) translateX(calc(-1*var(--gitlabShift)*sin(var(--angle)))) translateY(calc(var(--gitlabShift)*cos(var(--angle))));
+            }
         }
 
         /* ---------------------------------------------------------------------------------------------------- NAVIGATION */
@@ -282,10 +340,10 @@
                 margin: 1em auto;
             }
             /* Mobile-specific angle distribution for icon links */
-            .mobile-profile .image-links a:nth-child(1) { --angle: 45deg; }
-            .mobile-profile .image-links a:nth-child(2) { --angle: 15deg; }
-            .mobile-profile .image-links a:nth-child(3) { --angle: -15deg; }
-            .mobile-profile .image-links a:nth-child(4) { --angle: -45deg; }
+            .mobile-profile .image-links > *:nth-child(1) { --angle: 45deg; }
+            .mobile-profile .image-links > *:nth-child(2) { --angle: 15deg; }
+            .mobile-profile .image-links > *:nth-child(3) { --angle: -15deg; }
+            .mobile-profile .image-links > *:nth-child(4) { --angle: -45deg; }
             header, section, footer {
                 margin-left: 5%;
                 margin-right: 5%;
@@ -315,9 +373,14 @@
             <a href="https://www.researchgate.net/profile/Guram-Mikaberidze" target="_blank">
                 <img src="icon_researchgate.png" alt="ResearchGate Logo">
             </a>
-            <a href="https://gitlab.com/mikaberidze" target="_blank">
-                <img src="icon_gitlab.png" alt="Gitlab Logo">
-            </a>
+            <div class="icon-bundle">
+                <a class="gitlab-icon" href="https://gitlab.com/mikaberidze" target="_blank">
+                    <img src="icon_gitlab.png" alt="GitLab Logo">
+                </a>
+                <a class="github-icon" href="https://github.com/mikaberidze" target="_blank">
+                    <img src="icon_github.png" alt="GitHub Logo">
+                </a>
+            </div>
             <a href="https://orcid.org/0000-0001-6776-3481" target="_blank">
                 <img src="icon_orchid.png" alt="Gitlab Logo">
             </a>
@@ -338,9 +401,14 @@
             <a href="https://www.researchgate.net/profile/Guram-Mikaberidze" target="_blank">
                 <img src="icon_researchgate.png" alt="ResearchGate Logo">
             </a>
-            <a href="https://gitlab.com/mikaberidze" target="_blank">
-                <img src="icon_gitlab.png" alt="Gitlab Logo">
-            </a>
+            <div class="icon-bundle">
+                <a class="gitlab-icon" href="https://gitlab.com/mikaberidze" target="_blank">
+                    <img src="icon_gitlab.png" alt="GitLab Logo">
+                </a>
+                <a class="github-icon" href="https://github.com/mikaberidze" target="_blank">
+                    <img src="icon_github.png" alt="GitHub Logo">
+                </a>
+            </div>
             <!-- <a href="https://www.linkedin.com/in/guram-mikaberidze-7914538a/" target="_blank">
                 <img src="icon_linkedin.png" alt="Gitlab Logo">
             </a> -->
@@ -403,7 +471,11 @@
                 This structure emerges purely from optimization and admits surprizingly precise and general analytical treatment.
             </li>
             <li>
-                Collaborator: <b>Dane Taylor</b>.
+                <cite>
+                    <b>Mikaberidze, G.</b> and Taylor, D., 2025. Emergent topology of optimal networks for synchrony. <em>arXiv preprint arXiv:2509.18279</em>.
+                    <a href="https://gitlab.com/mikaberidze/network-optimization-for-synchrony" target="_blank">
+                    Project code</a> is available on GitLab, <a href="https://arxiv.org/abs/2509.18279" target="_blank">preprint</a> on arXiv.
+                </cite>
             </li>
         </ul>
 
@@ -469,7 +541,7 @@
                 </cite>
                 <br>
                 <a href="https://gitlab.com/mikaberidze/consensus-formation-among-mobile-agents-in-networks-of-heterogeneous-interaction-venues" target="_blank">
-                Project code</a> is available on GitLab, <a href="https://arxiv.org/abs/2310.09096" target="_blank">preprint</a> in on arXiv.
+                Project code</a> is available on GitLab, <a href="https://arxiv.org/abs/2310.09096" target="_blank">preprint</a> on arXiv.
             </li>
         </ul>
 
@@ -719,7 +791,7 @@
         const connectionDistance = 5*70;
 
         const dotSize = 10;
-        const edgeWidth = 2.5;
+        const edgeWidth = 5;
 
         const gravity = 0.; // Adjust this value to increase/decrease the strength of gravity
 
@@ -882,7 +954,7 @@
                 ctx.beginPath();
                 ctx.moveTo(mainCenter.x, mainCenter.y);
                 ctx.lineTo(endX, endY);
-                ctx.lineWidth = 1;
+                ctx.lineWidth = 2;
                 ctx.strokeStyle = lineColor;
                 ctx.stroke();
             });
@@ -951,6 +1023,86 @@
         document.addEventListener("DOMContentLoaded", () => {
             drawEdges();
             window.addEventListener('resize', drawEdges);
+
+            let edgeAnimationId = null;
+            let edgeAnimationUntil = 0;
+            const pulseEdges = (duration = 240) => {
+                const now = performance.now ? performance.now() : Date.now();
+                edgeAnimationUntil = Math.max(edgeAnimationUntil, now + duration);
+                if (edgeAnimationId) {
+                    return;
+                }
+                const step = (timestamp) => {
+                    drawEdges();
+                    const current = timestamp ?? (performance.now ? performance.now() : Date.now());
+                    if (current < edgeAnimationUntil) {
+                        edgeAnimationId = requestAnimationFrame(step);
+                    } else {
+                        edgeAnimationId = null;
+                    }
+                };
+                edgeAnimationId = requestAnimationFrame(step);
+            };
+
+            const queueEdgeFollow = () => pulseEdges(260);
+            [...desktopLinkImages, ...mobileLinkImages].forEach(link => {
+                ['mouseenter', 'mouseleave', 'focus', 'blur'].forEach(evt => {
+                    link.addEventListener(evt, queueEdgeFollow);
+                });
+            });
+
+            document.querySelectorAll('.icon-bundle').forEach(bundle => {
+                const activeTargets = new Set();
+                let collapseTimeout = null;
+                const ensureBundleActive = () => {
+                    if (collapseTimeout) {
+                        clearTimeout(collapseTimeout);
+                        collapseTimeout = null;
+                    }
+                    if (!bundle.classList.contains('bundle-active')) {
+                        bundle.classList.add('bundle-active');
+                    }
+                };
+                const scheduleBundleCollapse = () => {
+                    if (collapseTimeout) {
+                        return;
+                    }
+                    collapseTimeout = setTimeout(() => {
+                        collapseTimeout = null;
+                        if (activeTargets.size === 0) {
+                            bundle.classList.remove('bundle-active');
+                            queueEdgeFollow();
+                        }
+                    }, 120);
+                };
+                const activate = (target) => {
+                    activeTargets.add(target);
+                    ensureBundleActive();
+                    queueEdgeFollow();
+                };
+                const deactivate = (target) => {
+                    activeTargets.delete(target);
+                    queueEdgeFollow();
+                    if (activeTargets.size === 0) {
+                        scheduleBundleCollapse();
+                    }
+                };
+                const bindPointer = (node) => {
+                    node.addEventListener('mouseenter', () => activate(node));
+                    node.addEventListener('mouseleave', () => deactivate(node));
+                };
+
+                bindPointer(bundle);
+                bundle.addEventListener('focusin', () => activate(bundle));
+                bundle.addEventListener('focusout', () => deactivate(bundle));
+
+                bundle.querySelectorAll('a').forEach(anchor => {
+                    bindPointer(anchor);
+                    anchor.addEventListener('focus', () => activate(anchor));
+                    anchor.addEventListener('blur', () => deactivate(anchor));
+                    anchor.addEventListener('transitionend', queueEdgeFollow);
+                });
+            });
 
             // add click listeners to menu items
             document.querySelectorAll('.menu-item').forEach(item => {
