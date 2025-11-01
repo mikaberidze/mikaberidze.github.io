@@ -226,6 +226,16 @@
           <div class="muted" id="sidebarHint">Click a node or edge to see facts within the selected range.</div>
           <!-- Browse panel shown when no selection is active -->
           <div id="browsePanel" style="display:none;">
+            <div class="charts">
+              <div class="chart-block">
+                <div class="chart-title">All character facts (darker: introductions; lighter: the rest)</div>
+                <div id="browseCharHist" class="chart-area" aria-label="All character facts histogram"></div>
+              </div>
+              <div class="chart-block">
+                <div class="chart-title">All interaction facts (darker: introductions; lighter: the rest)</div>
+                <div id="browseInterHist" class="chart-area" aria-label="All interaction facts histogram"></div>
+              </div>
+            </div>
             <div class="muted" id="browseStatus"></div>
             <ul class="event-list" id="browseList"></ul>
           </div>
@@ -251,7 +261,7 @@
           <div id="viewRels" class="tab-view" role="tabpanel" aria-labelledby="tabRels">
             <div class="charts">
               <div class="chart-block">
-                <div class="chart-title">Interactions</div>
+                <div class="chart-title">Interactions (darker: introductions; lighter: the rest)</div>
                 <div id="charInterHist" class="chart-area" aria-label="Character interactions histogram"></div>
               </div>
             </div>

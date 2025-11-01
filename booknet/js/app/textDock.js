@@ -87,6 +87,7 @@ export function createTextDockController({
     } catch {}
   }
 
+
   // --- Book metadata label in toolbar ---
   function updateBookMeta(text) {
     if (!textMeta) return;
@@ -132,17 +133,33 @@ export function createTextDockController({
 
   function sendActiveChunkToTextDock() {
     if (!textFrame || !textFrame.contentWindow) return;
-    const chunk = Number(textFrame.dataset.currentChunk || 0);
-    if (!Number.isFinite(chunk) || chunk < 1) return;
+    const raw = String(textFrame.dataset.highlightChunks || '');
+    const chunks = raw
+      .split(',')
+      .map((part) => Number(part.trim()))
+      .filter((n) => Number.isFinite(n) && n > 0)
+      .sort((a, b) => a - b);
+    if (!chunks.length) return;
+    const anchorRaw = Number(textFrame.dataset.currentChunk || chunks[0]);
+    const anchor = Number.isFinite(anchorRaw) && anchorRaw > 0 ? anchorRaw : chunks[0];
+    const payload = { chunks, anchor };
+    const scrollPref = textFrame.dataset.nextScroll;
+    if (scrollPref === '0') payload.scroll = false;
+    else payload.scroll = true;
+    const behavior = textFrame.dataset.nextScrollBehavior;
+    if (behavior) payload.behavior = behavior;
     try {
       textFrame.contentWindow.postMessage({
-        type: 'booknet:setActiveChunk',
-        payload: { chunk },
+        type: 'booknet:setActiveChunks',
+        payload,
       }, '*');
     } catch {}
   }
 
   function sendClearActiveChunkToTextDock() {
+    if (textFrame) {
+      textFrame.dataset.highlightChunks = '';
+    }
     if (!textFrame || !textFrame.contentWindow) return;
     try {
       textFrame.contentWindow.postMessage({ type: 'booknet:clearActiveChunk' }, '*');
@@ -162,12 +179,59 @@ export function createTextDockController({
   }
 
   function openTextDock(chunkId, options = {}) {
-    const { setActiveChunk = true, scroll = true } = options;
+    const fallback = Number((state.base || 0) + (state.startChunk || 0));
+    const defaultChunk = Number.isFinite(fallback) && fallback > 0 ? fallback : 1;
+    const request = (() => {
+      const result = {
+        anchorChunk: defaultChunk,
+        highlightChunks: [],
+        setActiveChunk: options.setActiveChunk !== false,
+        scroll: options.scroll !== false,
+      };
+      if (typeof chunkId === 'number' && Number.isFinite(chunkId) && chunkId > 0) {
+        result.anchorChunk = Number(chunkId);
+      } else if (chunkId && typeof chunkId === 'object') {
+        const candidate = Number(chunkId.anchorChunk ?? chunkId.anchor ?? chunkId.chunk ?? chunkId.chunkId);
+        if (Number.isFinite(candidate) && candidate > 0) result.anchorChunk = candidate;
+        const arr = Array.isArray(chunkId.highlightChunks)
+          ? chunkId.highlightChunks
+          : (Array.isArray(chunkId.chunks) ? chunkId.chunks : []);
+        if (arr.length) {
+          result.highlightChunks = arr
+            .map((n) => Number(n))
+            .filter((n) => Number.isFinite(n) && n > 0);
+        } else if (Number.isFinite(Number(chunkId.chunk))) {
+          const single = Number(chunkId.chunk);
+          if (single > 0) result.highlightChunks = [single];
+        }
+        if (chunkId.setActiveChunk != null) result.setActiveChunk = !!chunkId.setActiveChunk;
+        if (chunkId.scroll != null) result.scroll = !!chunkId.scroll;
+      }
+      if (options.highlightChunks && Array.isArray(options.highlightChunks)) {
+        result.highlightChunks = options.highlightChunks
+          .map((n) => Number(n))
+          .filter((n) => Number.isFinite(n) && n > 0);
+      }
+      result.highlightChunks = Array.from(new Set(result.highlightChunks)).sort((a, b) => a - b);
+      if (result.setActiveChunk && !result.highlightChunks.length) {
+        if (Number.isFinite(result.anchorChunk) && result.anchorChunk > 0) {
+          result.highlightChunks = [result.anchorChunk];
+        } else {
+          result.setActiveChunk = false;
+        }
+      }
+      if (!Number.isFinite(result.anchorChunk) || result.anchorChunk <= 0) {
+        result.anchorChunk = defaultChunk;
+      }
+      if (!Number.isFinite(result.anchorChunk) || result.anchorChunk <= 0) {
+        result.anchorChunk = 1;
+      }
+      return result;
+    })();
+    const { anchorChunk, highlightChunks, setActiveChunk, scroll } = request;
     const fallbackChunk = Number((state.base || 0) + (state.startChunk || 0));
-    const requestedChunk = Number(chunkId);
-    const chunk = Number.isFinite(requestedChunk) && requestedChunk > 0
-      ? requestedChunk
-      : (Number.isFinite(fallbackChunk) && fallbackChunk > 0 ? fallbackChunk : 1);
+    const fallbackScrollChunk = Number.isFinite(fallbackChunk) && fallbackChunk > 0 ? fallbackChunk : 1;
+    const chunk = Number.isFinite(anchorChunk) && anchorChunk > 0 ? anchorChunk : fallbackScrollChunk;
     const url = getTextViewerUrl(chunk, { noHighlight: !setActiveChunk, noScroll: !scroll });
     if (!url) return;
 
@@ -179,6 +243,11 @@ export function createTextDockController({
     const desiredSrc = String(state.data?.sourceName || '');
     const currentSrc = textFrame.dataset.currentSrc || '';
     textFrame.dataset.currentChunk = String(chunk);
+    textFrame.dataset.highlightChunks = setActiveChunk && highlightChunks.length
+      ? highlightChunks.join(',')
+      : '';
+    textFrame.dataset.nextScroll = scroll ? '1' : '0';
+    textFrame.dataset.nextScrollBehavior = '';
 
     if (!textFrame.dataset.currentUrl || currentSrc !== desiredSrc) {
       textFrame.src = url;
@@ -188,7 +257,7 @@ export function createTextDockController({
       textFrame.dataset.suppressNextScroll = scroll ? '' : '1';
     } else {
       try { sendRangeToTextDock(); } catch {}
-      if (setActiveChunk) {
+      if (setActiveChunk && highlightChunks.length) {
         try { sendActiveChunkToTextDock(); } catch {}
       } else {
         try { sendClearActiveChunkToTextDock(); } catch {}

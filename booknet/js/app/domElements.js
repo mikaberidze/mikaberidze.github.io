@@ -18,6 +18,8 @@ export function collectDomElements() {
     browsePanel: document.getElementById('browsePanel'),
     browseStatus: document.getElementById('browseStatus'),
     browseList: document.getElementById('browseList'),
+    browseCharHistEl: document.getElementById('browseCharHist'),
+    browseInterHistEl: document.getElementById('browseInterHist'),
     charPanel: document.getElementById('charPanel'),
     charHeader: document.getElementById('charHeader'),
     charSummary: document.getElementById('charSummary'),

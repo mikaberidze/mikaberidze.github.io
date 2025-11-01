@@ -96,6 +96,7 @@
       const state = {
         src: '',
         chunkEls: [],
+        activeChunks: new Set(),
         activeChunk: null,
         activeRange: { start: 1, end: Infinity },
         zoomPct: 100,
@@ -298,23 +299,55 @@
         }
       }
 
-      function setActiveChunk(idx, options = {}) {
+      function clearActiveChunks() {
         if (!state.chunkEls.length) return;
-        const target = clampChunk(idx);
-        if (state.activeChunk && state.activeChunk !== target) {
-          const prevEl = state.chunkEls[state.activeChunk - 1];
-          if (prevEl) prevEl.classList.remove('highlight');
+        if (state.activeChunks instanceof Set) {
+          for (const idx of state.activeChunks) {
+            const el = state.chunkEls[idx - 1];
+            if (el) el.classList.remove('highlight');
+          }
         }
-        const el = state.chunkEls[target - 1];
-        if (!el) return;
-        el.classList.add('highlight');
-        if (options.scroll !== false) {
-          scheduleScrollToChunk(target, options.behavior || 'smooth');
-        }
-        state.activeChunk = target;
-        rememberChunk(state.src, target);
-        // Ensure highlight isn’t dimmed
+        state.activeChunks = new Set();
+        state.activeChunk = null;
         applyRangeDim();
+      }
+
+      function setActiveChunks(list, options = {}) {
+        if (!state.chunkEls.length) return;
+        const normalized = Array.from(new Set(
+          (Array.isArray(list) ? list : [list])
+            .map((n) => Number(n))
+            .filter((n) => Number.isFinite(n) && n >= 1 && n <= state.chunkEls.length)
+        )).sort((a, b) => a - b);
+        if (!normalized.length) {
+          clearActiveChunks();
+          return;
+        }
+        const nextSet = new Set(normalized);
+        if (state.activeChunks instanceof Set) {
+          for (const idx of state.activeChunks) {
+            if (!nextSet.has(idx)) {
+              const prevEl = state.chunkEls[idx - 1];
+              if (prevEl) prevEl.classList.remove('highlight');
+            }
+          }
+        }
+        for (const idx of nextSet) {
+          const el = state.chunkEls[idx - 1];
+          if (el) el.classList.add('highlight');
+        }
+        state.activeChunks = nextSet;
+        const primary = normalized[0];
+        state.activeChunk = primary ?? null;
+        if (options.scroll !== false && primary != null) {
+          scheduleScrollToChunk(primary, options.behavior || 'smooth');
+        }
+        if (primary != null) rememberChunk(state.src, primary);
+        applyRangeDim();
+      }
+
+      function setActiveChunk(idx, options = {}) {
+        setActiveChunks([idx], options);
       }
 
       function setActiveRange(start, end) {
@@ -415,32 +448,40 @@
       window.addEventListener('message', (ev) => {
         const data = ev?.data;
         if (!data || !data.type) return;
+        const payload = data?.payload || {};
         if (data.type === 'booknet:setRange') {
-          const start = data?.payload?.start;
-          const end = data?.payload?.end;
+          const start = payload.start;
+          const end = payload.end;
           setActiveRange(start, end);
           return;
         }
         if (data.type === 'booknet:setZoomPct') {
-          const pct = data?.payload?.pct;
+          const pct = payload.pct;
           applyZoomPct(pct);
           return;
         }
+        if (data.type === 'booknet:setActiveChunks') {
+          const chunks = payload.chunks;
+          const opts = {};
+          if (payload.scroll === false) opts.scroll = false;
+          if (payload.behavior) opts.behavior = payload.behavior;
+          if (Array.isArray(chunks)) setActiveChunks(chunks, opts);
+          return;
+        }
         if (data.type === 'booknet:setActiveChunk') {
-          const chunk = Number(data?.payload?.chunk);
-          if (Number.isFinite(chunk) && chunk > 0) setActiveChunk(chunk, { scroll: true, behavior: 'smooth' });
+          const chunk = Number(payload.chunk);
+          const opts = {};
+          if (payload.scroll === false) opts.scroll = false;
+          if (payload.behavior) opts.behavior = payload.behavior;
+          if (Number.isFinite(chunk) && chunk > 0) setActiveChunks([chunk], opts);
           return;
         }
         if (data.type === 'booknet:clearActiveChunk') {
-          if (state.activeChunk != null) {
-            const prevEl = state.chunkEls[state.activeChunk - 1];
-            if (prevEl) prevEl.classList.remove('highlight');
-            state.activeChunk = null;
-          }
+          clearActiveChunks();
           return;
         }
         if (data.type === 'booknet:scrollToChunk') {
-          const chunk = Number(data?.payload?.chunk);
+          const chunk = Number(payload.chunk);
           const target = clampChunk(chunk);
           scheduleScrollToChunk(target, 'smooth');
           return;

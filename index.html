@@ -23,7 +23,9 @@
             top: calc(var(--panelWidth)/4);
             left: calc(var(--panelWidth)/4);
             width: var(--panelWidth);
-            height: calc(100%-200px);
+            height: calc(100% - 200px);
+            /* Ensure the whole panel and its children (icons) stay above the page content */
+            z-index: 10;
         }
 
         .mobile-profile {
@@ -83,9 +85,19 @@
             left: 0;
             width: 100%;
             height: 100%;
+            /* Keep icons above menu/content so pointer events reach them */
+            z-index: 6;
+            /* Let clicks fall through unless on the icons themselves */
+            pointer-events: none;
             --iconSize: calc(var(--panelWidth)*40/200);
             --iconHitbox: calc(var(--panelWidth)*60/200);
             --iconShift: calc(var(--panelWidth)*10/200);
+        }
+
+        /* Re-enable interaction for the actual icon targets and the bundle hitbox */
+        .image-links .icon-bundle,
+        .image-links a {
+            pointer-events: auto;
         }
 
         .image-links > * {
@@ -140,6 +152,15 @@
             overflow: visible;
             --githubShift: var(--iconShift);
             --gitlabShift: calc(var(--iconShift) + var(--iconSize) * 1.15);
+        }
+
+        /* Expand the interactive hitbox only while active/hovered so the
+           pointer can travel to the expanded GitLab icon without dropping hover */
+        .image-links > .icon-bundle:hover,
+        .image-links > .icon-bundle.bundle-active,
+        .image-links > .icon-bundle:focus-within {
+            width: calc(var(--gitlabShift) + var(--gitlabShift) + var(--iconSize));
+            height: calc(var(--gitlabShift) + var(--gitlabShift) + var(--iconSize));
         }
 
         .icon-bundle a {
@@ -1073,7 +1094,7 @@
                             bundle.classList.remove('bundle-active');
                             queueEdgeFollow();
                         }
-                    }, 120);
+                    }, 0);
                 };
                 const activate = (target) => {
                     activeTargets.add(target);

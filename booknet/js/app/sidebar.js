@@ -15,8 +15,10 @@ import {
 } from '../domGraph.js';
 import {
   renderHistogram,
+  renderStackedHistogram,
   renderSentimentLine,
   computeHistogramBinsFromFacts,
+  computeStackedBinsFromFacts,
   collectInteractionFactsForChar,
 } from './charts.js';
 import { state } from './state.js';
@@ -28,6 +30,8 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
     browsePanel,
     browseStatus,
     browseList,
+    browseCharHistEl,
+    browseInterHistEl,
     charPanel,
     charHeader,
     charSummary,
@@ -133,6 +137,35 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
     };
   }
 
+  function activateChunks(chunks, ev, opts = {}) {
+    if (!openTextDock || !state?.data?.sourceName) return;
+    const list = Array.isArray(chunks) ? chunks : [chunks];
+    const unique = Array.from(new Set(list
+      .map((n) => Number(n))
+      .filter((n) => Number.isFinite(n) && n > 0)
+    )).sort((a, b) => a - b);
+    if (!unique.length) return;
+    if (ev && (ev.metaKey || ev.ctrlKey)) {
+      const url = getTextViewerUrl?.(unique[0]);
+      if (url) window.open(url, '_blank');
+      return;
+    }
+    openTextDock({
+      anchorChunk: unique[0],
+      highlightChunks: unique,
+      scroll: opts.scroll !== false,
+    });
+  }
+
+  function handleHistogramActivate(binInfo, ev) {
+    if (!binInfo) return;
+    const chunks = Array.isArray(binInfo.chunkIds) && binInfo.chunkIds.length
+      ? binInfo.chunkIds
+      : Array.isArray(binInfo.meta?.chunkIds) ? binInfo.meta.chunkIds : [];
+    if (!chunks.length) return;
+    activateChunks(chunks, ev);
+  }
+
   function clearNodeHighlights() {
     if (!dom || !dom.nodes) return;
     for (const entry of dom.nodes.values()) {
@@ -147,10 +180,13 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
     const title = document.createElement('div');
     title.textContent = titleText || '';
     li.appendChild(title);
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.textContent = metaText || '';
-    li.appendChild(meta);
+    const metaTxt = (metaText == null ? '' : String(metaText)).trim();
+    if (metaTxt) {
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = metaTxt;
+      li.appendChild(meta);
+    }
     li.addEventListener('mousemove', (e) => {
       tooltip.textContent = hoverText || '';
       tooltip.style.opacity = '1';
@@ -161,7 +197,7 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
       tooltip.style.opacity = '0';
       press.cancel(true);
     });
-    if (state.data && state.data.sourceName && typeof chunkId === 'number') {
+    if (state.data && state.data.sourceName && Number.isFinite(Number(chunkId))) {
       li.style.cursor = 'pointer';
       li.addEventListener('click', (ev) => {
         if (press.shouldSuppressClick()) {
@@ -171,12 +207,7 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
           return;
         }
         ev.stopPropagation();
-        if (ev.metaKey || ev.ctrlKey) {
-          const url = getTextViewerUrl?.(chunkId);
-          if (url) window.open(url, '_blank');
-          return;
-        }
-        openTextDock?.(chunkId);
+        activateChunks([chunkId], ev);
       });
     }
     listEl.appendChild(li);
@@ -219,6 +250,7 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
       charSummary.textContent = summaryText;
       charSummary.style.display = summaryText ? 'block' : 'none';
     }
+    const canActivateChunks = Boolean(state?.data?.sourceName);
     ensureTabs();
     if (!viewFacts.classList.contains('active') && !viewRels.classList.contains('active')) {
       tabFacts?.setAttribute('aria-selected', 'true');
@@ -228,23 +260,33 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
     }
 
     if (charFactHistEl || charInterHistEl) {
-      const { bins: charBins } = computeHistogramBinsFromFacts(factsInRangeChar(ch, startChunk, chunk), startChunk, chunk, 20);
+      const { bins: charBins, binMeta: charBinMeta } = computeHistogramBinsFromFacts(factsInRangeChar(ch, startChunk, chunk), startChunk, chunk, 20);
       if (charFactHistEl) {
         renderHistogram(charFactHistEl, charBins, {
           color: '#3b82f6',
           xStartPct: (S / Math.max(1, state.N)) * 100,
           xEndPct: (E / Math.max(1, state.N)) * 100,
           xLabel: 'Book progress',
+          binMeta: charBinMeta,
+          onBinActivate: canActivateChunks ? handleHistogramActivate : null,
         });
       }
       const interFacts = collectInteractionFactsForChar(data.interactions || [], ch.id, startChunk, chunk);
-      const { bins: interBins } = computeHistogramBinsFromFacts(interFacts, startChunk, chunk, 20);
+      // Build stacked bins for interactions: introductions (darker) + the rest (lighter)
+      const isInterIntro = (f) => String(f?.text || '').toLowerCase() === 'interaction introduced';
+      const {
+        introBins: interIntroBins,
+        otherBins: interOtherBins,
+        binMeta: interStackMeta,
+      } = computeStackedBinsFromFacts(interFacts, startChunk, chunk, 20, isInterIntro);
       if (charInterHistEl) {
-        renderHistogram(charInterHistEl, interBins, {
+        renderStackedHistogram(charInterHistEl, interIntroBins, interOtherBins, {
           color: '#6366f1',
           xStartPct: (S / Math.max(1, state.N)) * 100,
           xEndPct: (E / Math.max(1, state.N)) * 100,
           xLabel: 'Book progress',
+          binMeta: interStackMeta,
+          onBinActivate: canActivateChunks ? handleHistogramActivate : null,
         });
       }
     }
@@ -261,7 +303,7 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
       for (const f of facts) {
         appendEventItem(eventList, {
           titleText: `[${f.fact_id}] ${f.text}`,
-          metaText: ch.name,
+          metaText: '',
           hoverText: `Argument: ${f.argument || ''} (chunk ${f.chunk_id ?? '?'})`,
           chunkId: f.chunk_id,
         });
@@ -307,7 +349,7 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
         li.appendChild(title);
         const meta = document.createElement('div');
         meta.className = 'meta';
-        meta.textContent = `weight ${r.weight} • sentiment ${Number(r.score).toFixed(2)}`;
+        meta.textContent = `facts ${r.weight} • sentiment ${Number(r.score).toFixed(2)}`;
         li.appendChild(meta);
         const press = installLongPressTooltip(li, () => r.summary || '');
         li.addEventListener('mousemove', (e) => {
@@ -352,6 +394,7 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
     if (browsePanel) browsePanel.style.display = 'none';
     if (charPanel) charPanel.style.display = 'none';
     if (interPanel) interPanel.style.display = 'block';
+    const canActivateChunks = Boolean(state?.data?.sourceName);
     const rel = getCurrentRel(inter, (chunk || 0) - 1);
     if (interSummary) {
       const relText = rel?.text || '';
@@ -361,13 +404,15 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
 
     if (interFactHistEl || interSentChartEl) {
       const factsForHist = factsInRangeInter(inter, startChunk, chunk);
-      const { bins } = computeHistogramBinsFromFacts(factsForHist, startChunk, chunk, 20);
+      const { bins, binMeta } = computeHistogramBinsFromFacts(factsForHist, startChunk, chunk, 20);
       if (interFactHistEl) {
         renderHistogram(interFactHistEl, bins, {
           color: '#f59e0b',
           xStartPct: (S / Math.max(1, state.N)) * 100,
           xEndPct: (E / Math.max(1, state.N)) * 100,
           xLabel: 'Book progress',
+          binMeta,
+          onBinActivate: canActivateChunks ? handleHistogramActivate : null,
         });
       }
 
@@ -475,9 +520,12 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
     if (interEventList) {
       interEventList.innerHTML = '';
       for (const f of facts) {
+        const c = Number(f?.chunk_id);
+        const upTo = Number.isFinite(c) ? c : Math.max(0, (chunk || 0) - 1);
+        const after = getCurrentRel(inter, upTo);
         appendEventItem(interEventList, {
           titleText: `[${f.fact_id}] ${f.text}`,
-          metaText: `${inter.a_name} • ${inter.b_name}`,
+          metaText: `Sentiment: ${Number(after?.score || 0).toFixed(2)}`,
           hoverText: `Evidence: ${f.evidence || ''} (chunk ${f.chunk_id ?? '?'})`,
           chunkId: f.chunk_id,
         });
@@ -494,6 +542,54 @@ export function createSidebarRenderer({ elements, navigateTo, openTextDock, getT
     if (sidebarTitle) sidebarTitle.textContent = 'Active Characters';
     if (browsePanel) browsePanel.style.display = 'block';
     if (browseList) browseList.innerHTML = '';
+    const canActivateChunks = Boolean(state?.data?.sourceName);
+
+    // Top stacked histograms: all character facts and all interaction facts
+    try {
+      const allCharFacts = [];
+      for (const ch of (data.characters || [])) {
+        const facts = factsInRangeChar(ch, startChunk, chunk);
+        for (const f of facts) allCharFacts.push(f);
+      }
+      const isCharIntro = (f) => String(f?.text || '').toLowerCase() === 'character introduced';
+      const {
+        introBins: charIntroBins,
+        otherBins: charOtherBins,
+        binMeta: charStackMeta,
+      } = computeStackedBinsFromFacts(allCharFacts, startChunk, chunk, 20, isCharIntro);
+      if (browseCharHistEl) {
+        renderStackedHistogram(browseCharHistEl, charIntroBins, charOtherBins, {
+          color: '#3b82f6',
+          xStartPct: (S / Math.max(1, state.N)) * 100,
+          xEndPct: (E / Math.max(1, state.N)) * 100,
+          xLabel: 'Book progress',
+          binMeta: charStackMeta,
+          onBinActivate: canActivateChunks ? handleHistogramActivate : null,
+        });
+      }
+
+      const allInterFacts = [];
+      for (const inter of (data.interactions || [])) {
+        const facts = factsInRangeInter(inter, startChunk, chunk);
+        for (const f of facts) allInterFacts.push(f);
+      }
+      const isInterIntro = (f) => String(f?.text || '').toLowerCase() === 'interaction introduced';
+      const {
+        introBins: interIntroBins,
+        otherBins: interOtherBins,
+        binMeta: interStackMeta,
+      } = computeStackedBinsFromFacts(allInterFacts, startChunk, chunk, 20, isInterIntro);
+      if (browseInterHistEl) {
+        renderStackedHistogram(browseInterHistEl, interIntroBins, interOtherBins, {
+          color: '#6366f1',
+          xStartPct: (S / Math.max(1, state.N)) * 100,
+          xEndPct: (E / Math.max(1, state.N)) * 100,
+          xLabel: 'Book progress',
+          binMeta: interStackMeta,
+          onBinActivate: canActivateChunks ? handleHistogramActivate : null,
+        });
+      }
+    } catch {}
 
     const endInclusive = Math.max(startChunk, (chunk || 0) - 1);
     const items = [];
