@@ -36,7 +36,8 @@
                   radial-gradient(circle at 80% 10%, rgba(255, 107, 107, 0.08), transparent 28%),
                   linear-gradient(135deg, #050c1d 0%, #071024 40%, #060c1f 100%);
       font-family: var(--font);
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
 
     h1, h2, h3, p {
@@ -49,7 +50,7 @@
       flex-direction: column;
       gap: 12px;
       max-width: 1400px;
-      height: 100vh;
+      min-height: 100vh;
       margin: 0 auto;
       box-sizing: border-box;
     }
@@ -203,7 +204,7 @@
 
     .visuals {
       display: grid;
-      grid-template-rows: minmax(0, 0.55fr) minmax(0, 0.45fr);
+      grid-template-rows: repeat(2, minmax(260px, auto));
       gap: 10px;
       min-height: 0;
     }
@@ -221,7 +222,7 @@
       border-radius: var(--radius);
       position: relative;
       overflow: hidden;
-      min-height: 200px;
+      min-height: 260px;
       box-shadow: var(--shadow);
     }
 
@@ -234,8 +235,8 @@
 
     .card h3 {
       position: absolute;
-      left: 12px;
-      top: 10px;
+      left: 16px;
+      top: 12px;
       font-size: 14px;
       font-weight: 700;
       letter-spacing: 0.02em;
@@ -245,8 +246,8 @@
 
     .legend {
       position: absolute;
-      right: 12px;
-      top: 10px;
+      right: 16px;
+      top: 12px;
       display: flex;
       gap: 10px;
       font-size: 12px;
@@ -328,9 +329,8 @@
   <div class="page">
     <header>
       <div class="title-block">
-        <h1>Kuramoto model:<span class="equation-inline">\( \dfrac{d\theta_i}{dt} = \omega_i + \dfrac{K}{\langle k \rangle} \sum_{j} A_{ij}\,\sin(\theta_j - \theta_i) \)</span></h1>
+        <h1>Kuramoto model:<span class="equation-inline">\( \dfrac{d\theta_i}{dt} = \omega_i + \dfrac{K}{D (N-1)} \sum_{j} A_{ij}\,\sin(\theta_j - \theta_i) \)</span></h1>
       </div>
-      <p class="note header-note">Move the sliders to reshape the network and frequencies.</p>
     </header>
 
     <div class="shell">
@@ -345,7 +345,7 @@
           </div>
           <div class="control">
             <div class="control-header">
-              <span>\( \langle k \rangle /(N-1) \) - density</span>
+              <span>\( D \) - density</span>
               <span class="control-value" id="densityValue"></span>
             </div>
             <input id="density" type="range" min="0" max="1" step="0.01" value="0.05">
@@ -380,7 +380,6 @@
             <strong id="orderValue">--</strong>
             <span>Critical K<sub>c</sub> ≈ <span id="kcValue">--</span></span>
           </div>
-          <p class="note">The graph uses a quick force sketch for the spring layout. Satellites orbit each node to show its instantaneous phase.</p>
         </div>
       </div>
 
@@ -397,7 +396,7 @@
             <canvas id="circleCanvas"></canvas>
           </div>
         </div>
-        <div class="card" style="min-height: 200px;">
+        <div class="card">
           <canvas id="phaseCanvas"></canvas>
         </div>
       </div>
@@ -425,16 +424,27 @@
     const rootStyles = getComputedStyle(document.documentElement);
     const springBgColor = rootStyles.getPropertyValue('--panel') || rootStyles.getPropertyValue('--bg') || '#050c1d';
 
+    const maxNetworkSize = parseInt(sizeInput.max, 10) || parseInt(sizeInput.value, 10) || 500;
+    const initialN = Math.min(parseInt(sizeInput.value, 10), maxNetworkSize);
+    const geometry = {
+      maxN: maxNetworkSize,
+      positionSeed: 131071,
+      edgeSeed: 196613,
+      basePositions: { x: new Float32Array(maxNetworkSize), y: new Float32Array(maxNetworkSize) },
+      totalEdges: (maxNetworkSize * (maxNetworkSize - 1)) / 2,
+      hasPositions: false
+    };
+
     const state = {
-      n: parseInt(sizeInput.value, 10),
+      n: initialN,
       density: parseFloat(densityInput.value),
       mean: parseFloat(meanInput.value),
       std: parseFloat(stdInput.value),
       coupling: parseFloat(couplingInput.value),
       adjacency: [],
       degrees: [],
-      phases: new Float64Array(parseInt(sizeInput.value, 10)),
-      freqs: new Float64Array(parseInt(sizeInput.value, 10)),
+      phases: new Float64Array(initialN),
+      freqs: new Float64Array(initialN),
       layout: { x: [], y: [] },
       order: { r: 0, psi: 0 },
       criticalK: 0,
@@ -466,17 +476,58 @@
       return mean + std * z;
     }
 
-    function buildAdjacency(n, p) {
+    function createSeededRng(seed) {
+      let s = seed >>> 0;
+      return () => {
+        s += 0x6D2B79F5;
+        let t = s;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function makeSeed() {
+      return (Math.random() * 0xffffffff) >>> 0 || 1;
+    }
+
+    function generateBasePositions() {
+      const rng = createSeededRng(geometry.positionSeed);
+      const px = geometry.basePositions.x;
+      const py = geometry.basePositions.y;
+      for (let i = 0; i < geometry.maxN; i++) {
+        const r = Math.sqrt(rng());
+        const theta = 2 * Math.PI * rng();
+        px[i] = r * Math.cos(theta);
+        py[i] = r * Math.sin(theta);
+      }
+      geometry.hasPositions = true;
+    }
+
+    function edgeOrderValue(i, j) {
+      const a = i + 1;
+      const b = j + 1;
+      let h = geometry.edgeSeed ^ Math.imul(a, 374761393) ^ Math.imul(b, 668265263);
+      h = Math.imul(h ^ (h >>> 13), 1274126177);
+      h = (h ^ (h >>> 16)) >>> 0;
+      return h / 4294967295;
+    }
+
+    function buildOrderedAdjacency(n, density) {
       const adj = Array.from({ length: n }, () => []);
+      const cutoff = Math.min(1, Math.max(0, density));
+      let edgesIncluded = 0;
       for (let i = 0; i < n; i++) {
         for (let j = i + 1; j < n; j++) {
-          if (Math.random() < p) {
+          const order = edgeOrderValue(i, j);
+          if (order <= cutoff) {
             adj[i].push(j);
             adj[j].push(i);
+            edgesIncluded++;
           }
         }
       }
-      return adj;
+      return { adj, edgesIncluded };
     }
 
     function computeCriticalK() {
@@ -496,14 +547,25 @@
       }
     }
 
-    function rebuildSystem() {
+    function rebuildSystem({ reseedGeometry = false } = {}) {
+      state.n = Math.min(Math.max(1, state.n), geometry.maxN);
+      if (reseedGeometry || !geometry.hasPositions) {
+        if (reseedGeometry) {
+          geometry.positionSeed = makeSeed();
+          geometry.edgeSeed = makeSeed();
+        }
+        generateBasePositions();
+      }
+
       const n = state.n;
       state.phases = new Float64Array(n);
       state.freqs = new Float64Array(n);
       derivatives = new Float64Array(n);
-      state.adjacency = buildAdjacency(n, state.density);
-      state.edgeCount = state.adjacency.reduce((sum, list) => sum + list.length, 0) / 2;
-      state.degrees = state.adjacency.map(list => Math.max(1, list.length));
+
+      const { adj, edgesIncluded } = buildOrderedAdjacency(n, state.density);
+      state.adjacency = adj;
+      state.edgeCount = edgesIncluded;
+      state.degrees = adj.map(list => Math.max(1, list.length));
       state.layout.x = new Float32Array(n);
       state.layout.y = new Float32Array(n);
       resetPhases();
@@ -520,7 +582,8 @@
     }
 
     function applyInputs() {
-      state.n = parseInt(sizeInput.value, 10);
+      const requestedN = parseInt(sizeInput.value, 10);
+      state.n = Math.min(Math.max(1, requestedN || 1), geometry.maxN);
       state.density = parseFloat(densityInput.value);
       state.mean = parseFloat(meanInput.value);
       state.std = parseFloat(stdInput.value);
@@ -543,11 +606,12 @@
     }
 
     function computeLayout() {
-      const n = Math.min(state.n, state.adjacency.length || state.n);
+      const n = Math.min(state.n, geometry.maxN);
       if (!n) return;
       const width = springCanvas.getBoundingClientRect().width;
       const height = springCanvas.getBoundingClientRect().height;
       if (!width || !height) return;
+      if (!geometry.hasPositions) generateBasePositions();
 
       const px = new Float32Array(n);
       const py = new Float32Array(n);
@@ -561,13 +625,8 @@
       const ry = innerH / 2;
 
       for (let i = 0; i < n; i++) {
-        // Random point in unit disc, then scale to ellipse
-        let u = Math.random();
-        let v = Math.random();
-        const r = Math.sqrt(u);
-        const theta = 2 * Math.PI * v;
-        const xUnit = r * Math.cos(theta);
-        const yUnit = r * Math.sin(theta);
+        const xUnit = geometry.basePositions.x[i];
+        const yUnit = geometry.basePositions.y[i];
         px[i] = cx + xUnit * rx;
         py[i] = cy + yUnit * ry;
       }
@@ -752,7 +811,7 @@
       const ctx = phaseCanvas.getContext('2d');
       const { width, height } = phaseCanvas.getBoundingClientRect();
       ctx.clearRect(0, 0, width, height);
-      const pad = 38;
+      const pad = 48;
       const maxK = parseFloat(couplingInput.max);
       const xScale = k => pad + (k / maxK) * (width - 2 * pad);
       const yScale = r => height - pad - r * (height - 2 * pad);
@@ -768,8 +827,17 @@
 
       ctx.fillStyle = 'rgba(255,255,255,0.6)';
       ctx.font = '12px "Avenir Next","Futura","Trebuchet MS",sans-serif';
-      ctx.fillText('r', pad - 16, pad - 12);
-      ctx.fillText('K', width - pad + 10, height - pad + 4);
+      ctx.textAlign = 'center';
+      ctx.fillText('K - coupling strength', width / 2, height - pad + 32);
+
+      ctx.save();
+      ctx.translate(pad - 30, height / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Order parameter', 0, 0);
+      ctx.restore();
+      ctx.textAlign = 'start';
 
       // Grid lines
       ctx.strokeStyle = 'rgba(255,255,255,0.05)';
@@ -906,7 +974,7 @@
 
       rebuildBtn.addEventListener('click', () => {
         applyInputs();
-        rebuildSystem();
+        rebuildSystem({ reseedGeometry: true });
       });
 
       resetBtn.addEventListener('click', () => resetPhases());
