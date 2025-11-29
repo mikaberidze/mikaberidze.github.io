@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kuramoto Playground</title>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    :root {
+      --bg: #050c1d;
+      --panel: #0d1a33;
+      --panel-2: #0b1427;
+      --accent: #5af2c1;
+      --accent-2: #ff6b6b;
+      --muted: #9fb2ff;
+      --grid: rgba(255, 255, 255, 0.06);
+      --text: #e8ecff;
+      --shadow: 0 15px 55px rgba(0, 0, 0, 0.35);
+      --radius: 14px;
+      --font: "Avenir Next", "Futura", "Trebuchet MS", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background: radial-gradient(circle at 20% 20%, rgba(90, 242, 193, 0.08), transparent 30%),
+                  radial-gradient(circle at 80% 10%, rgba(255, 107, 107, 0.08), transparent 28%),
+                  linear-gradient(135deg, #050c1d 0%, #071024 40%, #060c1f 100%);
+      font-family: var(--font);
+      overflow: hidden;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    .page {
+      padding: 12px 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 1400px;
+      height: 100vh;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 8px 4px;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      letter-spacing: 0.02em;
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 700;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) 1fr;
+      gap: 14px;
+      min-height: 0;
+      flex: 1;
+    }
+
+    .panel {
+      background: linear-gradient(145deg, rgba(13, 26, 51, 0.95), rgba(7, 17, 33, 0.95));
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(90, 242, 193, 0.08), rgba(255, 107, 107, 0.08));
+      opacity: 0.4;
+      filter: blur(40px);
+      z-index: 0;
+    }
+
+    .panel > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .control {
+      background: var(--panel-2);
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 0.01em;
+      margin-bottom: 6px;
+    }
+
+    .control-value {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      min-width: 48px;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, rgba(90, 242, 193, 0.7), rgba(159, 178, 255, 0.7));
+      border-radius: 10px;
+      outline: none;
+      margin: 6px 0 2px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text);
+      border: 2px solid var(--accent);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text);
+      border: 2px solid var(--accent);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    button {
+      background: linear-gradient(135deg, rgba(90, 242, 193, 0.8), rgba(159, 178, 255, 0.7));
+      color: #041024;
+      border: none;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    button.secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 22px rgba(0, 0, 0, 0.3);
+    }
+
+    .visuals {
+      display: grid;
+      grid-template-rows: minmax(0, 0.55fr) minmax(0, 0.45fr);
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .visual-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .card {
+      background: rgba(10, 20, 38, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: var(--radius);
+      position: relative;
+      overflow: hidden;
+      min-height: 200px;
+      box-shadow: var(--shadow);
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .card h3 {
+      position: absolute;
+      left: 12px;
+      top: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+      z-index: 2;
+    }
+
+    .legend {
+      position: absolute;
+      right: 12px;
+      top: 10px;
+      display: flex;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+      z-index: 2;
+      align-items: center;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .status {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status strong {
+      color: var(--accent);
+      font-size: 18px;
+    }
+
+    .note {
+      font-size: 12px;
+      color: rgba(232, 236, 255, 0.75);
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    .header-note {
+      margin-left: auto;
+      max-width: 260px;
+      text-align: right;
+    }
+
+    .equation-inline {
+      font-size: 0.75em;
+      font-weight: 600;
+      color: var(--text);
+      margin-left: 6px;
+      display: inline-block;
+    }
+
+    .title-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    @media (max-width: 960px) {
+      body {
+        overflow: auto;
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .shell {
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+      .visuals {
+        min-height: 600px;
+      }
+      .visual-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+  <body>
+  <div class="page">
+    <header>
+      <div class="title-block">
+        <h1>Kuramoto model:<span class="equation-inline">\( \dfrac{d\theta_i}{dt} = \omega_i + \dfrac{K}{\langle k \rangle} \sum_{j} A_{ij}\,\sin(\theta_j - \theta_i) \)</span></h1>
+      </div>
+      <p class="note header-note">Move the sliders to reshape the network and frequencies.</p>
+    </header>
+
+    <div class="shell">
+      <div class="panel">
+        <div class="controls">
+          <div class="control">
+            <div class="control-header">
+              <span>\( N \) - network size</span>
+              <span class="control-value" id="sizeValue"></span>
+            </div>
+            <input id="size" type="range" min="1" max="1000" step="1" value="120">
+          </div>
+          <div class="control">
+            <div class="control-header">
+              <span>\( \langle k \rangle /(N-1) \) - density</span>
+              <span class="control-value" id="densityValue"></span>
+            </div>
+            <input id="density" type="range" min="0" max="1" step="0.01" value="0.06">
+          </div>
+          <div class="control">
+            <div class="control-header">
+              <span>\( \langle \omega \rangle \) - mean frequency</span>
+              <span class="control-value" id="meanValue"></span>
+            </div>
+            <input id="mean" type="range" min="-1" max="1" step="0.01" value="0">
+          </div>
+          <div class="control">
+            <div class="control-header">
+              <span>\( \sigma_{\omega} \) - frequency std. deviation</span>
+              <span class="control-value" id="stdValue"></span>
+            </div>
+            <input id="std" type="range" min="0" max="2" step="0.01" value="1">
+          </div>
+          <div class="control">
+            <div class="control-header">
+              <span>\( K \) - coupling strength</span>
+              <span class="control-value" id="couplingValue"></span>
+            </div>
+            <input id="coupling" type="range" min="0" max="3" step="0.01" value="1">
+          </div>
+          <div class="buttons">
+            <button id="rebuild">Regenerate network</button>
+            <button id="resetPhases" class="secondary">Reset phases</button>
+          </div>
+          <div class="status">
+            <span>Order parameter r:</span>
+            <strong id="orderValue">--</strong>
+            <span>Critical K<sub>c</sub> ≈ <span id="kcValue">--</span></span>
+          </div>
+          <p class="note">The graph uses a quick force sketch for the spring layout. Satellites orbit each node to show its instantaneous phase.</p>
+        </div>
+      </div>
+
+      <div class="visuals">
+        <div class="visual-row">
+          <div class="card">
+            <h3>Spring layout</h3>
+            <div class="legend"><span class="dot" style="background: var(--accent);"></span><span>Phase satellite</span></div>
+            <canvas id="springCanvas"></canvas>
+          </div>
+          <div class="card">
+            <h3>Phase circle</h3>
+            <div class="legend"><span class="dot" style="background: var(--accent-2);"></span><span>Order parameter</span></div>
+            <canvas id="circleCanvas"></canvas>
+          </div>
+        </div>
+        <div class="card" style="min-height: 200px;">
+          <canvas id="phaseCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    const sizeInput = document.getElementById('size');
+    const densityInput = document.getElementById('density');
+    const meanInput = document.getElementById('mean');
+    const stdInput = document.getElementById('std');
+    const couplingInput = document.getElementById('coupling');
+    const sizeValue = document.getElementById('sizeValue');
+    const densityValue = document.getElementById('densityValue');
+    const meanValue = document.getElementById('meanValue');
+    const stdValue = document.getElementById('stdValue');
+    const couplingValue = document.getElementById('couplingValue');
+    const orderValue = document.getElementById('orderValue');
+    const kcValue = document.getElementById('kcValue');
+    const springCanvas = document.getElementById('springCanvas');
+    const circleCanvas = document.getElementById('circleCanvas');
+    const phaseCanvas = document.getElementById('phaseCanvas');
+    const rebuildBtn = document.getElementById('rebuild');
+    const resetBtn = document.getElementById('resetPhases');
+    const rootStyles = getComputedStyle(document.documentElement);
+    const springBgColor = rootStyles.getPropertyValue('--panel') || rootStyles.getPropertyValue('--bg') || '#050c1d';
+
+    const state = {
+      n: parseInt(sizeInput.value, 10),
+      density: parseFloat(densityInput.value),
+      mean: parseFloat(meanInput.value),
+      std: parseFloat(stdInput.value),
+      coupling: parseFloat(couplingInput.value),
+      adjacency: [],
+      degrees: [],
+      phases: new Float64Array(parseInt(sizeInput.value, 10)),
+      freqs: new Float64Array(parseInt(sizeInput.value, 10)),
+      layout: { x: [], y: [] },
+      order: { r: 0, psi: 0 },
+      criticalK: 0,
+      history: [],
+      lastLog: 0,
+      edgeCount: 0
+    };
+
+    let derivatives = new Float64Array(state.n);
+    let needsLayout = true;
+    let resizeRequested = true;
+    let rebuildTimer = null;
+    let lastTime = performance.now();
+
+    function updateLabels() {
+      sizeValue.textContent = state.n;
+      densityValue.textContent = state.density.toFixed(2);
+      meanValue.textContent = state.mean.toFixed(2);
+      stdValue.textContent = state.std.toFixed(2);
+      couplingValue.textContent = state.coupling.toFixed(2);
+      kcValue.textContent = state.criticalK.toFixed(2);
+      orderValue.textContent = state.order.r.toFixed(3);
+    }
+
+    function randNormal(mean = 0, std = 1) {
+      const u = Math.random() || 1e-6;
+      const v = Math.random() || 1e-6;
+      const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      return mean + std * z;
+    }
+
+    function buildAdjacency(n, p) {
+      const adj = Array.from({ length: n }, () => []);
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          if (Math.random() < p) {
+            adj[i].push(j);
+            adj[j].push(i);
+          }
+        }
+      }
+      return adj;
+    }
+
+    function computeCriticalK() {
+      const sigma = Math.max(1e-3, state.std);
+      state.criticalK = 2 * sigma * Math.sqrt(2 / Math.PI);
+    }
+
+    function resetPhases() {
+      for (let i = 0; i < state.phases.length; i++) {
+        state.phases[i] = Math.random() * Math.PI * 2;
+      }
+    }
+
+    function resetFreqs() {
+      for (let i = 0; i < state.freqs.length; i++) {
+        state.freqs[i] = randNormal(state.mean, state.std);
+      }
+    }
+
+    function rebuildSystem() {
+      const n = state.n;
+      state.phases = new Float64Array(n);
+      state.freqs = new Float64Array(n);
+      derivatives = new Float64Array(n);
+      state.adjacency = buildAdjacency(n, state.density);
+      state.edgeCount = state.adjacency.reduce((sum, list) => sum + list.length, 0) / 2;
+      state.degrees = state.adjacency.map(list => Math.max(1, list.length));
+      state.layout.x = new Float32Array(n);
+      state.layout.y = new Float32Array(n);
+      resetPhases();
+      resetFreqs();
+      state.history = [];
+      state.lastLog = performance.now();
+      computeCriticalK();
+      needsLayout = true;
+    }
+
+    function scheduleRebuild() {
+      clearTimeout(rebuildTimer);
+      rebuildTimer = setTimeout(() => rebuildSystem(), 140);
+    }
+
+    function applyInputs() {
+      state.n = parseInt(sizeInput.value, 10);
+      state.density = parseFloat(densityInput.value);
+      state.mean = parseFloat(meanInput.value);
+      state.std = parseFloat(stdInput.value);
+      state.coupling = parseFloat(couplingInput.value);
+      computeCriticalK();
+      updateLabels();
+    }
+
+    function resizeCanvases() {
+      [springCanvas, circleCanvas, phaseCanvas].forEach(canvas => {
+        const ratio = window.devicePixelRatio || 1;
+        const { width, height } = canvas.getBoundingClientRect();
+        canvas.width = Math.max(1, Math.floor(width * ratio));
+        canvas.height = Math.max(1, Math.floor(height * ratio));
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      });
+      resizeRequested = false;
+      needsLayout = true;
+    }
+
+    function computeLayout() {
+      const n = Math.min(state.n, state.adjacency.length || state.n);
+      if (!n) return;
+      const width = springCanvas.getBoundingClientRect().width;
+      const height = springCanvas.getBoundingClientRect().height;
+      if (!width || !height) return;
+
+      const px = new Float32Array(n);
+      const py = new Float32Array(n);
+      const margin = 10;
+      for (let i = 0; i < n; i++) {
+        px[i] = margin + Math.random() * Math.max(1, width - 2 * margin);
+        py[i] = margin + Math.random() * Math.max(1, height - 2 * margin);
+      }
+
+      const area = width * height;
+      const k = Math.sqrt(area / Math.max(1, n));
+      const densityEff = Math.max(0.02, state.density);
+      const repulsiveStrength = 0.85;
+      const attractiveStrength = 0.12 / densityEff;
+      const iterations = Math.min(40, 10 + Math.floor(Math.sqrt(n)));
+      let temperature = 0.45 * Math.min(width, height);
+      const cooling = 0.86;
+      const dispX = new Float32Array(n);
+      const dispY = new Float32Array(n);
+
+      for (let iter = 0; iter < iterations; iter++) {
+        dispX.fill(0);
+        dispY.fill(0);
+
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
+            const dx = px[i] - px[j];
+            const dy = py[i] - py[j];
+            const dist = Math.hypot(dx, dy) + 1e-4;
+            const force = (repulsiveStrength * k * k) / dist;
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            dispX[i] += fx; dispY[i] += fy;
+            dispX[j] -= fx; dispY[j] -= fy;
+          }
+        }
+
+        for (let i = 0; i < n; i++) {
+          const neighbors = state.adjacency[i];
+          for (let idx = 0; idx < neighbors.length; idx++) {
+            const j = neighbors[idx];
+            if (j <= i) continue;
+            const dx = px[i] - px[j];
+            const dy = py[i] - py[j];
+            const dist = Math.hypot(dx, dy) + 1e-4;
+            const force = (attractiveStrength * dist * dist) / k;
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            dispX[i] -= fx; dispY[i] -= fy;
+            dispX[j] += fx; dispY[j] += fy;
+          }
+        }
+
+        for (let i = 0; i < n; i++) {
+          const disp = Math.hypot(dispX[i], dispY[i]);
+          if (disp > 0) {
+            const limited = Math.min(disp, temperature);
+            px[i] = Math.min(width - margin, Math.max(margin, px[i] + (dispX[i] / disp) * limited));
+            py[i] = Math.min(height - margin, Math.max(margin, py[i] + (dispY[i] / disp) * limited));
+          }
+        }
+
+        temperature *= cooling;
+      }
+
+      // Re-center and rescale layout to fill canvas nicely.
+      let meanX = 0;
+      let meanY = 0;
+      for (let i = 0; i < n; i++) {
+        meanX += px[i];
+        meanY += py[i];
+      }
+      meanX /= n;
+      meanY /= n;
+
+      let varX = 0;
+      let varY = 0;
+      for (let i = 0; i < n; i++) {
+        const dx = px[i] - meanX;
+        const dy = py[i] - meanY;
+        varX += dx * dx;
+        varY += dy * dy;
+      }
+      const stdX = Math.sqrt(varX / Math.max(1, n));
+      const stdY = Math.sqrt(varY / Math.max(1, n));
+
+      const targetStdX = (width * 0.25);
+      const targetStdY = (height * 0.25);
+      const scaleX = stdX > 1e-3 ? targetStdX / stdX : 1;
+      const scaleY = stdY > 1e-3 ? targetStdY / stdY : 1;
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      for (let i = 0; i < n; i++) {
+        const shiftedX = (px[i] - meanX) * scaleX;
+        const shiftedY = (py[i] - meanY) * scaleY;
+        px[i] = Math.min(width - margin, Math.max(margin, centerX + shiftedX));
+        py[i] = Math.min(height - margin, Math.max(margin, centerY + shiftedY));
+      }
+
+      state.layout.x = px;
+      state.layout.y = py;
+    }
+
+    function stepSimulation(dt) {
+      const { adjacency, phases, freqs, coupling } = state;
+      const n = Math.min(phases.length, freqs.length, adjacency.length, derivatives.length);
+      if (!n) return;
+      const maxNeighbors = 320;
+      const meanDegree = Math.max(1, state.density * state.n);
+      const couplingFactor = coupling / meanDegree;
+      for (let i = 0; i < n; i++) {
+        const neigh = adjacency[i];
+        const count = neigh.length;
+        let s = 0;
+        if (count > maxNeighbors) {
+          const stride = Math.ceil(count / maxNeighbors);
+          let samples = 0;
+          for (let k = 0; k < count; k += stride) {
+            const j = neigh[k];
+            s += Math.sin(phases[j] - phases[i]);
+            samples++;
+          }
+          s *= count / Math.max(1, samples);
+        } else {
+          for (let k = 0; k < count; k++) {
+            const j = neigh[k];
+            s += Math.sin(phases[j] - phases[i]);
+          }
+        }
+        derivatives[i] = freqs[i] + couplingFactor * s;
+      }
+      for (let i = 0; i < n; i++) {
+        phases[i] += dt * derivatives[i];
+      }
+    }
+
+    function updateOrderParameter() {
+      let x = 0, y = 0;
+      const { phases } = state;
+      const n = phases.length;
+      for (let i = 0; i < n; i++) {
+        x += Math.cos(phases[i]);
+        y += Math.sin(phases[i]);
+      }
+      const r = Math.sqrt(x * x + y * y) / Math.max(1, n);
+      const psi = Math.atan2(y, x);
+      state.order = { r, psi };
+    }
+
+    function logHistory(now) {
+      if (now - state.lastLog < 90) return;
+      state.lastLog = now;
+      state.history.push({ k: state.coupling, r: state.order.r });
+      if (state.history.length > 500) state.history.shift();
+    }
+
+    function drawSpring() {
+      const ctx = springCanvas.getContext('2d');
+      const { width, height } = springCanvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, width, height);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      const { x: px, y: py } = state.layout;
+      const n = Math.min(state.adjacency.length, px.length, py.length, state.phases.length);
+      if (!n) return;
+
+      const maxEdgesDrawn = 60000;
+      const stride = Math.max(1, Math.floor(Math.max(1, state.edgeCount) / maxEdgesDrawn));
+      let edgeIndex = 0;
+
+      // edges
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const neighbors = state.adjacency[i];
+        for (let k = 0; k < neighbors.length; k++) {
+          const j = neighbors[k];
+          if (j <= i) continue;
+          if (edgeIndex % stride === 0) {
+            ctx.moveTo(px[i], py[i]);
+            ctx.lineTo(px[j], py[j]);
+          }
+          edgeIndex++;
+        }
+      }
+      ctx.stroke();
+
+      // nodes as phase satellites on orbits
+      ctx.lineWidth = 0.7;
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      for (let i = 0; i < n; i++) {
+        const phase = state.phases[i];
+        const hue = ((phase % (Math.PI * 2)) / (Math.PI * 2)) * 360;
+        const cx = px[i];
+        const cy = py[i];
+        const orbit = 3.5 * 1.5;
+
+        // Filled disc to mask incoming edges
+        ctx.fillStyle = springBgColor.trim() || 'rgba(10,20,38,0.95)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, orbit + 1.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Orbit trajectory
+        ctx.beginPath();
+        ctx.arc(cx, cy, orbit, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Satellite
+        const sx = cx + orbit * Math.cos(phase);
+        const sy = cy + orbit * Math.sin(phase);
+        ctx.fillStyle = `hsla(${hue}, 85%, 65%, 0.9)`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 2.0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawCircle() {
+      const ctx = circleCanvas.getContext('2d');
+      const { width, height } = circleCanvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, width, height);
+      const cx = width / 2;
+      const cy = height / 2;
+      const radius = Math.min(width, height) * 0.37;
+
+      // Unit circle
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.setLineDash([3, 5]);
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius * state.order.r, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(90, 242, 193, 0.2)';
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Nodes
+      const n = state.phases.length;
+      for (let i = 0; i < n; i++) {
+        const phase = state.phases[i];
+        const x = cx + radius * Math.cos(phase);
+        const y = cy + radius * Math.sin(phase);
+        const hue = ((phase % (Math.PI * 2)) / (Math.PI * 2)) * 360;
+        ctx.fillStyle = `hsla(${hue}, 85%, 65%, 0.8)`;
+        ctx.beginPath();
+        ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Order parameter vector
+      const r = state.order.r;
+      const psi = state.order.psi;
+      const ox = cx + radius * r * Math.cos(psi);
+      const oy = cy + radius * r * Math.sin(psi);
+
+      ctx.strokeStyle = 'rgba(255, 107, 107, 0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(ox, oy);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 107, 107, 0.9)';
+      ctx.beginPath();
+      ctx.arc(ox, oy, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawPhasePlot() {
+      const ctx = phaseCanvas.getContext('2d');
+      const { width, height } = phaseCanvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, width, height);
+      const pad = 38;
+      const maxK = parseFloat(couplingInput.max);
+      const xScale = k => pad + (k / maxK) * (width - 2 * pad);
+      const yScale = r => height - pad - r * (height - 2 * pad);
+
+      // Axes
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad, pad - 8);
+      ctx.lineTo(pad, height - pad);
+      ctx.lineTo(width - pad + 8, height - pad);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font = '12px "Avenir Next","Futura","Trebuchet MS",sans-serif';
+      ctx.fillText('r', pad - 16, pad - 12);
+      ctx.fillText('K', width - pad + 10, height - pad + 4);
+
+      // Grid lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= 5; i++) {
+        const y = yScale(i / 5);
+        ctx.moveTo(pad, y);
+        ctx.lineTo(width - pad, y);
+      }
+      for (let i = 0; i <= 6; i++) {
+        const x = xScale((i / 6) * maxK);
+        ctx.moveTo(x, pad);
+        ctx.lineTo(x, height - pad);
+      }
+      ctx.stroke();
+
+      // X ticks
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1;
+      const tickStep = 0.5;
+      for (let k = 0; k <= maxK + 1e-6; k += tickStep) {
+        const x = xScale(k);
+        ctx.beginPath();
+        ctx.moveTo(x, height - pad);
+        ctx.lineTo(x, height - pad + 6);
+        ctx.stroke();
+        ctx.fillText(k.toFixed(1), x - 8, height - pad + 18);
+      }
+
+      // Y ticks
+      const yTickStep = 0.2;
+      for (let r = 0; r <= 1 + 1e-6; r += yTickStep) {
+        const y = yScale(r);
+        ctx.beginPath();
+        ctx.moveTo(pad - 6, y);
+        ctx.lineTo(pad, y);
+        ctx.stroke();
+        ctx.fillText(r.toFixed(1), pad - 28, y + 4);
+      }
+
+      // Vertical critical line
+      const kc = state.criticalK;
+      if (kc <= maxK) {
+        const kcX = xScale(kc);
+        ctx.setLineDash([6, 6]);
+        ctx.strokeStyle = 'rgba(255,107,107,0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(kcX, pad);
+        ctx.lineTo(kcX, height - pad);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = 'rgba(255,107,107,0.9)';
+        ctx.fillText('Kc', kcX + 6, pad + 12);
+      }
+
+      // History scatter
+      ctx.fillStyle = 'rgba(90, 242, 193, 0.08)';
+      for (let i = 0; i < state.history.length; i++) {
+        const { k, r } = state.history[i];
+        const x = xScale(Math.min(maxK, k));
+        const y = yScale(r);
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Current point
+      const xNow = xScale(state.coupling);
+      const yNow = yScale(state.order.r);
+      ctx.fillStyle = 'rgba(90, 242, 193, 0.9)';
+      ctx.beginPath();
+      ctx.arc(xNow, yNow, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(90, 242, 193, 0.6)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(xNow, yScale(0));
+      ctx.lineTo(xNow, yNow);
+      ctx.stroke();
+    }
+
+    function loop(now) {
+      const speed = 2.0; // accelerate time passage
+      const dt = Math.min(0.05, (now - lastTime) / 1000) * speed;
+      lastTime = now;
+
+      if (resizeRequested) resizeCanvases();
+      if (needsLayout) {
+        computeLayout();
+        needsLayout = false;
+      }
+
+      stepSimulation(dt);
+      updateOrderParameter();
+      logHistory(now);
+
+      drawSpring();
+      drawCircle();
+      drawPhasePlot();
+      updateLabels();
+
+      requestAnimationFrame(loop);
+    }
+
+    function init() {
+      applyInputs();
+      computeCriticalK();
+      rebuildSystem();
+      resizeCanvases();
+      window.addEventListener('resize', () => { resizeRequested = true; });
+
+      [sizeInput, densityInput].forEach(input => {
+        input.addEventListener('input', () => {
+          applyInputs();
+          scheduleRebuild();
+        });
+      });
+
+      [meanInput, stdInput].forEach(input => {
+        input.addEventListener('input', () => {
+          applyInputs();
+          resetFreqs();
+        });
+      });
+
+      couplingInput.addEventListener('input', () => {
+        state.coupling = parseFloat(couplingInput.value);
+        couplingValue.textContent = state.coupling.toFixed(2);
+      });
+
+      rebuildBtn.addEventListener('click', () => {
+        applyInputs();
+        rebuildSystem();
+      });
+
+      resetBtn.addEventListener('click', () => resetPhases());
+
+      requestAnimationFrame(loop);
+    }
+
+    init();
+  </script>
+</body>
+</html>
