@@ -291,6 +291,18 @@
             padding-bottom: 2%;
         }
 
+        /* Nested list with bullets */
+        ul.sublist {
+            list-style-type: disc;
+            padding-left: 1.5em;
+            margin-top: 0.25em;
+            padding-bottom: 0;
+        }
+
+        ul.sublist li {
+            padding: 0.25em 0;
+        }
+
         li {
             padding: 1% 0;
         }
@@ -699,6 +711,17 @@
                 <a href="https://en.wikipedia.org/wiki/File:Reflection_of_a_quantum_particle.webm" target="_blank">reflection</a> for quantum wave packets,
                 <a href="https://commons.wikimedia.org/wiki/File:Imageedit_6_2578820362.gif" target="_blank">gravitational lensing</a>, and
                 <a href="https://commons.wikimedia.org/wiki/File:Kintsugi.jpg" target="_blank">Kintsugi technique</a>, all used on various Wikipedia pages.
+            </li>
+            <li>
+                I also maintain a couple of interactive network visualizations:
+                <ul class="sublist">
+                    <li>
+                        <a href="kuramoto/index.html" target="_blank"><b>Kuramoto model playground</b></a> – explore synchronization on complex networks in real time.
+                    </li>
+                    <li>
+                        <a href="booknet/index.html" target="_blank"><b>Character networks for books</b></a> – visualize and explore co-appearance networks of characters in novels.
+                    </li>
+                </ul>
             </li>
 
             <li>

@@ -341,21 +341,21 @@
               <span>\( N \) - network size</span>
               <span class="control-value" id="sizeValue"></span>
             </div>
-            <input id="size" type="range" min="1" max="1000" step="1" value="120">
+            <input id="size" type="range" min="1" max="5000" step="1" value="100">
           </div>
           <div class="control">
             <div class="control-header">
               <span>\( \langle k \rangle /(N-1) \) - density</span>
               <span class="control-value" id="densityValue"></span>
             </div>
-            <input id="density" type="range" min="0" max="1" step="0.01" value="0.06">
+            <input id="density" type="range" min="0" max="1" step="0.01" value="0.05">
           </div>
           <div class="control">
             <div class="control-header">
               <span>\( \langle \omega \rangle \) - mean frequency</span>
               <span class="control-value" id="meanValue"></span>
             </div>
-            <input id="mean" type="range" min="-1" max="1" step="0.01" value="0">
+            <input id="mean" type="range" min="-1" max="1" step="0.01" value="1">
           </div>
           <div class="control">
             <div class="control-header">
@@ -369,7 +369,7 @@
               <span>\( K \) - coupling strength</span>
               <span class="control-value" id="couplingValue"></span>
             </div>
-            <input id="coupling" type="range" min="0" max="3" step="0.01" value="1">
+            <input id="coupling" type="range" min="0" max="3" step="0.01" value="0.5">
           </div>
           <div class="buttons">
             <button id="rebuild">Regenerate network</button>
@@ -387,7 +387,7 @@
       <div class="visuals">
         <div class="visual-row">
           <div class="card">
-            <h3>Spring layout</h3>
+            <h3>Network</h3>
             <div class="legend"><span class="dot" style="background: var(--accent);"></span><span>Phase satellite</span></div>
             <canvas id="springCanvas"></canvas>
           </div>
@@ -552,100 +552,24 @@
       const px = new Float32Array(n);
       const py = new Float32Array(n);
       const margin = 10;
-      for (let i = 0; i < n; i++) {
-        px[i] = margin + Math.random() * Math.max(1, width - 2 * margin);
-        py[i] = margin + Math.random() * Math.max(1, height - 2 * margin);
-      }
+      const innerW = Math.max(1, width - 2 * margin);
+      const innerH = Math.max(1, height - 2 * margin);
 
-      const area = width * height;
-      const k = Math.sqrt(area / Math.max(1, n));
-      const densityEff = Math.max(0.02, state.density);
-      const repulsiveStrength = 0.85;
-      const attractiveStrength = 0.12 / densityEff;
-      const iterations = Math.min(40, 10 + Math.floor(Math.sqrt(n)));
-      let temperature = 0.45 * Math.min(width, height);
-      const cooling = 0.86;
-      const dispX = new Float32Array(n);
-      const dispY = new Float32Array(n);
-
-      for (let iter = 0; iter < iterations; iter++) {
-        dispX.fill(0);
-        dispY.fill(0);
-
-        for (let i = 0; i < n; i++) {
-          for (let j = i + 1; j < n; j++) {
-            const dx = px[i] - px[j];
-            const dy = py[i] - py[j];
-            const dist = Math.hypot(dx, dy) + 1e-4;
-            const force = (repulsiveStrength * k * k) / dist;
-            const fx = (dx / dist) * force;
-            const fy = (dy / dist) * force;
-            dispX[i] += fx; dispY[i] += fy;
-            dispX[j] -= fx; dispY[j] -= fy;
-          }
-        }
-
-        for (let i = 0; i < n; i++) {
-          const neighbors = state.adjacency[i];
-          for (let idx = 0; idx < neighbors.length; idx++) {
-            const j = neighbors[idx];
-            if (j <= i) continue;
-            const dx = px[i] - px[j];
-            const dy = py[i] - py[j];
-            const dist = Math.hypot(dx, dy) + 1e-4;
-            const force = (attractiveStrength * dist * dist) / k;
-            const fx = (dx / dist) * force;
-            const fy = (dy / dist) * force;
-            dispX[i] -= fx; dispY[i] -= fy;
-            dispX[j] += fx; dispY[j] += fy;
-          }
-        }
-
-        for (let i = 0; i < n; i++) {
-          const disp = Math.hypot(dispX[i], dispY[i]);
-          if (disp > 0) {
-            const limited = Math.min(disp, temperature);
-            px[i] = Math.min(width - margin, Math.max(margin, px[i] + (dispX[i] / disp) * limited));
-            py[i] = Math.min(height - margin, Math.max(margin, py[i] + (dispY[i] / disp) * limited));
-          }
-        }
-
-        temperature *= cooling;
-      }
-
-      // Re-center and rescale layout to fill canvas nicely.
-      let meanX = 0;
-      let meanY = 0;
-      for (let i = 0; i < n; i++) {
-        meanX += px[i];
-        meanY += py[i];
-      }
-      meanX /= n;
-      meanY /= n;
-
-      let varX = 0;
-      let varY = 0;
-      for (let i = 0; i < n; i++) {
-        const dx = px[i] - meanX;
-        const dy = py[i] - meanY;
-        varX += dx * dx;
-        varY += dy * dy;
-      }
-      const stdX = Math.sqrt(varX / Math.max(1, n));
-      const stdY = Math.sqrt(varY / Math.max(1, n));
-
-      const targetStdX = (width * 0.25);
-      const targetStdY = (height * 0.25);
-      const scaleX = stdX > 1e-3 ? targetStdX / stdX : 1;
-      const scaleY = stdY > 1e-3 ? targetStdY / stdY : 1;
-      const centerX = width / 2;
-      const centerY = height / 2;
+      const cx = margin + innerW / 2;
+      const cy = margin + innerH / 2;
+      const rx = innerW / 2;
+      const ry = innerH / 2;
 
       for (let i = 0; i < n; i++) {
-        const shiftedX = (px[i] - meanX) * scaleX;
-        const shiftedY = (py[i] - meanY) * scaleY;
-        px[i] = Math.min(width - margin, Math.max(margin, centerX + shiftedX));
-        py[i] = Math.min(height - margin, Math.max(margin, centerY + shiftedY));
+        // Random point in unit disc, then scale to ellipse
+        let u = Math.random();
+        let v = Math.random();
+        const r = Math.sqrt(u);
+        const theta = 2 * Math.PI * v;
+        const xUnit = r * Math.cos(theta);
+        const yUnit = r * Math.sin(theta);
+        px[i] = cx + xUnit * rx;
+        py[i] = cy + yUnit * ry;
       }
 
       state.layout.x = px;
@@ -702,7 +626,7 @@
       if (now - state.lastLog < 90) return;
       state.lastLog = now;
       state.history.push({ k: state.coupling, r: state.order.r });
-      if (state.history.length > 500) state.history.shift();
+      if (state.history.length > 1000) state.history.shift();
     }
 
     function drawSpring() {
@@ -789,14 +713,18 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Nodes
+      // Nodes colored by phase, with alpha decreasing in N
       const n = state.phases.length;
+      const maxNodesForAlpha = Math.max(1, parseInt(sizeInput.max, 10) || n);
+      const tAlpha = Math.min(n, maxNodesForAlpha);
+      const alpha = 1 - 0.9 * (tAlpha - 1) / Math.max(1, (maxNodesForAlpha - 1));
+
       for (let i = 0; i < n; i++) {
         const phase = state.phases[i];
         const x = cx + radius * Math.cos(phase);
         const y = cy + radius * Math.sin(phase);
         const hue = ((phase % (Math.PI * 2)) / (Math.PI * 2)) * 360;
-        ctx.fillStyle = `hsla(${hue}, 85%, 65%, 0.8)`;
+        ctx.fillStyle = `hsla(${hue}, 85%, 65%, ${alpha})`;
         ctx.beginPath();
         ctx.arc(x, y, 2.5, 0, Math.PI * 2);
         ctx.fill();
