@@ -205,6 +205,52 @@
       box-shadow: 0 12px 22px rgba(0, 0, 0, 0.3);
     }
 
+    .playback-controls {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .playback-btn {
+      padding: 8px 6px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      box-shadow: none;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .playback-btn svg {
+      width: 22px;
+      height: 16px;
+    }
+
+    .playback-btn.active {
+      border-color: var(--accent);
+      box-shadow: 0 10px 24px rgba(90, 242, 193, 0.25);
+      background: rgba(90, 242, 193, 0.12);
+      color: var(--accent);
+    }
+
+    .playback-meta {
+      margin-top: 4px;
+      display: flex;
+      justify-content: flex-end;
+      font-size: 12px;
+      color: var(--muted);
+      gap: 6px;
+    }
+
+    .playback-meta strong {
+      color: inherit;
+      font-size: 12px;
+    }
+
     .visuals {
       display: grid;
       grid-template-rows: repeat(2, minmax(260px, auto));
@@ -457,14 +503,14 @@
               <span>\( \langle \omega \rangle \) - mean frequency</span>
               <span class="control-value" id="meanValue"></span>
             </div>
-            <input id="mean" type="range" min="-1" max="1" step="0.01" value="0.5">
+            <input id="mean" type="range" min="-2" max="2" step="0.01" value="0.5">
           </div>
           <div class="control">
             <div class="control-header">
               <span>\( \sigma_{\omega} \) - frequency std. deviation</span>
               <span class="control-value" id="stdValue"></span>
             </div>
-            <input id="std" type="range" min="0" max="2" step="0.01" value="0.5">
+            <input id="std" type="range" min="0" max="2" step="0.01" value="1">
           </div>
           <div class="control">
             <div class="control-header">
@@ -472,6 +518,40 @@
               <span class="control-value" id="couplingValue"></span>
             </div>
             <input id="coupling" type="range" min="0" max="3" step="0.01" value="0.5">
+            <div class="playback-controls" aria-label="Coupling playback controls">
+              <button type="button" class="playback-btn" data-mode="decelerate" aria-label="Decelerate">
+                <svg viewBox="0 0 20 14" aria-hidden="true" focusable="false">
+                  <path d="M19 1 9 7l10 6V1Z"></path>
+                  <path d="M11 1 1 7l10 6V1Z"></path>
+                </svg>
+              </button>
+              <button type="button" class="playback-btn" data-mode="backward" aria-label="Play backward">
+                <svg viewBox="0 0 20 14" aria-hidden="true" focusable="false">
+                  <path d="M17 1 7 7l10 6V1Z"></path>
+                </svg>
+              </button>
+              <button type="button" class="playback-btn" data-mode="pause" aria-label="Pause">
+                <svg viewBox="0 0 20 14" aria-hidden="true" focusable="false">
+                  <rect x="4" y="2" width="4" height="10" rx="1"></rect>
+                  <rect x="12" y="2" width="4" height="10" rx="1"></rect>
+                </svg>
+              </button>
+              <button type="button" class="playback-btn" data-mode="forward" aria-label="Play forward">
+                <svg viewBox="0 0 20 14" aria-hidden="true" focusable="false">
+                  <path d="M3 1v12l10-6L3 1Z"></path>
+                </svg>
+              </button>
+              <button type="button" class="playback-btn" data-mode="accelerate" aria-label="Accelerate">
+                <svg viewBox="0 0 20 14" aria-hidden="true" focusable="false">
+                  <path d="M1 1v12l10-6L1 1Z"></path>
+                  <path d="M9 1v12l10-6L9 1Z"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="playback-meta" aria-live="polite">
+              <span>Speed</span>
+              <strong id="speedMultiplier">x0</strong>
+            </div>
           </div>
           <div class="buttons">
             <button id="rebuild">Regenerate network</button>
@@ -545,6 +625,8 @@
     const phaseCanvas = document.getElementById('phaseCanvas');
     const rebuildBtn = document.getElementById('rebuild');
     const resetBtn = document.getElementById('resetPhases');
+    const playbackButtons = Array.from(document.querySelectorAll('.playback-btn'));
+    const speedMultiplier = document.getElementById('speedMultiplier');
     const rootStyles = getComputedStyle(document.documentElement);
     const springBgColor = rootStyles.getPropertyValue('--panel') || rootStyles.getPropertyValue('--bg') || '#050c1d';
     const orderColor = rootStyles.getPropertyValue('--accent').trim() || '#5af2c1';
@@ -585,6 +667,7 @@
     let resizeRequested = true;
     let rebuildTimer = null;
     let lastTime = performance.now();
+    const playback = { speed: 0, step: 0.00192, max: 0.5 };
 
     function updateLabels() {
       sizeValue.textContent = state.n;
@@ -594,6 +677,63 @@
       couplingValue.textContent = state.coupling.toFixed(2);
       kcValue.textContent = state.criticalK.toFixed(2);
       orderValue.textContent = state.order.r.toFixed(3);
+    }
+
+    function updatePlaybackUI() {
+      const speed = playback.speed;
+      const activeMode = speed === 0 ? 'pause' : speed > 0 ? 'forward' : 'backward';
+      playbackButtons.forEach(btn => {
+        const mode = btn.dataset.mode;
+        const isActive = mode === activeMode;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      });
+      const multiplier = Math.round(speed / playback.step);
+      speedMultiplier.textContent = `${multiplier}`;
+    }
+
+    function setPlaybackSpeed(value) {
+      const snapped = Math.round(value / playback.step) * playback.step;
+      const clamped = Math.max(-playback.max, Math.min(playback.max, snapped));
+      playback.speed = Math.abs(clamped) < playback.step * 0.5 ? 0 : clamped;
+      updatePlaybackUI();
+    }
+
+    function accelerateSpeed() {
+      const currentMultiplier = Math.round(playback.speed / playback.step);
+      const maxMultiplier = Math.round(playback.max / playback.step);
+      const nextMultiplier = Math.min(maxMultiplier, currentMultiplier + 1);
+      setPlaybackSpeed(nextMultiplier * playback.step);
+    }
+
+    function decelerateSpeed() {
+      const currentMultiplier = Math.round(playback.speed / playback.step);
+      const minMultiplier = -Math.round(playback.max / playback.step);
+      const nextMultiplier = Math.max(minMultiplier, currentMultiplier - 1);
+      setPlaybackSpeed(nextMultiplier * playback.step);
+    }
+
+    function advanceCoupling(dt) {
+      const speed = playback.speed;
+      if (speed === 0) return;
+      const min = parseFloat(couplingInput.min) || 0;
+      const max = parseFloat(couplingInput.max) || 1;
+      const current = state.coupling;
+      const next = current + speed * dt;
+      const bounded = Math.min(max, Math.max(min, next));
+
+      if (Math.abs(bounded - current) < 1e-9) {
+        setPlaybackSpeed(0);
+        return;
+      }
+
+      state.coupling = bounded;
+      couplingInput.value = bounded;
+      couplingValue.textContent = bounded.toFixed(2);
+
+      if (bounded <= min + 1e-9 || bounded >= max - 1e-9) {
+        setPlaybackSpeed(0);
+      }
     }
 
     function randNormal(mean = 0, std = 1) {
@@ -1158,6 +1298,7 @@
         needsLayout = false;
       }
 
+      advanceCoupling(dt);
       stepSimulation(dt);
       updateOrderParameter();
       logHistory(now);
@@ -1194,6 +1335,7 @@
       couplingInput.addEventListener('input', () => {
         state.coupling = parseFloat(couplingInput.value);
         couplingValue.textContent = state.coupling.toFixed(2);
+        setPlaybackSpeed(0);
       });
 
       rebuildBtn.addEventListener('click', () => {
@@ -1202,6 +1344,25 @@
       });
 
       resetBtn.addEventListener('click', () => resetPhases());
+
+      playbackButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const mode = btn.dataset.mode;
+          if (mode === 'forward') {
+            setPlaybackSpeed(playback.step);
+          } else if (mode === 'backward') {
+            setPlaybackSpeed(-playback.step);
+          } else if (mode === 'pause') {
+            setPlaybackSpeed(0);
+          } else if (mode === 'accelerate') {
+            accelerateSpeed();
+          } else if (mode === 'decelerate') {
+            decelerateSpeed();
+          }
+        });
+      });
+
+      setPlaybackSpeed(0);
 
       requestAnimationFrame(loop);
     }
