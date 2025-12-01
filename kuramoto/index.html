@@ -289,7 +289,7 @@
       transform: translateY(-50%);
       width: 12px;
       height: 140px;
-      border-radius: 10px;
+      border-radius: 0;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
       border: 1px solid rgba(255, 255, 255, 0.08);
       overflow: visible;
@@ -299,11 +299,11 @@
     .colorbar-caption {
       position: absolute;
       right: 100%;
-      margin-right: 10px;
+      margin-right: 15px;
       top: 50%;
       transform: translate(50%, -50%);
       color: var(--muted);
-      font-size: 11px;
+      font-size: calc(11px * 1.4);
       white-space: nowrap;
     }
 
@@ -345,7 +345,7 @@
       content: "";
       display: block;
       width: 12px;
-      height: 1px;
+      height: 2px;
       margin-left: -11px;
       background: rgba(255, 255, 255, 0.9);
     }
@@ -564,11 +564,6 @@
             <button id="rebuild">Regenerate network</button>
             <button id="resetPhases" class="secondary">Reset phases</button>
           </div>
-          <div class="status">
-            <span>Order parameter r:</span>
-            <strong id="orderValue">--</strong>
-            <span>Critical K<sub>c</sub> ≈ <span id="kcValue">--</span></span>
-          </div>
         </div>
         <p class="author-note">Built by <a href="../index.html" target="_blank">Guram Mikaberidze</a>.</p>
       </div>
@@ -606,6 +601,7 @@
           </div>
         </div>
         <div class="card">
+          <button id="clearHistory" class="secondary" style="position:absolute; top:12px; right:16px; z-index:2; font-size:11px; padding:6px 10px;">Clear points</button>
           <div class="canvas-frame">
             <canvas id="phaseCanvas"></canvas>
           </div>
@@ -625,13 +621,12 @@
     const meanValue = document.getElementById('meanValue');
     const stdValue = document.getElementById('stdValue');
     const couplingValue = document.getElementById('couplingValue');
-    const orderValue = document.getElementById('orderValue');
-    const kcValue = document.getElementById('kcValue');
     const springCanvas = document.getElementById('springCanvas');
     const circleCanvas = document.getElementById('circleCanvas');
     const phaseCanvas = document.getElementById('phaseCanvas');
     const rebuildBtn = document.getElementById('rebuild');
     const resetBtn = document.getElementById('resetPhases');
+    const clearHistoryBtn = document.getElementById('clearHistory');
     const playbackButtons = Array.from(document.querySelectorAll('.playback-btn'));
     const speedMultiplier = document.getElementById('speedMultiplier');
     const rootStyles = getComputedStyle(document.documentElement);
@@ -674,7 +669,7 @@
     let resizeRequested = true;
     let rebuildTimer = null;
     let lastTime = performance.now();
-    const playback = { speed: 0, step: 0.00192, max: 0.5 };
+    const playback = { speed: 0, step: 0.00064, max: 0.5 };
 
     function updateLabels() {
       sizeValue.textContent = state.n;
@@ -682,8 +677,6 @@
       meanValue.textContent = state.mean.toFixed(2);
       stdValue.textContent = state.std.toFixed(2);
       couplingValue.textContent = state.coupling.toFixed(2);
-      kcValue.textContent = state.criticalK.toFixed(2);
-      orderValue.textContent = state.order.r.toFixed(3);
     }
 
     function updatePlaybackUI() {
@@ -723,10 +716,17 @@
     function advanceCoupling(dt) {
       const speed = playback.speed;
       if (speed === 0) return;
+      const baseIncrement = playback.step;
+      const speedMultiplier = Math.round(speed / baseIncrement);
+      if (speedMultiplier === 0) return;
+      const actualSpeed =
+        Math.sign(speedMultiplier) *
+        baseIncrement *
+        Math.pow(1.5, Math.abs(speedMultiplier));
       const min = parseFloat(couplingInput.min) || 0;
       const max = parseFloat(couplingInput.max) || 1;
       const current = state.coupling;
-      const next = current + speed * dt;
+      const next = current + actualSpeed * dt;
       const bounded = Math.min(max, Math.max(min, next));
 
       if (Math.abs(bounded - current) < 1e-9) {
@@ -1045,7 +1045,7 @@
     }
 
     function logHistory(now) {
-      if (now - state.lastLog < 90) return;
+      if (now - state.lastLog < 180) return;
       state.lastLog = now;
       state.history.push({ k: state.coupling, r: state.order.r });
       if (state.history.length > 2000) state.history.shift();
@@ -1264,7 +1264,8 @@
         ctx.setLineDash([]);
 
         ctx.fillStyle = 'rgba(255,107,107,0.9)';
-        ctx.fillText('Kc', kcX + 6, padTop + 12);
+        const kcLabel = `Kc ≈ ${kc.toFixed(2)}`;
+        ctx.fillText(kcLabel, kcX + 6, padTop + 12);
       }
 
       // History scatter
@@ -1274,7 +1275,7 @@
         const x = xScale(Math.min(maxK, k));
         const y = yScale(r);
         ctx.beginPath();
-        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -1351,6 +1352,10 @@
       });
 
       resetBtn.addEventListener('click', () => resetPhases());
+
+      clearHistoryBtn.addEventListener('click', () => {
+        state.history = [];
+      });
 
       playbackButtons.forEach(btn => {
         btn.addEventListener('click', () => {
