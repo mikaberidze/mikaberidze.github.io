@@ -291,9 +291,9 @@
             padding-bottom: 2%;
         }
 
-        /* Nested list with bullets */
+        /* Nested list used for interactive visualizations */
         ul.sublist {
-            list-style-type: disc;
+            list-style-type: none;
             padding-left: 1.5em;
             margin-top: 0.25em;
             padding-bottom: 0;
@@ -301,6 +301,16 @@
 
         ul.sublist li {
             padding: 0.25em 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+        }
+
+        .sublist-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            flex-shrink: 0;
         }
 
         li {
@@ -716,9 +726,11 @@
                 I also maintain a couple of interactive network visualizations:
                 <ul class="sublist">
                     <li>
+                        <img src="kuramoto/favicon.png" alt="Kuramoto model playground" class="sublist-icon">
                         <a href="kuramoto" target="_blank"><b>Kuramoto model playground</b></a> – explore synchronization on complex networks in real time.
                     </li>
                     <li>
+                        <img src="booknet/favicon.png" alt="Character networks for books" class="sublist-icon">
                         <a href="booknet" target="_blank"><b>Character networks for books</b></a> – visualize and explore co-appearance networks of characters in novels.
                     </li>
                 </ul>
