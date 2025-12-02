@@ -1001,6 +1001,7 @@
 
     function stepSimulation(dt) {
       const { adjacency, phases, freqs, coupling } = state;
+      state._lastSimCoupling = coupling;
       const n = Math.min(phases.length, freqs.length, adjacency.length, derivatives.length);
       if (!n) return;
       const maxNeighbors = 320;
@@ -1048,6 +1049,16 @@
     function logHistory(now) {
       if (now - state.lastLog < 180) return;
       state.lastLog = now;
+      const sliderK = parseFloat(couplingInput.value);
+      const stateK = state.coupling;
+      const simK = state._lastSimCoupling;
+      console.log('K debug', {
+        sliderK,
+        stateK,
+        simK,
+        diff_slider_state: sliderK - stateK,
+        diff_state_sim: stateK - simK
+      });
       state.history.push({ k: state.coupling, r: state.order.r });
       if (state.history.length > 2000) state.history.shift();
     }
