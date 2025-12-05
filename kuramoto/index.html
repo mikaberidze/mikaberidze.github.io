@@ -399,6 +399,16 @@
       align-items: center;
     }
 
+    .phase-caption {
+      position: absolute;
+      left: 16px;
+      top: 12px;
+      z-index: 3;
+      font-size: 12px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
     .dot {
       width: 10px;
       height: 10px;
@@ -453,8 +463,12 @@
       font-size: 0.75em;
       font-weight: 600;
       color: var(--text);
-      margin-left: 6px;
+      margin-left: 12px;
       display: inline-block;
+    }
+
+    .equation-inline-secondary {
+      margin-left: 40px;
     }
 
     .title-block {
@@ -488,7 +502,7 @@
   <div class="page">
     <header>
       <div class="title-block">
-        <h1>Kuramoto model:<span class="equation-inline">\( \dfrac{d\theta_i}{dt} = \omega_i + \dfrac{K}{D N} \sum_{j} A_{ij}\,\sin(\theta_j - \theta_i) \)</span></h1>
+        <h1>Kuramoto model:<span class="equation-inline">\( \dfrac{d\theta_i}{dt} = \omega_i + \dfrac{K}{D N} \sum_{j} A_{ij}\,\sin(\theta_j - \theta_i) \)</span><span class="equation-inline equation-inline-secondary">\( r = \dfrac{1}{N}\left|\sum_j e^{i \theta_j}\right| \)</span></h1>
       </div>
     </header>
 
@@ -609,6 +623,9 @@
           <div class="canvas-frame">
             <canvas id="phaseCanvas"></canvas>
           </div>
+          <div class="phase-caption">
+            <span id="kcCaptionLatex">\( K_c = 2 \sigma_{\omega} \sqrt{2/\pi} \approx 0 \)</span>
+          </div>
         </div>
       </div>
     </div>
@@ -628,6 +645,7 @@
     const springCanvas = document.getElementById('springCanvas');
     const circleCanvas = document.getElementById('circleCanvas');
     const phaseCanvas = document.getElementById('phaseCanvas');
+    const kcCaption = document.getElementById('kcCaptionLatex');
     const rebuildBtn = document.getElementById('rebuild');
     const resetBtn = document.getElementById('resetPhases');
     const clearHistoryBtn = document.getElementById('clearHistory');
@@ -808,9 +826,20 @@
       return { adj, edgesIncluded };
     }
 
+    function updateCriticalCaption() {
+      if (!kcCaption) return;
+      const kc = state.criticalK;
+      const tex = `\\( K_c = 2 \\sigma_{\\omega} \\sqrt{2/\\pi} \\approx ${kc.toFixed(2)} \\)`;
+      kcCaption.innerHTML = tex;
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise([kcCaption]).catch(() => {});
+      }
+    }
+
     function computeCriticalK() {
       const sigma = Math.max(1e-3, state.std);
       state.criticalK = 2 * sigma * Math.sqrt(2 / Math.PI);
+      updateCriticalCaption();
     }
 
     function resetPhases() {
@@ -1221,7 +1250,7 @@
       ctx.rotate(-Math.PI / 2);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('Order parameter', 0, 0);
+      ctx.fillText('r - order parameter', 0, 0);
       ctx.restore();
       ctx.textAlign = 'start';
 
