@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /booknet/text_viewer.html
+
+Sitemap: https://mikaberidze.github.io/sitemap.xml
+

@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TCWC726HHB"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-TCWC726HHB');
+    </script>
+    <!-- Google tag end (gtag.js) -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Interactive Schrödinger playground for simulating 2D quantum wave packets on customizable potentials using Crank–Nicolson.">
+    <meta name="author" content="Guram Mikaberidze">
+    <link rel="canonical" href="https://mikaberidze.github.io/schrodinger/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Guram Mikaberidze">
+    <meta property="og:title" content="Schrödinger Playground – 2D Quantum Wave Packet Simulator">
+    <meta property="og:description" content="Explore the 2D time-dependent Schrödinger equation with interactive simulations of Gaussian wave packets and custom potentials.">
+    <meta property="og:url" content="https://mikaberidze.github.io/schrodinger/">
+    <meta property="og:image" content="https://mikaberidze.github.io/schrodinger/favicon.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Schrödinger Playground – 2D Quantum Wave Packet Simulator">
+    <meta name="twitter:description" content="Browser-based Schrödinger equation playground with interactive Crank–Nicolson simulations.">
+    <meta name="twitter:image" content="https://mikaberidze.github.io/schrodinger/favicon.png">
+    <title>Schrödinger Playground – 2D Quantum Wave Packet Simulator</title>
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="stylesheet" href="style.css" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Schrödinger Playground",
+      "url": "https://mikaberidze.github.io/schrodinger/",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Any",
+      "description": "Interactive Schrödinger equation playground for simulating 2D quantum wave packets on custom potentials.",
+      "author": {
+        "@type": "Person",
+        "name": "Guram Mikaberidze",
+        "url": "https://mikaberidze.github.io/"
+      }
+    }
+    </script>
+    <!-- MathJax for Schrödinger equation -->
+    <script>
+      window.MathJax = {
+        tex: { inlineMath: [["$", "$"], ["\\(", "\\)"]] },
+      };
+    </script>
+    <script
+      id="MathJax-script"
+      async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+    ></script>
+    <!-- JSZip for compressed .psi setup files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- math.js for function-defined potentials -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+  </head>
+  <body>
+    <header class="header">
+      <h1>Schrödinger Playground</h1>
+      <div class="equation">
+        $$ i \hbar \frac{\partial}{\partial t}\Psi(\mathbf{r},t)
+        = \left( -\frac{\hbar^2}{2m}\nabla^2 + V(\mathbf{r}) \right)\Psi(\mathbf{r},t) $$
+      </div>
+      <div class="header-tagline">
+        Explore 2D Schrödinger-equation dynamics through Crank–Nicolson
+        simulations of Gaussian wave packets on customizable potential landscapes.
+      </div>
+    </header>
+
+    <section class="top-controls">
+      <div class="top-history-buttons">
+        <button
+          id="undo-button"
+          class="top-button history-button"
+          type="button"
+          aria-label="Undo"
+          data-tooltip="Undo"
+          disabled
+        >
+          <img
+            src="icons/undo.png"
+            class="history-icon"
+            alt=""
+            aria-hidden="true"
+          />
+        </button>
+
+        <button
+          id="redo-button"
+          class="top-button history-button"
+          type="button"
+          aria-label="Redo"
+          data-tooltip="Redo"
+          disabled
+        >
+          <img
+            src="icons/redo.png"
+            class="history-icon"
+            alt=""
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div class="top-control shape-setting" data-shape-setting>
+        <label class="top-control-label" for="shape-display">
+          Shape
+        </label>
+        <div class="top-control-value">
+          <button
+            id="shape-display"
+            type="button"
+            class="shape-display"
+            aria-haspopup="true"
+            aria-expanded="false"
+          >
+            <span class="shape-icon shape-icon-line" aria-hidden="true"></span>
+            <span class="shape-dropdown-arrow">▾</span>
+          </button>
+        </div>
+        <div id="shape-menu" class="shape-menu" role="menu">
+          <button
+            type="button"
+            class="shape-option"
+            data-shape="line"
+            role="menuitemradio"
+            aria-checked="true"
+          >
+            <span class="shape-icon shape-icon-line" aria-hidden="true"></span>
+          </button>
+          <button
+            type="button"
+            class="shape-option"
+            data-shape="triangle"
+            role="menuitemradio"
+            aria-checked="false"
+          >
+            <span class="shape-icon shape-icon-triangle" aria-hidden="true">
+              <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                <polygon
+                  points="10,3 3,17 17,17"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="shape-option"
+            data-shape="square"
+            role="menuitemradio"
+            aria-checked="false"
+          >
+            <span class="shape-icon shape-icon-square" aria-hidden="true"></span>
+          </button>
+          <button
+            type="button"
+            class="shape-option"
+            data-shape="circle"
+            role="menuitemradio"
+            aria-checked="false"
+          >
+            <span class="shape-icon shape-icon-circle" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div
+        class="top-control shape-setting shape-thickness-setting"
+        data-shape-setting
+      >
+        <label class="top-control-label" for="shape-thickness-edit">
+          Thickness
+        </label>
+        <div class="top-control-value">
+          <input
+            id="shape-thickness-edit"
+            type="number"
+            min="1"
+            max="60"
+            step="1"
+          />
+          <button
+            type="button"
+            class="slider-toggle"
+            data-slider-toggle="shape-thickness"
+            aria-label="Adjust shape thickness"
+            aria-expanded="false"
+          >
+            ▾
+          </button>
+        </div>
+        <div class="slider-popup" data-for="shape-thickness">
+          <input
+            id="shape-thickness"
+            type="range"
+            min="1"
+            max="60"
+            value="5"
+          />
+        </div>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div
+        class="top-control shape-setting shape-regular-setting"
+        data-shape-setting
+      >
+        <label
+          class="top-control-label shape-fill-label"
+          for="shape-regular-toggle"
+        >
+          <span id="shape-regular-label-text">Regular</span>
+          <input id="shape-regular-toggle" type="checkbox" />
+        </label>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div
+        class="top-control shape-setting shape-fill-setting"
+        data-shape-setting
+      >
+        <label
+          class="top-control-label shape-fill-label"
+          for="shape-fill-toggle"
+        >
+          Fill
+          <input id="shape-fill-toggle" type="checkbox" />
+        </label>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div class="top-control potential-setting">
+        <label class="top-control-label" for="potential-gray-edit">
+          Potential
+        </label>
+        <div class="top-control-value">
+          <input
+            id="potential-gray-edit"
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+          />
+          <button
+            type="button"
+            class="slider-toggle"
+            data-slider-toggle="potential-gray"
+            aria-label="Adjust potential"
+            aria-expanded="false"
+          >
+            ▾
+          </button>
+        </div>
+        <div class="slider-popup" data-for="potential-gray">
+          <input
+            id="potential-gray"
+            type="range"
+            min="0"
+            max="255"
+            value="128"
+          />
+        </div>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div class="top-control potential-setting">
+        <label class="top-control-label" for="brush-size-edit">
+          Size
+        </label>
+        <div class="top-control-value">
+          <input
+            id="brush-size-edit"
+            type="number"
+            min="1"
+            max="60"
+            step="1"
+          />
+          <button
+            type="button"
+            class="slider-toggle"
+            data-slider-toggle="brush-size"
+            aria-label="Adjust brush size"
+            aria-expanded="false"
+          >
+            ▾
+          </button>
+        </div>
+        <div class="slider-popup" data-for="brush-size">
+          <input
+            id="brush-size"
+            type="range"
+            min="1"
+            max="60"
+            value="10"
+          />
+        </div>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div class="top-control potential-setting">
+        <label class="top-control-label" for="brush-hardness-edit">
+          Hardness
+        </label>
+        <div class="top-control-value">
+          <input
+            id="brush-hardness-edit"
+            type="number"
+            min="0"
+            max="1"
+            step="0.05"
+          />
+          <button
+            type="button"
+            class="slider-toggle"
+            data-slider-toggle="brush-hardness"
+            aria-label="Adjust hardness"
+            aria-expanded="false"
+          >
+            ▾
+          </button>
+        </div>
+        <div class="slider-popup" data-for="brush-hardness">
+          <input
+            id="brush-hardness"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value="0.9"
+          />
+        </div>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div class="top-control upload-setting">
+        <label class="top-control-label" for="v-max-edit">
+          \(V_\text{max}\)
+        </label>
+        <div class="top-control-value">
+          <input
+            id="v-max-edit"
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+          />
+          <button
+            type="button"
+            class="slider-toggle"
+            data-slider-toggle="v-max"
+            aria-label="Adjust V max"
+            aria-expanded="false"
+          >
+            ▾
+          </button>
+        </div>
+        <div class="slider-popup" data-for="v-max">
+          <input
+            id="v-max-slider"
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+          />
+        </div>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div class="top-control function-setting">
+        <label class="top-control-label" for="potential-function-input">
+          \(V(x, y) =\)
+        </label>
+        <div class="top-control-value">
+          <input
+            id="potential-function-input"
+            type="text"
+            placeholder="e.g. (x^2 + y^2) / 1000"
+            autocomplete="off"
+          />
+        </div>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div class="top-control upload-setting">
+        <label class="top-control-label" for="upload-browse">
+          Upload an image
+        </label>
+        <div class="top-control-value">
+          <button
+            type="button"
+            class="top-button"
+            id="upload-browse"
+            aria-label="Browse image for potential"
+          >
+            Browse
+          </button>
+        </div>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div class="top-control upload-setting">
+        <label class="top-control-label" for="upload-invert"></label>
+        <div class="top-control-value">
+          <button
+            type="button"
+            class="top-button"
+            id="upload-invert"
+            aria-label="Invert potential"
+          >
+            Invert
+          </button>
+        </div>
+      </div>
+
+      <div class="top-separator"></div>
+
+      <button
+        id="record-toggle"
+        class="top-button record-button"
+        aria-label="Toggle recording"
+        aria-pressed="false"
+        data-tooltip="Simulation recording. If enabled, the video downloads when you stop the simulation."
+      >
+        <span class="record-label">REC</span>
+        <span class="record-dot"></span>
+      </button>
+
+      <button
+        id="play-pause"
+        class="top-button"
+        aria-label="Play or pause"
+        data-tooltip="Play or pause simulation"
+      >
+        <span class="transport-icon" aria-hidden="true">▶</span>
+      </button>
+
+      <button
+        id="reset-packet"
+        class="top-button stop-button"
+        aria-label="Finish the simulation"
+        data-tooltip="Finish the simulation"
+      >
+        <span class="stop-icon"></span>
+      </button>
+    </section>
+
+    <main class="layout">
+      <section class="canvas-shell">
+        <aside class="potential-editor">
+          <h2>\( V(\mathbb r) \) Potential editor</h2>
+          <div class="potential-tool-list">
+            <button
+              class="tool-button"
+              data-tool="brush"
+              data-tooltip="Brush: draw potential"
+              aria-label="Brush: draw potential"
+            >
+              <img src="icons/brush.png" alt="Brush tool" />
+            </button>
+            <button
+              class="tool-button"
+              data-tool="eraser"
+              data-tooltip="Eraser: remove potential"
+              aria-label="Eraser: remove potential"
+            >
+              <img src="icons/eraser.png" alt="Eraser tool" />
+            </button>
+            <button
+              class="tool-button"
+              data-tool="bucket"
+              data-tooltip="Bucket: fill region with potential"
+              aria-label="Bucket: fill region with potential"
+            >
+              <img src="icons/bucket.png" alt="Bucket tool" />
+            </button>
+            <button
+              class="tool-button"
+              data-tool="eyedropper"
+              data-tooltip="Eyedropper: pick potential from canvas"
+              aria-label="Eyedropper: pick potential from canvas"
+            >
+              <img src="icons/eyedropper.png" alt="Eyedropper tool" />
+            </button>
+            <button
+              class="tool-button"
+              data-tool="move"
+              data-tooltip="Move: pan or adjust potential"
+              aria-label="Move: pan or adjust potential"
+            >
+              <img src="icons/move.png" alt="Move tool" />
+            </button>
+            <button
+              class="tool-button"
+              data-tool="shapes"
+              data-tooltip="Shapes: draw structured potentials"
+              aria-label="Shapes: draw structured potentials"
+            >
+              <img src="icons/shapes.png" alt="Shapes tool" />
+            </button>
+            <button
+              class="tool-button"
+              data-tool="function"
+              data-tooltip="Function: define potential via function"
+              aria-label="Function: define potential via function"
+            >
+              <img src="icons/function.png" alt="Function tool" />
+            </button>
+            <button
+              class="tool-button"
+              data-tool="upload"
+              data-tooltip="Upload image as potential"
+              aria-label="Upload image as potential"
+            >
+              <img src="icons/upload.png" alt="Upload potential image" />
+            </button>
+            <button
+              class="tool-button"
+              data-tool="clear"
+              data-tooltip="Clear: reset potential field"
+              aria-label="Clear: reset potential field"
+            >
+              <img src="icons/trash.png" alt="Clear potential" />
+            </button>
+          </div>
+        </aside>
+
+        <section class="canvas-container">
+          <canvas id="potential-canvas" class="canvas-layer"></canvas>
+          <canvas id="quantum-canvas" class="canvas-layer"></canvas>
+          <canvas id="overlay-canvas" class="canvas-layer"></canvas>
+          <div id="particle-overlay" class="particle-overlay">
+            <div
+              id="particle-center-handle"
+              class="particle-center-handle"
+            ></div>
+            <div id="particle-sigma-circle" class="particle-sigma-circle">
+              <span
+                id="particle-sigma-label"
+                class="particle-label"
+              >\(2\sigma_{\vec r}\)</span>
+            </div>
+            <div id="particle-p-vector" class="particle-p-vector">
+              <div id="particle-p-line" class="particle-p-line"></div>
+              <div id="particle-p-head" class="particle-p-head"></div>
+              <span id="particle-p-label" class="particle-label">\(\vec p\)</span>
+            </div>
+          </div>
+        </section>
+
+        <aside id="particle-controls" class="particle-controls">
+          <h2 class="particle-controls-title">EXPERIMENT SETUP</h2>
+          <div class="setup-row">
+            <select id="preset-select" class="setup-select">
+              <option value="" disabled selected hidden>Preset Experiments</option>
+            </select>
+            <button
+              id="save-setup"
+              class="top-button global-button"
+              type="button"
+              data-tooltip="Save current experimental setup"
+            >
+              Save
+            </button>
+            <button
+              id="load-setup"
+              class="top-button global-button"
+              type="button"
+              data-tooltip="Load current experimental setup"
+            >
+              Load
+            </button>
+          </div>
+
+          <section class="global-controls">
+            <h2>General properties</h2>
+            <div class="particle-field">
+              <label>Lattice</label>
+              <div class="lattice-input-row">
+                <span class="lattice-inline-label">W:</span>
+                <input
+                  id="lattice-width"
+                  type="number"
+                  min="50"
+                  max="2000"
+                  step="50"
+                />
+                <span class="lattice-inline-label">H:</span>
+                <input
+                  id="lattice-height"
+                  type="number"
+                  min="50"
+                  max="2000"
+                  step="50"
+                />
+              </div>
+            </div>
+            <div class="particle-field">
+              <label for="time-step-edit">\(\Delta t\)</label>
+              <input
+                id="time-step-edit"
+                type="number"
+                min="0.001"
+                max="1"
+                step="0.005"
+              />
+            </div>
+
+            <div class="particle-field">
+              <label>Boundary</label>
+              <div
+                class="boundary-radio-group global-toggle-row"
+                role="radiogroup"
+                aria-label="Boundary mode"
+              >
+                <label class="boundary-radio">
+                  <input
+                    type="radio"
+                    name="boundary-mode"
+                    value="open"
+                    checked
+                  />
+                  <span class="boundary-radio-label">Open</span>
+                </label>
+                <label class="boundary-radio">
+                  <input
+                    type="radio"
+                    name="boundary-mode"
+                    value="closed"
+                  />
+                  <span class="boundary-radio-label">Closed</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="particle-field">
+              <label>Overlays</label>
+              <div class="global-toggle-row">
+                <label class="toggle-label">
+                  <input
+                    id="toggle-colorbar"
+                    type="checkbox"
+                    checked
+                  />
+                  Colorbar
+                </label>
+                <label class="toggle-label">
+                  <input
+                    id="toggle-energy"
+                    type="checkbox"
+                    checked
+                  />
+                  Energy
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="global-controls wave-function-controls">
+            <h2>Wave-function properties</h2>
+            <div class="particle-fields">
+              <div class="particle-field">
+                <label for="x-edit">x</label>
+                <input id="x-edit" type="number" step="0.1" />
+              </div>
+              <div class="particle-field">
+                <label for="y-edit">y</label>
+                <input id="y-edit" type="number" step="0.1" />
+              </div>
+              <div class="particle-field">
+                <label for="px-edit">\(p_x\)</label>
+                <input id="px-edit" type="number" step="0.01" />
+              </div>
+              <div class="particle-field">
+                <label for="py-edit">\(p_y\)</label>
+                <input id="py-edit" type="number" step="0.01" />
+              </div>
+              <div class="particle-field">
+                <label for="sigma-x-edit">\(\sigma_{\vec r}\)</label>
+                <input id="sigma-x-edit" type="number" step="0.01" />
+              </div>
+              <div class="particle-field">
+                <label for="sigma-p-edit">\(\sigma_{\vec p}\)</label>
+                <input id="sigma-p-edit" type="number" step="0.01" />
+              </div>
+            </div>
+            <div class="info">
+              <strong>Constraint:</strong>
+              <span>σ<sub>x</sub> · σ<sub>p</sub> = 1/2</span>
+            </div>
+          </section>
+
+          <!-- Hidden internal sliders used for simulation state -->
+          <div class="particle-hidden-sliders">
+            <input
+              id="x"
+              type="range"
+              min="-10"
+              max="10"
+              step="0.1"
+              value="0"
+            />
+            <input
+              id="y"
+              type="range"
+              min="-10"
+              max="10"
+              step="0.1"
+              value="0"
+            />
+            <input
+              id="px"
+              type="range"
+              min="-10"
+              max="10"
+              step="0.01"
+              value="5"
+            />
+            <input
+              id="py"
+              type="range"
+              min="-10"
+              max="10"
+              step="0.01"
+              value="0"
+            />
+            <input
+              id="sigma-x-slider"
+              type="range"
+              min="0"
+              max="1"
+              step="0.001"
+              value="0.5"
+            />
+            <input
+              id="sigma-p-slider"
+              type="range"
+              min="0"
+              max="1"
+              step="0.001"
+              value="0.5"
+            />
+          </div>
+
+          <div class="author-credit">
+            ©
+            <a
+              href="https://mikaberidze.github.io/"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Guram Mikaberidze</a
+            >
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="constants.js"></script>
+    <script src="quantum.js"></script>
+    <script src="drawing.js"></script>
+    <script src="ui.js"></script>
+  </body>
+  </html>
