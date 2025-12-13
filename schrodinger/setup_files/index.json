@@ -1,9 +1,11 @@
 [
   "Double-slit.psi",
   "Tunneling.psi",
+  "Tunneling oscillation.psi",
   "Reflection.psi",
   "Refraction.psi",
-  "1D_parabola_oscillations.psi",
   "Elliptic_well.psi",
-  "Orbit.psi"
+  "Orbit.psi",
+  "Focusing_lens_1.psi",
+  "Focusing_lens_2.psi"
 ]

@@ -567,9 +567,17 @@ body {
   gap: 0.75rem;
 }
 
-.particle-controls h2 {
+.particle-controls-title {
   margin: 0 0 0.5rem;
   font-size: 1.1rem;
+}
+
+.controls-section-title {
+  margin: 0.1rem 0 0.15rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
 }
 
 .global-controls {
@@ -611,6 +619,10 @@ body {
   row-gap: 0.35rem;
   flex: 0 1 65%;
   max-width: 65%;
+}
+
+.psi-rescale-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .lattice-input-row {
@@ -740,11 +752,11 @@ body {
 }
 
 .global-controls > h2 {
-  margin: 0 0 0.35rem;
-  font-size: 0.95rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.85;
+  margin: 0;
+  font-size: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  opacity: 1;
 }
 
 .particle-field input[type="number"] {
@@ -759,10 +771,76 @@ body {
   max-width: 65%;
 }
 
+.time-step-row #time-step-edit {
+  max-width: 5rem;
+}
+
+.imaginary-toggle {
+  white-space: nowrap;
+}
+
+.rescale-toggle input[type="checkbox"]::after {
+  border-color: #4ade80;
+}
+
+.rescale-toggle input[type="checkbox"]:focus-visible {
+  outline: none;
+  border-color: #4ade80;
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.5),
+    0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
 .particle-field input[type="number"]:focus {
   outline: none;
   border-color: #2c7be5;
   box-shadow: 0 0 0 1px rgba(44, 123, 229, 0.6);
+}
+
+.wave-function-controls .wf-tabs {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  margin: -0.35rem -0.75rem 0.35rem;
+  padding: 0.1rem 0.75rem 0;
+  border-bottom: 1px solid #222633;
+}
+
+.wave-function-controls .wf-tab {
+  border: none;
+  background: transparent;
+  color: #e6eef7;
+  opacity: 0.6;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wave-function-controls .wf-tab.is-active {
+  background: #131827;
+  opacity: 1;
+  border: 1px solid #222633;
+  border-bottom-color: #131827;
+  margin-bottom: -1px;
+}
+
+.wave-function-controls .wf-tab:hover {
+  opacity: 0.95;
+}
+
+.wave-function-controls .wf-tab-panels {
+  margin-top: 0;
+}
+
+.wave-function-controls .wf-tab-panel {
+  display: none;
+}
+
+.wave-function-controls .wf-tab-panel.is-active {
+  display: block;
 }
 
 .particle-field select,
@@ -1002,6 +1080,7 @@ body {
   position: relative;
   background: radial-gradient(circle at center, #101627, #020308);
   overflow: hidden;
+  min-height: 260px;
 }
 
 .canvas-container::before {
@@ -1085,6 +1164,16 @@ body {
   position: absolute;
   z-index: 3;
   pointer-events: none;
+}
+
+.canvas-container,
+#potential-canvas,
+#quantum-canvas,
+#overlay-canvas,
+.particle-center-handle,
+.particle-p-head,
+#particle-sigma-circle {
+  touch-action: none;
 }
 
 .particle-center-handle {
@@ -1185,6 +1274,7 @@ body {
   }
 
   .potential-editor {
+    order: 0;
     flex-direction: row;
     justify-content: center;
     width: 100%;
@@ -1196,9 +1286,107 @@ body {
     flex-direction: row;
   }
 
+  .canvas-container {
+    order: 1;
+    /* Let JS-controlled height take effect on mobile
+       so the full-width canvas is fully visible. */
+    flex: 0 0 auto;
+  }
+
   .particle-controls {
+    order: 2;
     width: 100%;
     border-left: none;
     border-top: 1px solid #222633;
+  }
+}
+
+@media (max-width: 640px) {
+  .header {
+    grid-template-columns: 1fr;
+    row-gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    text-align: center;
+  }
+
+  .header h1 {
+    font-size: 1.4rem;
+  }
+
+  .equation {
+    font-size: 0.9rem;
+  }
+
+  .header-tagline {
+    max-width: none;
+    font-size: 0.85rem;
+  }
+
+  .top-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem 0.85rem;
+  }
+
+  .top-separator,
+  .top-separator-left {
+    display: none;
+  }
+
+  .top-history-buttons {
+    justify-content: flex-start;
+  }
+
+  .top-control {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .top-control-value {
+    margin-left: auto;
+  }
+
+  .top-control-value input[type="number"] {
+    width: 3.25rem;
+  }
+
+  .top-control-value input[type="text"] {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .record-button,
+  #play-pause,
+  #reset-packet {
+    align-self: center;
+  }
+
+  .global-controls {
+    margin: 0 0 0.75rem;
+  }
+
+  .particle-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .particle-field {
+    align-items: flex-start;
+  }
+
+  .particle-field label {
+    flex: 0 0 auto;
+  }
+
+  .particle-field input[type="number"],
+  .particle-field select,
+  .particle-field .select-display {
+    flex: 1 1 auto;
+    max-width: 100%;
+  }
+
+  .global-toggle-row {
+    grid-template-columns: 1fr;
+    max-width: 100%;
   }
 }

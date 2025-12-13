@@ -209,7 +209,9 @@ function savePotentialHistory() {
   let globalControlsSnapshot = null;
   if (
     typeof boundaryMode !== "undefined" ||
-    typeof currentTimeStep !== "undefined"
+    typeof currentTimeStep !== "undefined" ||
+    typeof isImaginaryTime !== "undefined" ||
+    typeof psiRescaleMode !== "undefined"
   ) {
     const timeStepValue =
       typeof currentTimeStep === "number"
@@ -219,9 +221,17 @@ function savePotentialHistory() {
         : 0.1;
     const modeValue =
       typeof boundaryMode === "string" ? boundaryMode : "open";
+    const rescaleModeValue =
+      typeof psiRescaleMode === "string" ? psiRescaleMode : "none";
     globalControlsSnapshot = {
       boundaryMode: modeValue === "closed" ? "closed" : "open",
       timeStep: Math.max(0.001, Math.min(1, timeStepValue)),
+      imaginaryTime: !!(
+        typeof isImaginaryTime !== "undefined" && isImaginaryTime
+      ),
+      rescaleMode: rescaleModeValue === "norm" || rescaleModeValue === "max"
+        ? rescaleModeValue
+        : "none",
     };
   }
 
@@ -493,6 +503,33 @@ function restorePotentialFromHistory(index) {
         timeStepInput.value = String(currentTimeStep);
       }
     }
+
+    if (typeof g.imaginaryTime === "boolean" && typeof isImaginaryTime !== "undefined") {
+      isImaginaryTime = g.imaginaryTime;
+      const imaginaryToggle = document.getElementById("imaginary-time-toggle");
+      if (imaginaryToggle) {
+        imaginaryToggle.checked = !!isImaginaryTime;
+      }
+    }
+
+    if (
+      typeof g.rescaleMode === "string" &&
+      typeof psiRescaleMode !== "undefined"
+    ) {
+      const mode =
+        g.rescaleMode === "norm" || g.rescaleMode === "max"
+          ? g.rescaleMode
+          : "none";
+      psiRescaleMode = mode;
+      const normInput = document.getElementById("psi-rescale-norm");
+      const maxInput = document.getElementById("psi-rescale-max");
+      if (normInput) {
+        normInput.checked = mode === "norm";
+      }
+      if (maxInput) {
+        maxInput.checked = mode === "max";
+      }
+    }
   }
 
   // If lattice size or particle properties changed, restart the wavefunction.
@@ -522,6 +559,10 @@ function restorePotentialFromHistory(index) {
       const playPauseIcon =
         playPauseButton.querySelector(".transport-icon") || playPauseButton;
       playPauseIcon.textContent = "▶";
+    }
+    const saveButton = document.getElementById("save-setup");
+    if (saveButton) {
+      saveButton.disabled = false;
     }
     if (typeof updateParticleOverlay === "function") {
       updateParticleOverlay();
@@ -694,12 +735,31 @@ function resizeCanvas() {
     const gridWidth = currentResolutionWidth;
     const gridHeight = currentResolutionHeight;
 
-    const scaleX = rect.width / gridWidth;
-    const scaleY = rect.height / gridHeight;
-    const scale = Math.min(scaleX, scaleY);
+    // Match the CSS breakpoint: on narrow layouts,
+    // always use the full container width for the canvas
+    // and derive height from the simulation aspect ratio.
+    const isNarrowLayout =
+      typeof window !== "undefined" && window.innerWidth <= 800;
 
-    const displayWidth = gridWidth * scale;
-    const displayHeight = gridHeight * scale;
+    let displayWidth;
+    let displayHeight;
+
+    if (isNarrowLayout) {
+      const widthCss = rect.width || window.innerWidth || gridWidth;
+      const scale = widthCss / gridWidth;
+      displayWidth = widthCss;
+      displayHeight = gridHeight * scale;
+      // Ensure the canvas container grows to fit the full canvas height
+      container.style.height = `${displayHeight}px`;
+    } else {
+      const scaleX = rect.width / gridWidth;
+      const scaleY = rect.height / gridHeight;
+      const scale = Math.min(scaleX, scaleY);
+      displayWidth = gridWidth * scale;
+      displayHeight = gridHeight * scale;
+      // Let layout control height on wide screens
+      container.style.height = "";
+    }
 
     if (canvas) {
       canvas.style.width = `${displayWidth}px`;
@@ -1611,10 +1671,12 @@ function drawShapeStroke(x0, y0, x1, y1) {
       cy = y0 + dirY * radiusY;
     }
 
+    const radius = Math.max(radiusX, radiusY);
+    const baseSegments = 48;
     const segments = Math.max(
-      16,
+      baseSegments,
       Math.round(
-        2 * Math.PI * Math.max(radiusX, radiusY) / Math.max(1, shapeThickness)
+        2 * Math.PI * radius / Math.max(4, shapeThickness)
       )
     );
     let prevX = cx + radiusX;
@@ -2504,8 +2566,60 @@ async function exportCurrentSetup() {
   const controls =
     typeof getControlsState === "function" ? getControlsState() : null;
 
+  let wavefunction = null;
+
+  if (
+    typeof wavefunctionCanBeReconstructedFromControls === "boolean" &&
+    !wavefunctionCanBeReconstructedFromControls &&
+    psiRe &&
+    psiIm &&
+    simWidth > 0 &&
+    simHeight > 0 &&
+    psiRe.length === simWidth * simHeight &&
+    psiIm.length === simWidth * simHeight
+  ) {
+    const count = simWidth * simHeight;
+    const re = new Array(count);
+    const im = new Array(count);
+    for (let i = 0; i < count; i++) {
+      const reVal = psiRe[i];
+      const imVal = psiIm[i];
+      re[i] = Number.isFinite(reVal) ? reVal : 0;
+      im[i] = Number.isFinite(imVal) ? imVal : 0;
+    }
+
+    let normFactor = 1;
+    if (
+      typeof currentNormFactor === "number" &&
+      Number.isFinite(currentNormFactor) &&
+      currentNormFactor !== 0
+    ) {
+      normFactor = currentNormFactor;
+    }
+
+    let savedSimTime = 0;
+    if (typeof simTime === "number" && Number.isFinite(simTime)) {
+      savedSimTime = simTime;
+    }
+
+    let savedFrameCount = 0;
+    if (typeof frameCount === "number" && Number.isFinite(frameCount)) {
+      savedFrameCount = Math.max(0, Math.floor(frameCount));
+    }
+
+    wavefunction = {
+      width: simWidth,
+      height: simHeight,
+      re,
+      im,
+      normFactor,
+      simTime: savedSimTime,
+      frameCount: savedFrameCount,
+    };
+  }
+
   const payload = {
-    version: 1,
+    version: wavefunction ? 2 : 1,
     grid: {
       width:
         typeof currentResolutionWidth !== "undefined"
@@ -2531,8 +2645,16 @@ async function exportCurrentSetup() {
           : typeof TIME_STEP !== "undefined"
           ? TIME_STEP
           : 0.1,
+      imaginaryTime:
+        typeof isImaginaryTime !== "undefined" ? !!isImaginaryTime : false,
+      rescaleMode:
+        typeof psiRescaleMode === "string" ? psiRescaleMode : "none",
     },
   };
+
+  if (wavefunction) {
+    payload.wavefunction = wavefunction;
+  }
 
   const jsonText = JSON.stringify(payload, null, 2);
 
@@ -2605,6 +2727,8 @@ async function loadSetupFromPsiArrayBuffer(arrayBuffer) {
 
 function applySetupObject(setup) {
   if (!setup || typeof setup !== "object") return;
+
+  let appliedWavefunction = false;
 
   // 1) Grid resolution (if present)
   if (
@@ -2714,6 +2838,104 @@ function applySetupObject(setup) {
         timeStepInput.value = String(currentTimeStep);
       }
     }
+
+    if (typeof c.imaginaryTime === "boolean" && typeof isImaginaryTime !== "undefined") {
+      isImaginaryTime = c.imaginaryTime;
+      const imaginaryToggle = document.getElementById("imaginary-time-toggle");
+      if (imaginaryToggle) {
+        imaginaryToggle.checked = !!isImaginaryTime;
+      }
+    }
+
+    if (
+      typeof c.rescaleMode === "string" &&
+      typeof psiRescaleMode !== "undefined"
+    ) {
+      const mode =
+        c.rescaleMode === "norm" || c.rescaleMode === "max"
+          ? c.rescaleMode
+          : "none";
+      psiRescaleMode = mode;
+      const normInput = document.getElementById("psi-rescale-norm");
+      const maxInput = document.getElementById("psi-rescale-max");
+      if (normInput) {
+        normInput.checked = mode === "norm";
+      }
+      if (maxInput) {
+        maxInput.checked = mode === "max";
+      }
+    }
+  }
+
+  // 5) Explicit wavefunction (if present)
+  if (
+    setup.wavefunction &&
+    typeof setup.wavefunction === "object" &&
+    Array.isArray(setup.wavefunction.re) &&
+    Array.isArray(setup.wavefunction.im) &&
+    Number.isFinite(setup.wavefunction.width) &&
+    Number.isFinite(setup.wavefunction.height)
+  ) {
+    const wf = setup.wavefunction;
+    const w = wf.width;
+    const h = wf.height;
+    const reArr = wf.re;
+    const imArr = wf.im;
+    const count = w * h;
+
+    if (w > 0 && h > 0 && reArr.length === count && imArr.length === count) {
+      if (!psiRe || !psiIm || simWidth !== w || simHeight !== h || psiRe.length !== count || psiIm.length !== count) {
+        initSimulationGrid(w, h);
+      }
+
+      for (let i = 0; i < count; i++) {
+        const reVal = reArr[i];
+        const imVal = imArr[i];
+        psiRe[i] = Number.isFinite(reVal) ? reVal : 0;
+        psiIm[i] = Number.isFinite(imVal) ? imVal : 0;
+      }
+
+      if (
+        typeof wf.normFactor === "number" &&
+        Number.isFinite(wf.normFactor) &&
+        typeof currentNormFactor !== "undefined"
+      ) {
+        currentNormFactor = wf.normFactor;
+      }
+
+      if (typeof simTime !== "undefined") {
+        if (typeof wf.simTime === "number" && Number.isFinite(wf.simTime)) {
+          simTime = wf.simTime;
+        } else {
+          simTime = 0;
+        }
+      }
+
+      if (typeof frameCount !== "undefined") {
+        if (
+          typeof wf.frameCount === "number" &&
+          Number.isFinite(wf.frameCount)
+        ) {
+          frameCount = Math.max(0, Math.floor(wf.frameCount));
+        } else {
+          frameCount = 0;
+        }
+      }
+
+      if (typeof initialPsiDirty !== "undefined") {
+        initialPsiDirty = false;
+      }
+
+      if (typeof wavefunctionCanBeReconstructedFromControls !== "undefined") {
+        wavefunctionCanBeReconstructedFromControls = false;
+      }
+
+      appliedWavefunction = true;
+
+      if (typeof creationToolsVisible !== "undefined") {
+        creationToolsVisible = false;
+      }
+    }
   }
 
   if (typeof savePotentialHistory === "function") {
@@ -2722,5 +2944,8 @@ function applySetupObject(setup) {
 
   drawScene();
   updateParticleOverlay();
-  console.log("[Schrödinger] Setup imported from JSON file");
+  console.log(
+    "[Schrödinger] Setup imported from JSON file",
+    appliedWavefunction ? "(including explicit wavefunction)" : ""
+  );
 }

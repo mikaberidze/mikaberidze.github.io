@@ -31,6 +31,15 @@ const TIME_STEP = 0.1;
 // Mutable time step used by the integrators; the UI can change this.
 let currentTimeStep = TIME_STEP;
 
+// If true, evolve in imaginary time (t → -iτ) to relax toward the ground state.
+let isImaginaryTime = false;
+
+// Wavefunction rescaling mode after each Schrödinger step:
+// "none"  – no rescaling (default),
+// "norm"  – normalize total probability to 1,
+// "max"   – scale so max |ψ| = 1.
+let psiRescaleMode = "none";
+
 // Number of Schrödinger steps taken per animation frame.
 // Higher values evolve faster but cost more CPU per frame.
 const STEPS_PER_FRAME = 1;

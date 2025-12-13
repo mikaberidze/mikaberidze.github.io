@@ -64,6 +64,10 @@ let isPlaying = false;
 let animationFrameId = null;
 
 let initialPsiDirty = true;
+// True when the current wavefunction can be fully reconstructed
+// from the analytic initial-condition controls (no time evolution
+// or other non-analytic modifications have been applied).
+let wavefunctionCanBeReconstructedFromControls = true;
 
 let simTime = 0;
 let frameCount = 0;
@@ -307,6 +311,7 @@ function resetWavefunctionFromControls() {
   }
 
   initialPsiDirty = false;
+  wavefunctionCanBeReconstructedFromControls = true;
   console.log("[Schrödinger] Initial wavefunction reset from controls");
   updateParticleOverlay();
 }
@@ -341,14 +346,26 @@ function stepSchrodingerEuler() {
       const idxR = y * w + xRight;
       const idxU = yUp * w + x;
       const idxD = yDown * w + x;
+      const idxUL = yUp * w + xLeft;
+      const idxUR = yUp * w + xRight;
+      const idxDL = yDown * w + xLeft;
+      const idxDR = yDown * w + xRight;
 
       const re = psiRe[idx];
       const im = psiIm[idx];
 
       const lapRe =
-        psiRe[idxL] + psiRe[idxR] + psiRe[idxU] + psiRe[idxD] - 4 * re;
+        (4 *
+          (psiRe[idxL] + psiRe[idxR] + psiRe[idxU] + psiRe[idxD]) +
+          (psiRe[idxUL] + psiRe[idxUR] + psiRe[idxDL] + psiRe[idxDR]) -
+          20 * re) /
+        6;
       const lapIm =
-        psiIm[idxL] + psiIm[idxR] + psiIm[idxU] + psiIm[idxD] - 4 * im;
+        (4 *
+          (psiIm[idxL] + psiIm[idxR] + psiIm[idxU] + psiIm[idxD]) +
+          (psiIm[idxUL] + psiIm[idxUR] + psiIm[idxDL] + psiIm[idxDR]) -
+          20 * im) /
+        6;
 
       let V = 0;
       if (hasPotential) {
@@ -366,8 +383,21 @@ function stepSchrodingerEuler() {
         V = (potentialField[idxP] || 0) * POTENTIAL_SCALE;
       }
 
-      const dRe = -0.5 * lapIm + V * im;
-      const dIm =  0.5 * lapRe - V * re;
+      let dRe;
+      let dIm;
+
+      // Real-time Schrödinger: i ∂ψ/∂t = (-½∇² + V) ψ
+      // Imaginary-time Schrödinger: ∂ψ/∂τ = -( -½∇² + V ) ψ
+      if (typeof isImaginaryTime !== "undefined" && isImaginaryTime) {
+        // dψ/dτ = -Hψ with H = -½∇² + V  ⇒
+        // dRe/dτ = +½ ∇² Re - V Re
+        // dIm/dτ = +½ ∇² Im - V Im
+        dRe =  0.5 * lapRe - V * re;
+        dIm =  0.5 * lapIm - V * im;
+      } else {
+        dRe = -0.5 * lapIm + V * im;
+        dIm =  0.5 * lapRe - V * re;
+      }
 
       let newRe = re + currentTimeStep * dRe;
       let newIm = im + currentTimeStep * dIm;
@@ -438,14 +468,26 @@ function stepSchrodingerCrankNicolsonFixedPointIters() {
       const idxR = y * w + xRight;
       const idxU = yUp * w + x;
       const idxD = yDown * w + x;
+      const idxUL = yUp * w + xLeft;
+      const idxUR = yUp * w + xRight;
+      const idxDL = yDown * w + xLeft;
+      const idxDR = yDown * w + xRight;
 
       const re = psiRe[idx];
       const im = psiIm[idx];
 
       const lapRe =
-        psiRe[idxL] + psiRe[idxR] + psiRe[idxU] + psiRe[idxD] - 4 * re;
+        (4 *
+          (psiRe[idxL] + psiRe[idxR] + psiRe[idxU] + psiRe[idxD]) +
+          (psiRe[idxUL] + psiRe[idxUR] + psiRe[idxDL] + psiRe[idxDR]) -
+          20 * re) /
+        6;
       const lapIm =
-        psiIm[idxL] + psiIm[idxR] + psiIm[idxU] + psiIm[idxD] - 4 * im;
+        (4 *
+          (psiIm[idxL] + psiIm[idxR] + psiIm[idxU] + psiIm[idxD]) +
+          (psiIm[idxUL] + psiIm[idxUR] + psiIm[idxDL] + psiIm[idxDR]) -
+          20 * im) /
+        6;
 
       let V = 0;
       if (hasPotential) {
@@ -493,14 +535,26 @@ function stepSchrodingerCrankNicolsonFixedPointIters() {
         const idxR = y * w + xRight;
         const idxU = yUp * w + x;
         const idxD = yDown * w + x;
+        const idxUL = yUp * w + xLeft;
+        const idxUR = yUp * w + xRight;
+        const idxDL = yDown * w + xLeft;
+        const idxDR = yDown * w + xRight;
 
         const re = psiRe[idx];
         const im = psiIm[idx];
 
         const lapRe =
-          psiRe[idxL] + psiRe[idxR] + psiRe[idxU] + psiRe[idxD] - 4 * re;
+          (4 *
+            (psiRe[idxL] + psiRe[idxR] + psiRe[idxU] + psiRe[idxD]) +
+            (psiRe[idxUL] + psiRe[idxUR] + psiRe[idxDL] + psiRe[idxDR]) -
+            20 * re) /
+          6;
         const lapIm =
-          psiIm[idxL] + psiIm[idxR] + psiIm[idxU] + psiIm[idxD] - 4 * im;
+          (4 *
+            (psiIm[idxL] + psiIm[idxR] + psiIm[idxU] + psiIm[idxD]) +
+            (psiIm[idxUL] + psiIm[idxUR] + psiIm[idxDL] + psiIm[idxDR]) -
+            20 * im) /
+          6;
 
         let V = 0;
         if (hasPotential) {
@@ -575,10 +629,63 @@ function stepSchrodingerCrankNicolsonFixedPointIters() {
   simTime += dt;
 }
 
+function rescaleWavefunctionIfNeeded() {
+  if (!psiRe || !psiIm) return;
+  if (typeof psiRescaleMode === "undefined" || psiRescaleMode === "none") {
+    return;
+  }
+
+  const n = psiRe.length;
+  if (!Number.isFinite(n) || n <= 0) return;
+
+  if (psiRescaleMode === "norm") {
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+      const re = psiRe[i];
+      const im = psiIm[i];
+      sum += re * re + im * im;
+    }
+    if (!Number.isFinite(sum) || sum <= 0) return;
+    const factor = 1 / Math.sqrt(sum);
+    for (let i = 0; i < n; i++) {
+      psiRe[i] *= factor;
+      psiIm[i] *= factor;
+    }
+  } else if (psiRescaleMode === "max") {
+    let maxAmp2 = 0;
+    for (let i = 0; i < n; i++) {
+      const re = psiRe[i];
+      const im = psiIm[i];
+      const amp2 = re * re + im * im;
+      if (amp2 > maxAmp2) {
+        maxAmp2 = amp2;
+      }
+    }
+    if (!Number.isFinite(maxAmp2) || maxAmp2 <= 0) return;
+    const factor = 1 / Math.sqrt(maxAmp2);
+    for (let i = 0; i < n; i++) {
+      psiRe[i] *= factor;
+      psiIm[i] *= factor;
+    }
+  }
+}
+
 function stepSchrodinger() {
-  // You can switch between different stepping methods here.
-  //stepSchrodingerEuler();
-  stepSchrodingerCrankNicolsonFixedPointIters();
+  // Use an unconditionally stable Crank–Nicolson integrator for real time,
+  // and a simpler explicit Euler step for imaginary time relaxation.
+  wavefunctionCanBeReconstructedFromControls = false;
+  if (typeof isImaginaryTime !== "undefined" && isImaginaryTime) {
+    stepSchrodingerEuler();
+  } else {
+    stepSchrodingerCrankNicolsonFixedPointIters();
+  }
+
+   if (
+    typeof psiRescaleMode !== "undefined" &&
+    psiRescaleMode !== "none"
+  ) {
+    rescaleWavefunctionIfNeeded();
+  }
 }
 
 function computeEnergyExpectation() {

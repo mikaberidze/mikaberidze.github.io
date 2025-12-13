@@ -1037,6 +1037,8 @@ function initApp() {
   const timeStepInput = document.getElementById("time-step-edit");
   const saveSetupButton = document.getElementById("save-setup");
   const loadSetupButton = document.getElementById("load-setup");
+  const wavefunctionTabs = document.querySelectorAll(".wf-tab");
+  const wavefunctionPanels = document.querySelectorAll(".wf-tab-panel");
   const applyGridFromInputs = () => {
     if (
       typeof currentResolutionWidth === "undefined" ||
@@ -1108,6 +1110,111 @@ function initApp() {
       currentTimeStep = dt;
       timeStepInput.value = String(dt);
 
+      if (typeof savePotentialHistory === "function") {
+        savePotentialHistory();
+      }
+    });
+  }
+
+  if (wavefunctionTabs.length && wavefunctionPanels.length) {
+    const activateWavefunctionTab = (targetName) => {
+      wavefunctionTabs.forEach((tab) => {
+        const name = tab.getAttribute("data-tab");
+        const isActive = name === targetName;
+        tab.classList.toggle("is-active", isActive);
+        tab.setAttribute("aria-selected", isActive ? "true" : "false");
+      });
+
+      wavefunctionPanels.forEach((panel) => {
+        const name = panel.getAttribute("data-tab-panel");
+        const isActive = name === targetName;
+        panel.classList.toggle("is-active", isActive);
+      });
+    };
+
+    wavefunctionTabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const name = tab.getAttribute("data-tab");
+        if (!name) return;
+        activateWavefunctionTab(name);
+      });
+    });
+  }
+
+  // Ψ rescaling mode: two mutually exclusive checkboxes (Norm / Max).
+  const rescaleNormInput = document.getElementById("psi-rescale-norm");
+  const rescaleMaxInput = document.getElementById("psi-rescale-max");
+
+  const applyPsiRescaleSelection = (mode) => {
+    const normalizedMode =
+      mode === "norm" || mode === "max" ? mode : "none";
+
+    if (typeof psiRescaleMode !== "undefined") {
+      psiRescaleMode = normalizedMode;
+    }
+
+    if (rescaleNormInput) {
+      rescaleNormInput.checked = normalizedMode === "norm";
+    }
+    if (rescaleMaxInput) {
+      rescaleMaxInput.checked = normalizedMode === "max";
+    }
+  };
+
+  if (rescaleNormInput || rescaleMaxInput) {
+    // Initialize from global psiRescaleMode if available.
+    const initialMode =
+      typeof psiRescaleMode === "string" ? psiRescaleMode : "none";
+    applyPsiRescaleSelection(initialMode);
+
+    if (rescaleNormInput) {
+      rescaleNormInput.addEventListener("change", () => {
+        if (rescaleNormInput.checked) {
+          applyPsiRescaleSelection("norm");
+        } else {
+          // If Norm is turned off and Max is on, stay in Max; otherwise behave like "none".
+          const nextMode =
+            rescaleMaxInput && rescaleMaxInput.checked ? "max" : "none";
+          applyPsiRescaleSelection(nextMode);
+        }
+        if (typeof savePotentialHistory === "function") {
+          savePotentialHistory();
+        }
+      });
+    }
+
+    if (rescaleMaxInput) {
+      rescaleMaxInput.addEventListener("change", () => {
+        if (rescaleMaxInput.checked) {
+          applyPsiRescaleSelection("max");
+        } else {
+          // If Max is turned off and Norm is on, stay in Norm; otherwise behave like "none".
+          const nextMode =
+            rescaleNormInput && rescaleNormInput.checked ? "norm" : "none";
+          applyPsiRescaleSelection(nextMode);
+        }
+        if (typeof savePotentialHistory === "function") {
+          savePotentialHistory();
+        }
+      });
+    }
+  }
+
+  const imaginaryToggle = document.getElementById("imaginary-time-toggle");
+  if (imaginaryToggle) {
+    // Initialize from global flag if available.
+    if (typeof isImaginaryTime !== "undefined") {
+      imaginaryToggle.checked = !!isImaginaryTime;
+    }
+
+    imaginaryToggle.addEventListener("change", () => {
+      if (typeof isImaginaryTime !== "undefined") {
+        isImaginaryTime = !!imaginaryToggle.checked;
+      }
+      // Enabling imaginary-time evolution should also enable Norm rescaling.
+      if (imaginaryToggle.checked && typeof applyPsiRescaleSelection === "function") {
+        applyPsiRescaleSelection("norm");
+      }
       if (typeof savePotentialHistory === "function") {
         savePotentialHistory();
       }
@@ -1241,6 +1348,9 @@ function initApp() {
     playPauseButton.addEventListener("click", () => {
       isPlaying = !isPlaying;
       playPauseIcon.textContent = isPlaying ? "⏸" : "▶";
+      if (saveSetupButton) {
+        saveSetupButton.disabled = isPlaying;
+      }
       if (isPlaying) {
         if (initialPsiDirty) {
           resetWavefunctionFromControls();
@@ -1299,6 +1409,9 @@ function initApp() {
       simTime = 0;
       frameCount = 0;
       creationToolsVisible = true;
+      if (saveSetupButton) {
+        saveSetupButton.disabled = false;
+      }
       if (playPauseButton) {
         const playPauseIcon =
           playPauseButton.querySelector(".transport-icon") || playPauseButton;

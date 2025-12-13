@@ -69,8 +69,9 @@
         = \left( -\frac{\hbar^2}{2m}\nabla^2 + V(\mathbf{r}) \right)\Psi(\mathbf{r},t) $$
       </div>
       <div class="header-tagline">
-        Explore 2D Schrödinger-equation dynamics through Crank–Nicolson
-        simulations of Gaussian wave packets on customizable potential landscapes.
+        Explore 2D Schrödinger-equation dynamics through interactive
+        simulations of Gaussian wave packets on customizable potential landscapes. 
+        Simulations rely on the Crank–Nicolson method for stability and use a 9-point Laplacian for accuracy.
       </div>
     </header>
 
@@ -291,7 +292,7 @@
             id="brush-size-edit"
             type="number"
             min="1"
-            max="60"
+            max="150"
             step="1"
           />
           <button
@@ -309,7 +310,7 @@
             id="brush-size"
             type="range"
             min="1"
-            max="60"
+            max="150"
             value="10"
           />
         </div>
@@ -595,8 +596,8 @@
             </button>
           </div>
 
+          <h2 class="controls-section-title">General properties</h2>
           <section class="global-controls">
-            <h2>General properties</h2>
             <div class="particle-field">
               <label>Lattice</label>
               <div class="lattice-input-row">
@@ -620,13 +621,47 @@
             </div>
             <div class="particle-field">
               <label for="time-step-edit">\(\Delta t\)</label>
-              <input
-                id="time-step-edit"
-                type="number"
-                min="0.001"
-                max="1"
-                step="0.005"
-              />
+              <div class="global-toggle-row time-step-row">
+                <input
+                  id="time-step-edit"
+                  type="number"
+                  min="0.001"
+                  max="1"
+                  step="0.005"
+                />
+                <label class="toggle-label imaginary-toggle">
+                  <input
+                    id="imaginary-time-toggle"
+                    type="checkbox"
+                  />
+                  Imaginary
+                </label>
+              </div>
+            </div>
+
+            <div class="particle-field">
+              <label>\(\Psi\) rescaling</label>
+              <div
+                class="global-toggle-row psi-rescale-row"
+                aria-label="Wavefunction rescaling mode"
+              >
+                <label class="toggle-label rescale-toggle">
+                  <input
+                    id="psi-rescale-norm"
+                    type="checkbox"
+                    data-rescale="norm"
+                  />
+                  Norm
+                </label>
+                <label class="toggle-label rescale-toggle">
+                  <input
+                    id="psi-rescale-max"
+                    type="checkbox"
+                    data-rescale="max"
+                  />
+                  Max
+                </label>
+              </div>
             </div>
 
             <div class="particle-field">
@@ -679,37 +714,73 @@
             </div>
           </section>
 
+          <h2 class="controls-section-title">Wave-function properties</h2>
           <section class="global-controls wave-function-controls">
-            <h2>Wave-function properties</h2>
-            <div class="particle-fields">
-              <div class="particle-field">
-                <label for="x-edit">x</label>
-                <input id="x-edit" type="number" step="0.1" />
-              </div>
-              <div class="particle-field">
-                <label for="y-edit">y</label>
-                <input id="y-edit" type="number" step="0.1" />
-              </div>
-              <div class="particle-field">
-                <label for="px-edit">\(p_x\)</label>
-                <input id="px-edit" type="number" step="0.01" />
-              </div>
-              <div class="particle-field">
-                <label for="py-edit">\(p_y\)</label>
-                <input id="py-edit" type="number" step="0.01" />
-              </div>
-              <div class="particle-field">
-                <label for="sigma-x-edit">\(\sigma_{\vec r}\)</label>
-                <input id="sigma-x-edit" type="number" step="0.01" />
-              </div>
-              <div class="particle-field">
-                <label for="sigma-p-edit">\(\sigma_{\vec p}\)</label>
-                <input id="sigma-p-edit" type="number" step="0.01" />
-              </div>
+            <div class="wf-tabs" role="tablist" aria-label="Wave-function parameterization">
+              <button
+                type="button"
+                class="wf-tab is-active"
+                data-tab="gaussian"
+                role="tab"
+                aria-selected="true"
+              >
+                Gaussian packets
+              </button>
+              <button
+                type="button"
+                class="wf-tab"
+                data-tab="eigenstates"
+                role="tab"
+                aria-selected="false"
+              >
+                Eigenstates
+              </button>
             </div>
-            <div class="info">
-              <strong>Constraint:</strong>
-              <span>σ<sub>x</sub> · σ<sub>p</sub> = 1/2</span>
+            <div class="wf-tab-panels">
+              <div
+                class="wf-tab-panel is-active"
+                data-tab-panel="gaussian"
+                role="tabpanel"
+              >
+                <div class="particle-fields">
+                  <div class="particle-field">
+                    <label for="x-edit">x</label>
+                    <input id="x-edit" type="number" step="0.1" />
+                  </div>
+                  <div class="particle-field">
+                    <label for="y-edit">y</label>
+                    <input id="y-edit" type="number" step="0.1" />
+                  </div>
+                  <div class="particle-field">
+                    <label for="px-edit">\(p_x\)</label>
+                    <input id="px-edit" type="number" step="0.01" />
+                  </div>
+                  <div class="particle-field">
+                    <label for="py-edit">\(p_y\)</label>
+                    <input id="py-edit" type="number" step="0.01" />
+                  </div>
+                  <div class="particle-field">
+                    <label for="sigma-x-edit">\(\sigma_{\vec r}\)</label>
+                    <input id="sigma-x-edit" type="number" step="0.01" />
+                  </div>
+                  <div class="particle-field">
+                    <label for="sigma-p-edit">\(\sigma_{\vec p}\)</label>
+                    <input id="sigma-p-edit" type="number" step="0.01" />
+                  </div>
+                </div>
+                <div class="info">
+                  <strong>Constraint:</strong>
+                  <span>σ<sub>x</sub> · σ<sub>p</sub> = 1/2</span>
+                </div>
+              </div>
+              <div
+                class="wf-tab-panel"
+                data-tab-panel="eigenstates"
+                role="tabpanel"
+                aria-label="Eigenstates"
+              >
+                <!-- Eigenstates configuration will be added here -->
+              </div>
             </div>
           </section>
 
