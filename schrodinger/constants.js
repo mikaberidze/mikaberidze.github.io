@@ -1,11 +1,12 @@
 // Shared configuration constants for the Schrödinger playground.
 // Tweak these in one place to change simulation, drawing, or UI behavior.
 
+
 // --- Simulation grid & spatial scaling ---
 
 // Reference resolution used when converting between world coordinates
 // (x, y in simulation units) and pixel coordinates.
-const BASE_RESOLUTION = 1000;
+const BASE_RESOLUTION = 100;
 
 // Actual internal pixel resolution of the simulation grid in pixels.
 // These can be non-square; aspect ratio = WIDTH / HEIGHT.
@@ -23,16 +24,22 @@ let currentResolutionHeight = TARGET_RESOLUTION_HEIGHT;
 const BASE_SCALE_POS = 20;
 
 
+
 // --- Time evolution ---
 
 // Time step Δt used in each Schrödinger integration step (dimensionless units).
-const TIME_STEP = 0.1;
+const TIME_STEP = 0.4;
 
 // Mutable time step used by the integrators; the UI can change this.
 let currentTimeStep = TIME_STEP;
 
 // If true, evolve in imaginary time (t → -iτ) to relax toward the ground state.
 let isImaginaryTime = false;
+
+// Time integrator for real-time evolution:
+// "crank" – Crank–Nicolson (default),
+// "euler" – explicit Euler.
+let integratorScheme = "crank";
 
 // Wavefunction rescaling mode after each Schrödinger step:
 // "none"  – no rescaling (default),
@@ -49,6 +56,29 @@ const STEPS_PER_FRAME = 1;
 const CN_ITERS = 4;
 
 
+
+// --- Eigenstate search ---
+
+// Convergence threshold exponent for imaginary-time relaxation when searching for
+// eigenstates. The search stops once the maximum per-pixel change in |ψ|
+// between successive iterations falls below 10^{EIGENSTATE_RELAXATION_DELTA_EXP}.
+const EIGENSTATE_RELAXATION_DELTA_EXP = -6;
+
+// Exponent controlling the safety cap on the number of imaginary-time iterations
+// allowed per eigenstate before giving up on convergence. The default cap is
+// 10^{EIGENSTATE_MAX_ITERATIONS_EXP}.
+const EIGENSTATE_MAX_ITERATIONS_EXP = 5;
+
+// How frequently (in iterations) the eigenstate finder yields back to
+// the browser event loop and optionally refreshes the canvas.
+const EIGENSTATE_DRAW_EVERY_N_STEPS = 25;
+
+// Width (in simulation units) of the broad Gaussian packet used as a
+// random initial condition when searching for eigenstates.
+const EIGENSTATE_GAUSSIAN_SIGMA_R = 2;
+
+
+
 // --- Potential & absorbing boundaries ---
 
 // Scales the [0, 1] potential values from drawing into the physical potential V.
@@ -59,11 +89,12 @@ const POTENTIAL_SCALE = 1;
 const INITIAL_V_MAX = 1;
 
 // Thickness (in grid cells) of the imaginary absorbing layer at each boundary.
-const ABSORB_LAYERS = 3;
+const ABSORB_LAYERS = 5;
 
 // Maximum strength of the imaginary absorbing potential at the very edge.
 // Larger values absorb more strongly but can reflect if too abrupt.
 const ABSORB_MAX = 1;
+
 
 
 // --- Particle controls & sliders ---
@@ -72,11 +103,17 @@ const ABSORB_MAX = 1;
 // p = 2 sin(k / 2). This limits the norm of the momentum vector.
 const MAX_P = 1;
 
-// Target product σ_x · σ_p used to enforce the uncertainty constraint.
+// Target product σ_r · σ_p used to enforce the uncertainty constraint.
 const PRODUCT_TARGET = 0.5;
 
 // Minimum radius (in canvas pixels) for the σ_r circle in the particle overlay.
 const MIN_PARTICLE_RADIUS_PX = 10;
+
+// Initial Gaussian packet properties (internal momentum parameters and σ_r).
+const INITIAL_PX_INTERNAL = 100;
+const INITIAL_PY_INTERNAL = 0;
+const INITIAL_SIGMA_R = 0.2;
+
 
 
 // --- Drawing & potential editing ---
@@ -101,7 +138,8 @@ const BRUSH_SPACING_FACTOR = 0.1;
 const BUCKET_TOLERANCE = 0.1;
 
 // Maximum number of potential snapshots kept for undo/redo.
-const MAX_HISTORY = 100;
+const MAX_HISTORY = 30;
+
 
 
 // --- Overlay styling ---
@@ -109,7 +147,6 @@ const MAX_HISTORY = 100;
 // Accent color used for UI overlays (colorbar labels, energy text, signature).
 const OVERLAY_ACCENT_COLOR = "#42ca76";
 
-// Supersampling factor for overlay canvas resolution relative to the
-// underlying simulation grid. For example, 2 means the overlay canvas
-// has twice the width and height (4× pixels) of the simulation.
-const OVERLAY_SUPERSAMPLE_FACTOR = 2;
+// Fixed base width (in device pixels) for the overlay canvas. Height is derived
+// from this width and the current simulation aspect ratio.
+const OVERLAY_CANVAS_BASE_WIDTH = 900;

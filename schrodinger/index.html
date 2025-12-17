@@ -71,7 +71,9 @@
       <div class="header-tagline">
         Explore 2D Schrödinger-equation dynamics through interactive
         simulations of Gaussian wave packets on customizable potential landscapes. 
-        Simulations rely on the Crank–Nicolson method for stability and use a 9-point Laplacian for accuracy.
+        Simulations rely on the Crank–Nicolson method for stability and use a Patra-Karttunen 
+        9-point Laplacian stencil for accuracy. For Eigenstate construction, we use 
+        imaginary-time evolution with Gram–Schmidt.
       </div>
     </header>
 
@@ -283,6 +285,42 @@
 
       <div class="top-separator-left"></div>
 
+      <div class="top-control bucket-setting">
+        <label class="top-control-label" for="bucket-tolerance-edit">
+          Tolerance
+        </label>
+        <div class="top-control-value">
+          <input
+            id="bucket-tolerance-edit"
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+          />
+          <button
+            type="button"
+            class="slider-toggle"
+            data-slider-toggle="bucket-tolerance"
+            aria-label="Adjust bucket fill tolerance"
+            aria-expanded="false"
+          >
+            ▾
+          </button>
+        </div>
+        <div class="slider-popup" data-for="bucket-tolerance">
+          <input
+            id="bucket-tolerance"
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value="0.1"
+          />
+        </div>
+      </div>
+
+      <div class="top-separator-left"></div>
+
       <div class="top-control potential-setting">
         <label class="top-control-label" for="brush-size-edit">
           Size
@@ -293,7 +331,7 @@
             type="number"
             min="1"
             max="150"
-            step="1"
+            step="0.5"
           />
           <button
             type="button"
@@ -311,6 +349,7 @@
             type="range"
             min="1"
             max="150"
+            step="0.5"
             value="10"
           />
         </div>
@@ -355,57 +394,6 @@
       <div class="top-separator-left"></div>
 
       <div class="top-control upload-setting">
-        <label class="top-control-label" for="v-max-edit">
-          \(V_\text{max}\)
-        </label>
-        <div class="top-control-value">
-          <input
-            id="v-max-edit"
-            type="number"
-            min="0"
-            max="1"
-            step="0.01"
-          />
-          <button
-            type="button"
-            class="slider-toggle"
-            data-slider-toggle="v-max"
-            aria-label="Adjust V max"
-            aria-expanded="false"
-          >
-            ▾
-          </button>
-        </div>
-        <div class="slider-popup" data-for="v-max">
-          <input
-            id="v-max-slider"
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-          />
-        </div>
-      </div>
-
-      <div class="top-separator-left"></div>
-
-      <div class="top-control function-setting">
-        <label class="top-control-label" for="potential-function-input">
-          \(V(x, y) =\)
-        </label>
-        <div class="top-control-value">
-          <input
-            id="potential-function-input"
-            type="text"
-            placeholder="e.g. (x^2 + y^2) / 1000"
-            autocomplete="off"
-          />
-        </div>
-      </div>
-
-      <div class="top-separator-left"></div>
-
-      <div class="top-control upload-setting">
         <label class="top-control-label" for="upload-browse">
           Upload an image
         </label>
@@ -423,7 +411,56 @@
 
       <div class="top-separator-left"></div>
 
-      <div class="top-control upload-setting">
+      <div class="top-control upload-setting move-setting">
+        <label class="top-control-label" for="v-max-edit">
+          \(V_\text{max}\)
+        </label>
+        <div class="top-control-value">
+          <input
+            id="v-max-edit"
+            type="number"
+            min="0"
+            step="0.01"
+          />
+          <button
+            type="button"
+            class="slider-toggle"
+            data-slider-toggle="v-max"
+            aria-label="Adjust V max"
+            aria-expanded="false"
+          >
+            ▾
+          </button>
+        </div>
+        <div class="slider-popup" data-for="v-max">
+          <input
+            id="v-max-slider"
+            type="range"
+            min="0"
+            step="0.01"
+          />
+        </div>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div class="top-control function-setting">
+        <label class="top-control-label" for="potential-function-input">
+          \(V(x, y) =\)
+        </label>
+        <div class="top-control-value">
+          <input
+            id="potential-function-input"
+            type="text"
+            placeholder="e.g. (x^2 + y^2) / 10"
+            autocomplete="off"
+          />
+        </div>
+      </div>
+
+      <div class="top-separator-left"></div>
+
+      <div class="top-control upload-setting move-setting">
         <label class="top-control-label" for="upload-invert"></label>
         <div class="top-control-value">
           <button
@@ -472,7 +509,8 @@
     <main class="layout">
       <section class="canvas-shell">
         <aside class="potential-editor">
-          <h2>\( V(\mathbb r) \) Potential editor</h2>
+          <h2>V(<span class="potential-editor-r">r</span>) editor</h2>
+          <div class="potential-editor-separator"></div>
           <div class="potential-tool-list">
             <button
               class="tool-button"
@@ -562,7 +600,7 @@
               <span
                 id="particle-sigma-label"
                 class="particle-label"
-              >\(2\sigma_{\vec r}\)</span>
+              >\(2\sigma_{\mathbb r}\)</span>
             </div>
             <div id="particle-p-vector" class="particle-p-vector">
               <div id="particle-p-line" class="particle-p-line"></div>
@@ -595,9 +633,29 @@
               Load
             </button>
           </div>
+          <div
+            id="preset-loading"
+            class="preset-loading"
+            aria-live="polite"
+            aria-hidden="true"
+          >
+            <div class="preset-loading-spinner" aria-hidden="true"></div>
+            <div class="preset-loading-text">Loading experiment...</div>
+          </div>
 
-          <h2 class="controls-section-title">General properties</h2>
-          <section class="global-controls">
+          <h2 class="controls-section-title">
+            <span class="section-title-text">General properties</span>
+            <button
+              type="button"
+              class="slider-toggle section-toggle"
+              data-section-toggle="general"
+              aria-label="Toggle General properties panel"
+              aria-expanded="true"
+            >
+              ▾
+            </button>
+          </h2>
+          <section class="global-controls" data-section-panel="general">
             <div class="particle-field">
               <label>Lattice</label>
               <div class="lattice-input-row">
@@ -635,6 +693,30 @@
                     type="checkbox"
                   />
                   Imaginary
+                </label>
+              </div>
+            </div>
+            <div class="particle-field">
+              <label>Integrator</label>
+              <div
+                class="global-toggle-row integrator-row"
+                aria-label="Time integrator"
+              >
+                <label class="toggle-label rescale-toggle integrator-toggle">
+                  <input
+                    id="integrator-euler"
+                    type="checkbox"
+                    data-integrator="euler"
+                  />
+                  Euler
+                </label>
+                <label class="toggle-label rescale-toggle integrator-toggle">
+                  <input
+                    id="integrator-crank"
+                    type="checkbox"
+                    data-integrator="crank"
+                  />
+                  Crank–Nic.
                 </label>
               </div>
             </div>
@@ -714,8 +796,22 @@
             </div>
           </section>
 
-          <h2 class="controls-section-title">Wave-function properties</h2>
-          <section class="global-controls wave-function-controls">
+          <h2 class="controls-section-title">
+            <span class="section-title-text">Wave-function constructor</span>
+            <button
+              type="button"
+              class="slider-toggle section-toggle"
+              data-section-toggle="wave"
+              aria-label="Toggle Wave-function properties panel"
+              aria-expanded="true"
+            >
+              ▾
+            </button>
+          </h2>
+          <section
+            class="global-controls wave-function-controls"
+            data-section-panel="wave"
+          >
             <div class="wf-tabs" role="tablist" aria-label="Wave-function parameterization">
               <button
                 type="button"
@@ -760,17 +856,17 @@
                     <input id="py-edit" type="number" step="0.01" />
                   </div>
                   <div class="particle-field">
-                    <label for="sigma-x-edit">\(\sigma_{\vec r}\)</label>
+                    <label for="sigma-x-edit">\(\sigma_{\mathbb r}\)</label>
                     <input id="sigma-x-edit" type="number" step="0.01" />
                   </div>
                   <div class="particle-field">
-                    <label for="sigma-p-edit">\(\sigma_{\vec p}\)</label>
+                    <label for="sigma-p-edit">\(\sigma_{\mathbb p}\)</label>
                     <input id="sigma-p-edit" type="number" step="0.01" />
                   </div>
                 </div>
                 <div class="info">
                   <strong>Constraint:</strong>
-                  <span>σ<sub>x</sub> · σ<sub>p</sub> = 1/2</span>
+                  <span>σ<sub>r</sub> · σ<sub>p</sub> = 1/2</span>
                 </div>
               </div>
               <div
@@ -779,7 +875,56 @@
                 role="tabpanel"
                 aria-label="Eigenstates"
               >
-                <!-- Eigenstates configuration will be added here -->
+                <div class="eigenstates-panel">
+                  <div class="particle-field eigenstates-find-row">
+                    <label for="eigenstates-count">Find</label>
+                    <div class="eigenstates-find-controls">
+                      <span class="eigenstates-count-prefix">N =</span>
+                      <input
+                        id="eigenstates-count"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value="1"
+                      />
+                      <span class="eigenstates-count-suffix">eigenstate(s)</span>
+                      <button
+                        id="eigenstates-go"
+                        type="button"
+                        class="eigenstates-go-button"
+                      >
+                        GO
+                      </button>
+                    </div>
+                  </div>
+                  <div class="particle-field eigenstates-threshold-row">
+                    <label for="eigenstates-threshold">
+                      \(\|\Delta\Psi_\text{thresh.}\|_{\infty} =\)
+                    </label>
+                    <div class="eigenstates-threshold-controls">
+                      <input
+                        id="eigenstates-threshold"
+                        type="text"
+                      />
+                      <span class="eigenstates-max-iters-label">max iters =</span>
+                      <input
+                        id="eigenstates-max-iters"
+                        type="text"
+                      />
+                    </div>
+                  </div>
+                  <div class="eigenstates-status-row">
+                    <span
+                      id="eigenstates-status"
+                      class="eigenstates-status"
+                    ></span>
+                  </div>
+                  <div
+                    id="eigenstates-list"
+                    class="eigenstates-list"
+                    aria-label="Discovered eigenstates"
+                  ></div>
+                </div>
               </div>
             </div>
           </section>
@@ -791,7 +936,7 @@
               type="range"
               min="-10"
               max="10"
-              step="0.1"
+              step="0.001"
               value="0"
             />
             <input
@@ -799,22 +944,18 @@
               type="range"
               min="-10"
               max="10"
-              step="0.1"
+              step="0.001"
               value="0"
             />
             <input
               id="px"
               type="range"
-              min="-10"
-              max="10"
               step="0.01"
               value="5"
             />
             <input
               id="py"
               type="range"
-              min="-10"
-              max="10"
               step="0.01"
               value="0"
             />
@@ -837,7 +978,7 @@
           </div>
 
           <div class="author-credit">
-            ©
+            © 2025
             <a
               href="https://mikaberidze.github.io/"
               target="_blank"
@@ -850,8 +991,15 @@
     </main>
 
     <script src="constants.js"></script>
+    <script src="drawing-state.js"></script>
     <script src="quantum.js"></script>
-    <script src="drawing.js"></script>
-    <script src="ui.js"></script>
+    <script src="quantum-eigen.js"></script>
+    <script src="drawing-history.js"></script>
+    <script src="drawing-canvas.js"></script>
+    <script src="drawing-particle.js"></script>
+    <script src="drawing-tools.js"></script>
+    <script src="ui-tooltips.js"></script>
+    <script src="ui-recording.js"></script>
+    <script src="ui-controls.js"></script>
   </body>
   </html>

@@ -1,1237 +1,4 @@
-// Canvas sizing, potential drawing, and particle overlay
-
-let potentialCanvas;
-let potentialCtx;
-
-let particleOverlay = null;
-let particleCenterHandle = null;
-let particleSigmaCircle = null;
-let particleSigmaLabel = null;
-let particlePLine = null;
-let particlePHead = null;
-let particlePLabel = null;
-
-// Cached custom cursor for sigma resizing to avoid regenerating on every tiny move.
-let sigmaCursorAngleCache = null;
-let sigmaCursorUrlCache = null;
-
-function getSigmaResizeCursor(angleRad) {
-  // Quantize angle (in turns) to reduce the number of distinct cursors we generate.
-  const turns = angleRad / (2 * Math.PI);
-  const quantizedTurns = Math.round(turns * 64) / 64;
-  const quantizedAngleRad = quantizedTurns * 2 * Math.PI;
-
-  if (sigmaCursorAngleCache === quantizedAngleRad && sigmaCursorUrlCache) {
-    return sigmaCursorUrlCache;
-  }
-
-  const size = 32;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return "ns-resize";
-
-  ctx.clearRect(0, 0, size, size);
-  ctx.save();
-  ctx.translate(size / 2, size / 2);
-  // Draw along the vertical axis, then rotate so the arrow points radially.
-  ctx.rotate(quantizedAngleRad + Math.PI / 2);
-
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-
-  // Single geometry: same shaft length and triangle centers for both layers.
-  const shaftLength = 11;
-  const halfShaft = shaftLength / 2;
-  const whiteHeadSize = 8; // slightly larger white triangles
-  const blackHeadSize = 5;
-
-  // Choose triangle centers so that the larger (white) heads still touch
-  // the shaft ends, and the smaller (black) heads are centered on the same
-  // points but sit fully inside the white ones.
-  const centerOut = halfShaft + whiteHeadSize / 2;
-  const centerIn = -halfShaft - whiteHeadSize / 2;
-
-  function drawArrowLayer(shaftWidth, headSize, color) {
-    const halfHead = headSize / 2;
-
-    // Shaft
-    ctx.strokeStyle = color;
-    ctx.lineWidth = shaftWidth;
-    ctx.beginPath();
-    ctx.moveTo(0, -halfShaft);
-    ctx.lineTo(0, halfShaft);
-    ctx.stroke();
-
-    // Outward arrowhead (toward +Y after rotation), centered at centerOut.
-    ctx.beginPath();
-    ctx.moveTo(0, centerOut + halfHead); // tip
-    ctx.lineTo(-headSize, centerOut - halfHead); // base left
-    ctx.lineTo(headSize, centerOut - halfHead); // base right
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-
-    // Inward arrowhead (toward -Y after rotation), centered at centerIn.
-    ctx.beginPath();
-    ctx.moveTo(0, centerIn - halfHead); // tip
-    ctx.lineTo(-headSize, centerIn + halfHead); // base left
-    ctx.lineTo(headSize, centerIn + halfHead); // base right
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-  }
-
-  // First draw a larger white arrow (thicker shaft, larger triangles).
-  drawArrowLayer(6, whiteHeadSize, "#ffffff");
-  // Then draw a smaller black arrow on top with the same centers.
-  drawArrowLayer(3, blackHeadSize, "#000000");
-
-  ctx.restore();
-
-  const url = canvas.toDataURL("image/png");
-  sigmaCursorAngleCache = quantizedAngleRad;
-  sigmaCursorUrlCache = url;
-  // Hotspot at center so the cursor aligns with the pointer.
-  return `url(${url}) ${size / 2} ${size / 2}, auto`;
-}
-
-let brushPreview = null;
-let eyedropperOverlay = null;
-
-let isEyedropperSampling = false;
-
-let particleDragging = false;
-let particleDragMode = null; // "center" | "momentum" | "sigma"
-let creationToolsVisible = true;
-
-// Momentum drag helpers
-let momentumDragInitialDirX = 0;
-let momentumDragInitialDirY = 0;
-let momentumDragHasInitialDir = false;
-
-// Center drag helpers
-let centerDragStartXWorld = 0;
-let centerDragStartYWorld = 0;
-let centerDragStartInternalX = 0;
-let centerDragStartInternalY = 0;
-
-let canvasInitialized = false;
-
-let currentTool = null;
-let potentialGray = INITIAL_POTENTIAL_GRAY;
-let brushSize = INITIAL_BRUSH_SIZE;
-let brushHardness = INITIAL_BRUSH_HARDNESS;
-let shapeThickness = INITIAL_SHAPE_THICKNESS;
-let currentShapeMode = "line"; // "line" | "triangle" | "square" | "circle"
-let shapeFillEnabled = false;
-let shapeRegularEnabled = false;
-let shapeRegularShiftActive = false;
-let currentVMax = INITIAL_V_MAX;
-let isDrawing = false;
-let strokeStartX = 0;
-let strokeStartY = 0;
-let strokeConstrainActive = false;
-let strokeConstrainMode = null; // "horizontal" | "vertical" | null
-let didModifyPotentialThisStroke = false;
-let lastBrushX = 0;
-let lastBrushY = 0;
-let lastClickX = null;
-let lastClickY = null;
-let lastClickTool = null; // "brush" | "eraser" | null
-let strokeSplineP0 = null;
-let strokeSplineP1 = null;
-let strokeDistanceSinceLastStamp = 0;
-let strokeSplineSegmentIndex = 0;
-
-// Move-tool state: selected connected component of the potential field.
-let moveSelectionData = null;
-let moveSelectionWidth = 0;
-let moveSelectionHeight = 0;
-let moveSelectionOriginX = 0;
-let moveSelectionOriginY = 0;
-let moveBaseField = null;
-let moveDragStartX = 0;
-let moveDragStartY = 0;
-
-// Shapes-tool state.
-let shapeStartX = 0;
-let shapeStartY = 0;
-let shapeCurrentX = 0;
-let shapeCurrentY = 0;
-let shapeBaseField = null;
-
-// Potential + initial-condition history (for undo/redo)
-let potentialHistory = [];
-let historyIndex = -1;
-
-function savePotentialHistory() {
-  const potentialSnapshot =
-    potentialField && potentialWidth > 0 && potentialHeight > 0
-      ? {
-          width: potentialWidth,
-          height: potentialHeight,
-          data: new Float32Array(potentialField),
-        }
-      : null;
-
-  let controlsSnapshot = null;
-  if (typeof getControlsState === "function") {
-    try {
-      const state = getControlsState();
-      if (state) {
-        controlsSnapshot = {
-          x: state.x,
-          y: state.y,
-          px: state.px,
-          py: state.py,
-          sigmaX: state.sigmaX,
-          sigmaP: state.sigmaP,
-        };
-      }
-    } catch {
-      // ignore failures to read controls
-    }
-  }
-
-  let gridSnapshot = null;
-  if (
-    typeof currentResolutionWidth !== "undefined" &&
-    typeof currentResolutionHeight !== "undefined"
-  ) {
-    gridSnapshot = {
-      width: currentResolutionWidth,
-      height: currentResolutionHeight,
-    };
-  }
-
-  let globalControlsSnapshot = null;
-  if (
-    typeof boundaryMode !== "undefined" ||
-    typeof currentTimeStep !== "undefined" ||
-    typeof isImaginaryTime !== "undefined" ||
-    typeof psiRescaleMode !== "undefined"
-  ) {
-    const timeStepValue =
-      typeof currentTimeStep === "number"
-        ? currentTimeStep
-        : typeof TIME_STEP === "number"
-        ? TIME_STEP
-        : 0.1;
-    const modeValue =
-      typeof boundaryMode === "string" ? boundaryMode : "open";
-    const rescaleModeValue =
-      typeof psiRescaleMode === "string" ? psiRescaleMode : "none";
-    globalControlsSnapshot = {
-      boundaryMode: modeValue === "closed" ? "closed" : "open",
-      timeStep: Math.max(0.001, Math.min(1, timeStepValue)),
-      imaginaryTime: !!(
-        typeof isImaginaryTime !== "undefined" && isImaginaryTime
-      ),
-      rescaleMode: rescaleModeValue === "norm" || rescaleModeValue === "max"
-        ? rescaleModeValue
-        : "none",
-    };
-  }
-
-  if (
-    !potentialSnapshot &&
-    !controlsSnapshot &&
-    !gridSnapshot &&
-    !globalControlsSnapshot
-  ) {
-    return;
-  }
-
-  const snapshot = {
-    potential: potentialSnapshot,
-    controls: controlsSnapshot,
-    grid: gridSnapshot,
-    globals: globalControlsSnapshot,
-  };
-
-  // If we've undone some steps, discard forward history before saving
-  if (historyIndex < potentialHistory.length - 1) {
-    potentialHistory = potentialHistory.slice(0, historyIndex + 1);
-  }
-
-  potentialHistory.push(snapshot);
-
-  // Trim history to a reasonable maximum
-  if (potentialHistory.length > MAX_HISTORY) {
-    const excess = potentialHistory.length - MAX_HISTORY;
-    potentialHistory.splice(0, excess);
-    historyIndex = Math.max(0, historyIndex - excess);
-  }
-
-  historyIndex = potentialHistory.length - 1;
-
-  updateHistoryButtonsUI();
-}
-
-function resetPotentialHistory() {
-  potentialHistory = [];
-  historyIndex = -1;
-  savePotentialHistory();
-}
-
-function updateHistoryButtonsUI() {
-  const undoButton = document.getElementById("undo-button");
-  const redoButton = document.getElementById("redo-button");
-
-  const canUndo = historyIndex > 0;
-  const canRedo =
-    historyIndex >= 0 && historyIndex < potentialHistory.length - 1;
-
-  if (undoButton) {
-    undoButton.disabled = !canUndo;
-  }
-  if (redoButton) {
-    redoButton.disabled = !canRedo;
-  }
-}
-
-function restorePotentialFromHistory(index) {
-  if (index < 0 || index >= potentialHistory.length) return;
-  const snapshot = potentialHistory[index];
-  if (!snapshot) return;
-
-  let requirePsiReset = false;
-  let potentialChanged = false;
-
-  // Current control state before applying snapshot, for change detection.
-  let currentControls = null;
-  if (typeof getControlsState === "function") {
-    try {
-      currentControls = getControlsState();
-    } catch {
-      currentControls = null;
-    }
-  }
-
-  const epsilon = 1e-6;
-
-  // 1) Grid resolution (lattice size)
-  if (
-    snapshot.grid &&
-    Number.isFinite(snapshot.grid.width) &&
-    Number.isFinite(snapshot.grid.height)
-  ) {
-    const w = snapshot.grid.width;
-    const h = snapshot.grid.height;
-
-    const currentW =
-      typeof currentResolutionWidth !== "undefined"
-        ? currentResolutionWidth
-        : canvas
-        ? canvas.width
-        : w;
-    const currentH =
-      typeof currentResolutionHeight !== "undefined"
-        ? currentResolutionHeight
-        : canvas
-        ? canvas.height
-        : h;
-
-    const gridChanged = w !== currentW || h !== currentH;
-
-    if (gridChanged) {
-      if (
-        typeof currentResolutionWidth !== "undefined" &&
-        typeof currentResolutionHeight !== "undefined"
-      ) {
-        currentResolutionWidth = w;
-        currentResolutionHeight = h;
-      }
-
-      const latticeWidthInput = document.getElementById("lattice-width");
-      const latticeHeightInput = document.getElementById("lattice-height");
-      if (latticeWidthInput) {
-        latticeWidthInput.value = String(w);
-      }
-      if (latticeHeightInput) {
-        latticeHeightInput.value = String(h);
-      }
-
-      if (canvas) {
-        canvas.width = w;
-        canvas.height = h;
-        if (ctx) {
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-        }
-        initSimulationGrid(w, h);
-      }
-
-      if (potentialCanvas) {
-        potentialCanvas.width = w;
-        potentialCanvas.height = h;
-        if (potentialCtx) {
-          potentialCtx.setTransform(1, 0, 0, 1, 0, 0);
-        }
-      }
-
-      if (
-        typeof overlayCanvas !== "undefined" &&
-        overlayCanvas &&
-        typeof OVERLAY_SUPERSAMPLE_FACTOR === "number"
-      ) {
-        const factor =
-          OVERLAY_SUPERSAMPLE_FACTOR > 0 ? OVERLAY_SUPERSAMPLE_FACTOR : 1;
-        overlayCanvas.width = Math.round(w * factor);
-        overlayCanvas.height = Math.round(h * factor);
-        if (typeof overlayCtx !== "undefined" && overlayCtx) {
-          overlayCtx.setTransform(1, 0, 0, 1, 0, 0);
-        }
-      }
-
-      if (typeof canvasInitialized !== "undefined") {
-        canvasInitialized = true;
-      }
-
-      if (typeof resizeCanvas === "function") {
-        resizeCanvas();
-      }
-
-      requirePsiReset = true;
-    }
-  }
-
-  // 2) Potential field
-  if (
-    snapshot.potential &&
-    Number.isFinite(snapshot.potential.width) &&
-    Number.isFinite(snapshot.potential.height) &&
-    snapshot.potential.data instanceof Float32Array
-  ) {
-    const w = snapshot.potential.width;
-    const h = snapshot.potential.height;
-
-    if (!potentialField || potentialWidth !== w || potentialHeight !== h) {
-      initPotentialField(w, h);
-    }
-
-    if (potentialField && potentialField.length === snapshot.potential.data.length) {
-      potentialField.set(snapshot.potential.data);
-      redrawPotential();
-      potentialChanged = true;
-    }
-  }
-
-  // 3) Initial-condition controls (x, y, px, py, sigma)
-  if (snapshot.controls && currentControls) {
-    const c = snapshot.controls;
-    let controlsChanged = false;
-
-    if (Number.isFinite(c.x) && Math.abs(c.x - currentControls.x) > epsilon) {
-      controlsChanged = true;
-    }
-    if (Number.isFinite(c.y) && Math.abs(c.y - currentControls.y) > epsilon) {
-      controlsChanged = true;
-    }
-    if (Number.isFinite(c.px) && Math.abs(c.px - currentControls.px) > epsilon) {
-      controlsChanged = true;
-    }
-    if (Number.isFinite(c.py) && Math.abs(c.py - currentControls.py) > epsilon) {
-      controlsChanged = true;
-    }
-    if (
-      Number.isFinite(c.sigmaX) &&
-      Math.abs(c.sigmaX - currentControls.sigmaX) > epsilon
-    ) {
-      controlsChanged = true;
-    }
-
-    if (controlsChanged) {
-      if (typeof setSliderValue === "function") {
-        if (Number.isFinite(c.x)) setSliderValue("x", c.x);
-        if (Number.isFinite(c.y)) setSliderValue("y", c.y);
-      }
-
-      if (
-        typeof setMomentumFromDisplay === "function" &&
-        Number.isFinite(c.px) &&
-        Number.isFinite(c.py)
-      ) {
-        setMomentumFromDisplay(c.px, c.py);
-      } else if (typeof setSliderValue === "function") {
-        if (Number.isFinite(c.px)) {
-          const internalPx =
-            typeof displayMomentumToInternal === "function"
-              ? displayMomentumToInternal(c.px)
-              : c.px;
-          setSliderValue("px", internalPx);
-        }
-        if (Number.isFinite(c.py)) {
-          const internalPy =
-            typeof displayMomentumToInternal === "function"
-              ? displayMomentumToInternal(c.py)
-              : c.py;
-          setSliderValue("py", internalPy);
-        }
-      }
-
-      if (
-        typeof setSigmaFromValue === "function" &&
-        Number.isFinite(c.sigmaX)
-      ) {
-        setSigmaFromValue(c.sigmaX);
-      }
-
-      requirePsiReset = true;
-    }
-  }
-
-  // 4) Global controls (boundary conditions and time step)
-  if (snapshot.globals) {
-    const g = snapshot.globals;
-
-    if (typeof g.boundaryMode === "string") {
-      const mode = g.boundaryMode === "closed" ? "closed" : "open";
-      boundaryMode = mode;
-
-      const boundarySelect = document.getElementById("boundary-mode");
-      if (boundarySelect) {
-        boundarySelect.value = mode;
-      }
-    }
-
-    if (Number.isFinite(g.timeStep)) {
-      currentTimeStep = Math.max(0.001, Math.min(1, g.timeStep));
-      const timeStepInput = document.getElementById("time-step-edit");
-      if (timeStepInput) {
-        timeStepInput.value = String(currentTimeStep);
-      }
-    }
-
-    if (typeof g.imaginaryTime === "boolean" && typeof isImaginaryTime !== "undefined") {
-      isImaginaryTime = g.imaginaryTime;
-      const imaginaryToggle = document.getElementById("imaginary-time-toggle");
-      if (imaginaryToggle) {
-        imaginaryToggle.checked = !!isImaginaryTime;
-      }
-    }
-
-    if (
-      typeof g.rescaleMode === "string" &&
-      typeof psiRescaleMode !== "undefined"
-    ) {
-      const mode =
-        g.rescaleMode === "norm" || g.rescaleMode === "max"
-          ? g.rescaleMode
-          : "none";
-      psiRescaleMode = mode;
-      const normInput = document.getElementById("psi-rescale-norm");
-      const maxInput = document.getElementById("psi-rescale-max");
-      if (normInput) {
-        normInput.checked = mode === "norm";
-      }
-      if (maxInput) {
-        maxInput.checked = mode === "max";
-      }
-    }
-  }
-
-  // If lattice size or particle properties changed, restart the wavefunction.
-  if (requirePsiReset && typeof resetWavefunctionFromControls === "function") {
-    // Stop the simulation instead of keeping it running.
-    if (typeof isPlaying !== "undefined") {
-      isPlaying = false;
-    }
-
-    if (typeof simTime !== "undefined") {
-      simTime = 0;
-    }
-    if (typeof frameCount !== "undefined") {
-      frameCount = 0;
-    }
-    resetWavefunctionFromControls();
-    if (typeof drawScene === "function") {
-      drawScene();
-    }
-
-    // Re-enable wave-packet creation tools and sync the play button UI.
-    if (typeof creationToolsVisible !== "undefined") {
-      creationToolsVisible = true;
-    }
-    const playPauseButton = document.getElementById("play-pause");
-    if (playPauseButton) {
-      const playPauseIcon =
-        playPauseButton.querySelector(".transport-icon") || playPauseButton;
-      playPauseIcon.textContent = "▶";
-    }
-    const saveButton = document.getElementById("save-setup");
-    if (saveButton) {
-      saveButton.disabled = false;
-    }
-    if (typeof updateParticleOverlay === "function") {
-      updateParticleOverlay();
-    }
-  } else if (potentialChanged && typeof drawScene === "function") {
-    // Potential-only history changes should still refresh the quantum canvas,
-    // so the colorbar and energy overlay stay in sync with the current field.
-    drawScene();
-  }
-
-  historyIndex = index;
-
-  updateHistoryButtonsUI();
-}
-
-function undoPotentialEdit() {
-  if (historyIndex > 0) {
-    restorePotentialFromHistory(historyIndex - 1);
-    console.log("[Schrödinger] Undo potential edit, history index =", historyIndex);
-  }
-}
-
-function redoPotentialEdit() {
-  if (historyIndex >= 0 && historyIndex < potentialHistory.length - 1) {
-    restorePotentialFromHistory(historyIndex + 1);
-    console.log("[Schrödinger] Redo potential edit, history index =", historyIndex);
-  }
-}
-
-function applyBrushSizeDelta(delta) {
-  const slider = document.getElementById("brush-size");
-
-  if (slider) {
-    const min =
-      slider.min !== undefined && slider.min !== ""
-        ? parseFloat(slider.min) || 1
-        : 1;
-    const max =
-      slider.max !== undefined && slider.max !== ""
-        ? parseFloat(slider.max) || 60
-        : 60;
-
-    let current =
-      slider.value !== undefined && slider.value !== ""
-        ? parseFloat(slider.value)
-        : brushSize;
-    if (!Number.isFinite(current)) current = brushSize;
-
-    let next = current + delta;
-    next = Math.max(min, Math.min(max, next));
-    if (next === current) return;
-
-    slider.value = String(next);
-    slider.dispatchEvent(new Event("input", { bubbles: true }));
-  } else {
-    let next = brushSize + delta;
-    next = Math.max(1, Math.min(60, next));
-    if (next === brushSize) return;
-    brushSize = next;
-  }
-
-  if (brushPreview && brushPreview.style.display !== "none" && potentialCanvas) {
-    const rect = potentialCanvas.getBoundingClientRect();
-    const scaleX = rect.width / potentialCanvas.width;
-    const scaleY = rect.height / potentialCanvas.height;
-    const radiusCss = brushSize * Math.min(scaleX, scaleY);
-    brushPreview.style.width = `${2 * radiusCss}px`;
-    brushPreview.style.height = `${2 * radiusCss}px`;
-  }
-}
-
-function redrawPotential() {
-  if (!potentialCanvas || !potentialCtx || !potentialField) return;
-
-  const width = potentialWidth;
-  const height = potentialHeight;
-
-  const imageData = potentialCtx.createImageData(width, height);
-  const data = imageData.data;
-
-  // Use the same physical potential-to-color mapping as the colorbar.
-  const range = typeof getPotentialRange === "function"
-    ? getPotentialRange()
-    : { minV: 0, maxV: typeof POTENTIAL_SCALE === "number" && POTENTIAL_SCALE > 0 ? POTENTIAL_SCALE : 1 };
-  const minV = range.minV;
-  const maxV = range.maxV;
-  const denom = maxV - minV;
-  const hasRange = Number.isFinite(denom) && denom !== 0;
-
-  let idx = 0;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const vNorm = potentialField[y * width + x];
-      const vPhysical =
-        Number.isFinite(vNorm) && typeof POTENTIAL_SCALE === "number"
-          ? vNorm * POTENTIAL_SCALE
-          : 0;
-
-      let t;
-      if (hasRange) {
-        t = (vPhysical - minV) / denom;
-      } else {
-        t = 0.5;
-      }
-      const tClamped = Math.max(0, Math.min(1, t));
-      const gray = Math.round(tClamped * 255);
-      const alpha = 255; // draw potential as solid grayscale (no transparency)
-
-      data[idx++] = gray;
-      data[idx++] = gray;
-      data[idx++] = gray;
-      data[idx++] = alpha;
-    }
-  }
-
-  potentialCtx.putImageData(imageData, 0, 0);
-}
-
-function hideBrushPreview() {
-  if (brushPreview) {
-    brushPreview.style.display = "none";
-  }
-}
-
-function resizeCanvas() {
-  // Internal simulation/drawing resolution (can be non-square) – set only once
-  if (!canvasInitialized) {
-    if (canvas) {
-      canvas.width = currentResolutionWidth;
-      canvas.height = currentResolutionHeight;
-      if (ctx) {
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-      }
-    }
-
-    if (potentialCanvas) {
-      potentialCanvas.width = currentResolutionWidth;
-      potentialCanvas.height = currentResolutionHeight;
-      if (potentialCtx) {
-        potentialCtx.setTransform(1, 0, 0, 1, 0, 0);
-      }
-      initPotentialField(currentResolutionWidth, currentResolutionHeight);
-      redrawPotential();
-    }
-
-    if (typeof overlayCanvas !== "undefined" && overlayCanvas && typeof OVERLAY_SUPERSAMPLE_FACTOR === "number") {
-      const factor =
-        OVERLAY_SUPERSAMPLE_FACTOR > 0 ? OVERLAY_SUPERSAMPLE_FACTOR : 1;
-      overlayCanvas.width = Math.round(currentResolutionWidth * factor);
-      overlayCanvas.height = Math.round(currentResolutionHeight * factor);
-      if (typeof overlayCtx !== "undefined" && overlayCtx) {
-        overlayCtx.setTransform(1, 0, 0, 1, 0, 0);
-      }
-    }
-
-    if (canvas) {
-      initSimulationGrid(currentResolutionWidth, currentResolutionHeight);
-    }
-
-    canvasInitialized = true;
-  }
-
-  // Scale the displayed size to fill as much of the container as possible
-  const container =
-    (canvas && canvas.parentElement) ||
-    (potentialCanvas && potentialCanvas.parentElement);
-
-  if (container) {
-    const rect = container.getBoundingClientRect();
-    const gridWidth = currentResolutionWidth;
-    const gridHeight = currentResolutionHeight;
-
-    // Match the CSS breakpoint: on narrow layouts,
-    // always use the full container width for the canvas
-    // and derive height from the simulation aspect ratio.
-    const isNarrowLayout =
-      typeof window !== "undefined" && window.innerWidth <= 800;
-
-    let displayWidth;
-    let displayHeight;
-
-    if (isNarrowLayout) {
-      const widthCss = rect.width || window.innerWidth || gridWidth;
-      const scale = widthCss / gridWidth;
-      displayWidth = widthCss;
-      displayHeight = gridHeight * scale;
-      // Ensure the canvas container grows to fit the full canvas height
-      container.style.height = `${displayHeight}px`;
-    } else {
-      const scaleX = rect.width / gridWidth;
-      const scaleY = rect.height / gridHeight;
-      const scale = Math.min(scaleX, scaleY);
-      displayWidth = gridWidth * scale;
-      displayHeight = gridHeight * scale;
-      // Let layout control height on wide screens
-      container.style.height = "";
-    }
-
-    if (canvas) {
-      canvas.style.width = `${displayWidth}px`;
-      canvas.style.height = `${displayHeight}px`;
-    }
-    if (potentialCanvas) {
-      potentialCanvas.style.width = `${displayWidth}px`;
-      potentialCanvas.style.height = `${displayHeight}px`;
-    }
-    if (typeof overlayCanvas !== "undefined" && overlayCanvas) {
-      overlayCanvas.style.width = `${displayWidth}px`;
-      overlayCanvas.style.height = `${displayHeight}px`;
-    }
-  }
-
-  drawScene();
-  updateParticleOverlay();
-}
-
-function getScalePos(width) {
-  return (BASE_SCALE_POS * width) / BASE_RESOLUTION;
-}
-
-function getParticleGeometry() {
-  if (!canvas) return null;
-
-  const width = canvas.width;
-  const height = canvas.height;
-  if (!width || !height) return null;
-
-  const state = getControlsState();
-
-  const scalePos = getScalePos(width);
-  const centerX = width / 2 + state.x * scalePos;
-  const centerY = height / 2 - state.y * scalePos;
-
-  let sigma = state.sigmaX;
-  if (!Number.isFinite(sigma) || sigma <= 0) {
-    sigma = 0;
-  }
-  // Display radius is chosen to be twice the physical sigma extent
-  const radius = Math.max(
-    MIN_PARTICLE_RADIUS_PX,
-    2 * Math.abs(sigma * scalePos)
-  );
-
-  // Momentum arrow scale: map |p| = MAX_P to one quarter of the canvas width.
-  const maxP =
-    typeof MAX_P === "number" && Number.isFinite(MAX_P) && MAX_P > 0
-      ? MAX_P
-      : 2;
-  const pScale = (width * 0.25) / maxP;
-  const headX = centerX + state.px * pScale;
-  const headY = centerY - state.py * pScale;
-
-  return {
-    width,
-    height,
-    centerX,
-    centerY,
-    radius,
-    headX,
-    headY,
-    scalePos,
-    pScale,
-  };
-}
-
-function updateParticleOverlay() {
-  if (!particleOverlay || !canvas) return;
-
-  // Wave-packet creation tools only visible when explicitly enabled
-  // and never while the simulation is running.
-  if (!creationToolsVisible || isPlaying) {
-    particleOverlay.style.display = "none";
-    return;
-  }
-
-  const geom = getParticleGeometry();
-  if (!geom) {
-    particleOverlay.style.display = "none";
-    return;
-  }
-
-  const container = canvas.parentElement;
-  if (!container) {
-    particleOverlay.style.display = "none";
-    return;
-  }
-
-  const canvasRect = canvas.getBoundingClientRect();
-  const containerRect = container.getBoundingClientRect();
-
-  const overlayLeft = canvasRect.left - containerRect.left;
-  const overlayTop = canvasRect.top - containerRect.top;
-  const overlayWidth = canvasRect.width;
-  const overlayHeight = canvasRect.height;
-
-  particleOverlay.style.display = "block";
-  particleOverlay.style.left = `${overlayLeft}px`;
-  particleOverlay.style.top = `${overlayTop}px`;
-  particleOverlay.style.width = `${overlayWidth}px`;
-  particleOverlay.style.height = `${overlayHeight}px`;
-
-  const scaleCssX = overlayWidth / geom.width;
-  const scaleCssY = overlayHeight / geom.height;
-
-  const centerX = geom.centerX * scaleCssX;
-  const centerY = geom.centerY * scaleCssY;
-  const headX = geom.headX * scaleCssX;
-  const headY = geom.headY * scaleCssY;
-  const radius = geom.radius * scaleCssX;
-
-  if (particleCenterHandle) {
-    particleCenterHandle.style.left = `${centerX}px`;
-    particleCenterHandle.style.top = `${centerY}px`;
-  }
-
-  if (particleSigmaCircle) {
-    particleSigmaCircle.style.width = `${2 * radius}px`;
-    particleSigmaCircle.style.height = `${2 * radius}px`;
-    particleSigmaCircle.style.left = `${centerX}px`;
-    particleSigmaCircle.style.top = `${centerY}px`;
-  }
-
-  // Sigma label is positioned via CSS relative to the circle
-
-  // Momentum vector and label
-  const dx = headX - centerX;
-  const dy = headY - centerY;
-  const len = Math.hypot(dx, dy);
-  const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
-
-  if (particlePLine) {
-    const midX = (centerX + headX) / 2;
-    const midY = (centerY + headY) / 2;
-
-    particlePLine.style.width = `${len}px`;
-    particlePLine.style.left = `${midX}px`;
-    particlePLine.style.top = `${midY}px`;
-    particlePLine.style.transform = `translate(-50%, -50%) rotate(${angleDeg}deg)`;
-  }
-
-  const headAngleDeg = angleDeg + 180; // flip so triangle points outward
-
-  if (particlePHead) {
-    particlePHead.style.left = `${headX}px`;
-    particlePHead.style.top = `${headY}px`;
-    particlePHead.style.transform = `translate(-50%, -50%) rotate(${headAngleDeg}deg)`;
-  }
-
-  if (particlePLabel) {
-    particlePLabel.style.left = `${headX}px`;
-    particlePLabel.style.top = `${headY + 10}px`;
-  }
-}
-
-function setSliderValue(id, value) {
-  const slider = document.getElementById(id);
-  if (!slider) return;
-  const min = slider.min !== undefined ? parseFloat(slider.min) : undefined;
-  const max = slider.max !== undefined ? parseFloat(slider.max) : undefined;
-  let v = value;
-  if (Number.isFinite(min)) v = Math.max(min, v);
-  if (Number.isFinite(max)) v = Math.min(max, v);
-  slider.value = String(v);
-  slider.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
-function setSigmaFromValue(sigma) {
-  const slider = document.getElementById("sigma-x-slider");
-  if (!slider) return;
-  let pos = valueToPosition(sigma);
-  const min = parseFloat(slider.min);
-  const max = parseFloat(slider.max);
-  pos = Math.max(min, Math.min(max, pos));
-  slider.value = String(pos);
-  slider.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
-function handleParticleDrag(event) {
-  if (!particleOverlay || !canvas || !particleDragging || !particleDragMode) return;
-
-  const clientX = event.clientX;
-  const clientY = event.clientY;
-  const shift = !!event.shiftKey;
-
-  const overlayRect = particleOverlay.getBoundingClientRect();
-  const overlayWidth = overlayRect.width;
-  const overlayHeight = overlayRect.height;
-  if (!overlayWidth || !overlayHeight) return;
-
-  const xOverlay = clientX - overlayRect.left;
-  const yOverlay = clientY - overlayRect.top;
-
-  const width = canvas.width;
-  const height = canvas.height;
-  if (!width || !height) return;
-
-  const scaleCssX = overlayWidth / width;
-  const scaleCssY = overlayHeight / height;
-
-  const pxInternal = xOverlay / scaleCssX;
-  const pyInternal = yOverlay / scaleCssY;
-
-  const scalePos = getScalePos(width);
-  const centerXInternal = width / 2;
-  const centerYInternal = height / 2;
-
-  const state = getControlsState();
-
-  if (particleDragMode === "center") {
-    // Work in deltas from the drag start so free motion and
-    // constrained motion are both well-behaved.
-    const dxInternal = pxInternal - centerDragStartInternalX;
-    const dyInternal = pyInternal - centerDragStartInternalY;
-
-    let dxWorld = dxInternal / scalePos;
-    let dyWorld = -dyInternal / scalePos;
-
-    if (shift) {
-      // Dynamic axis choice at each move:
-      // decide whether the pointer is closer to a purely horizontal
-      // or purely vertical displacement from the drag start.
-      if (Math.abs(dyInternal) <= Math.abs(dxInternal)) {
-        // Horizontal motion: zero out vertical component.
-        dyWorld = 0;
-      } else {
-        // Vertical motion: zero out horizontal component.
-        dxWorld = 0;
-      }
-    }
-
-    const xWorld = centerDragStartXWorld + dxWorld;
-    const yWorld = centerDragStartYWorld + dyWorld;
-    setSliderValue("x", xWorld);
-    setSliderValue("y", yWorld);
-    return;
-  }
-
-  const centerX = centerXInternal + state.x * scalePos;
-  const centerY = centerYInternal - state.y * scalePos;
-
-  if (particleDragMode === "momentum") {
-    const dx = pxInternal - centerX;
-    const dy = pyInternal - centerY;
-    // Use the same scaling as the overlay geometry so that
-    // |p| = MAX_P spans one quarter of the canvas width.
-    const maxP =
-      typeof MAX_P === "number" && Number.isFinite(MAX_P) && MAX_P > 0
-        ? MAX_P
-        : 2;
-    const pScale = (width * 0.25) / maxP;
-    let px = dx / pScale;
-    let py = -(dy / pScale);
-
-    // If Shift is held, adjust only the magnitude of the
-    // momentum vector along its initial direction, not its angle.
-    if (shift && momentumDragHasInitialDir) {
-      const ux = momentumDragInitialDirX;
-      const uy = momentumDragInitialDirY;
-      const proj = px * ux + py * uy;
-      const mag = Math.max(0, proj); // do not flip direction
-      px = ux * mag;
-      py = uy * mag;
-    }
-
-    if (typeof setMomentumFromDisplay === "function") {
-      setMomentumFromDisplay(px, py);
-    } else {
-      // Fallback: apply the length constraint locally and update sliders.
-      const r = Math.hypot(px, py);
-      const maxP =
-        typeof MAX_P === "number" && Number.isFinite(MAX_P) && MAX_P > 0
-          ? MAX_P
-          : 2;
-
-      if (Number.isFinite(r) && r > maxP) {
-        const s = maxP / r;
-        px *= s;
-        py *= s;
-      }
-
-      const pxInternalValue =
-        typeof displayMomentumToInternal === "function"
-          ? displayMomentumToInternal(px)
-          : px;
-      const pyInternalValue =
-        typeof displayMomentumToInternal === "function"
-          ? displayMomentumToInternal(py)
-          : py;
-
-      setSliderValue("px", pxInternalValue);
-      setSliderValue("py", pyInternalValue);
-    }
-    return;
-  }
-
-  if (particleDragMode === "sigma") {
-    const dx = pxInternal - centerX;
-    const dy = pyInternal - centerY;
-    const dist = Math.max(5, Math.hypot(dx, dy));
-    // Circle is drawn at radius = 2 * sigma * scalePos,
-    // so invert that factor here when dragging.
-    let sigma = dist / (2 * scalePos);
-    if (!Number.isFinite(sigma) || sigma <= 1e-3) sigma = 1e-3;
-    setSigmaFromValue(sigma);
-  }
-}
-
-function setupParticleUI() {
-  particleOverlay = document.getElementById("particle-overlay");
-  if (!particleOverlay) return;
-
-  particleCenterHandle = document.getElementById("particle-center-handle");
-  particleSigmaCircle = document.getElementById("particle-sigma-circle");
-  particleSigmaLabel = document.getElementById("particle-sigma-label");
-  particlePLine = document.getElementById("particle-p-line");
-  particlePHead = document.getElementById("particle-p-head");
-  particlePLabel = document.getElementById("particle-p-label");
-
-  const startDrag = (mode) => (event) => {
-    if (isPlaying) return;
-    particleDragMode = mode;
-    particleDragging = true;
-
-    if (mode === "center") {
-      const state = getControlsState();
-      const width = canvas ? canvas.width : 0;
-      const height = canvas ? canvas.height : 0;
-      const overlayRect = particleOverlay.getBoundingClientRect();
-      const overlayWidth = overlayRect.width;
-      const overlayHeight = overlayRect.height;
-
-      centerDragStartXWorld = Number.isFinite(state.x) ? state.x : 0;
-      centerDragStartYWorld = Number.isFinite(state.y) ? state.y : 0;
-
-      if (width && height && overlayWidth && overlayHeight) {
-        const scaleCssX = overlayWidth / width;
-        const scaleCssY = overlayHeight / height;
-        const xOverlay = event.clientX - overlayRect.left;
-        const yOverlay = event.clientY - overlayRect.top;
-        centerDragStartInternalX = xOverlay / scaleCssX;
-        centerDragStartInternalY = yOverlay / scaleCssY;
-      } else {
-        const scalePos = width ? getScalePos(width) : 1;
-        centerDragStartInternalX = width / 2 + centerDragStartXWorld * scalePos;
-        centerDragStartInternalY = height / 2 - centerDragStartYWorld * scalePos;
-      }
-    }
-
-    if (mode === "momentum") {
-      const state = getControlsState();
-      const px = Number.isFinite(state.px) ? state.px : 0;
-      const py = Number.isFinite(state.py) ? state.py : 0;
-      const len = Math.hypot(px, py);
-      if (len > 1e-6) {
-        momentumDragInitialDirX = px / len;
-        momentumDragInitialDirY = py / len;
-        momentumDragHasInitialDir = true;
-      } else {
-        momentumDragHasInitialDir = false;
-      }
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-  };
-
-  if (particleCenterHandle) {
-    particleCenterHandle.addEventListener("pointerdown", startDrag("center"));
-  }
-  if (particlePHead) {
-    particlePHead.addEventListener("pointerdown", startDrag("momentum"));
-  }
-  if (particleSigmaCircle) {
-    particleSigmaCircle.addEventListener("pointerdown", (event) => {
-      if (isPlaying) return;
-
-      const rect = particleSigmaCircle.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const dx = event.clientX - centerX;
-      const dy = event.clientY - centerY;
-      const dist = Math.hypot(dx, dy);
-      const radius = rect.width / 2;
-
-      // Only start dragging when the pointer is close to the circle boundary,
-      // not anywhere inside the disk.
-      const bandWidth = 10; // pixels tolerance around the radius
-      const nearRing =
-        dist >= radius - bandWidth && dist <= radius + bandWidth;
-
-      if (nearRing) {
-        particleDragMode = "sigma";
-        particleDragging = true;
-        // Ensure resize cursor appears even on immediate click, oriented radially.
-        const angle = Math.atan2(dy, dx);
-        particleSigmaCircle.style.cursor = getSigmaResizeCursor(angle);
-        event.preventDefault();
-        event.stopPropagation();
-      } else if (potentialCanvas) {
-        // Forward clicks that are not on the boundary to the potential canvas
-        // so that drawing tools (brush, eraser, etc.) still work under the circle.
-        const synthetic = new MouseEvent("pointerdown", {
-          bubbles: true,
-          cancelable: true,
-          clientX: event.clientX,
-          clientY: event.clientY,
-          button: event.button,
-          buttons: event.buttons,
-          ctrlKey: event.ctrlKey,
-          shiftKey: event.shiftKey,
-          altKey: event.altKey,
-          metaKey: event.metaKey,
-        });
-        potentialCanvas.dispatchEvent(synthetic);
-      }
-    });
-  }
-
-  window.addEventListener("pointermove", (event) => {
-    // Keep the radial resize cursor updated both on hover and while dragging sigma.
-    if (particleSigmaCircle && !isPlaying) {
-      const rect = particleSigmaCircle.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const dx = event.clientX - centerX;
-      const dy = event.clientY - centerY;
-      const dist = Math.hypot(dx, dy);
-      const radius = rect.width / 2;
-      const bandWidth = 10;
-      const nearRing =
-        dist >= radius - bandWidth && dist <= radius + bandWidth;
-      const angle = Math.atan2(dy, dx);
-
-      if (!particleDragging) {
-        // Hover: show resize cursor only near the sigma circle boundary.
-        if (nearRing) {
-          particleSigmaCircle.style.cursor = getSigmaResizeCursor(angle);
-        } else {
-          particleSigmaCircle.style.cursor = "default";
-        }
-      } else if (particleDragMode === "sigma") {
-        // While dragging sigma, keep the cursor rotating with the angle.
-        particleSigmaCircle.style.cursor = getSigmaResizeCursor(angle);
-      }
-    }
-
-    if (!particleDragging) return;
-    handleParticleDrag(event);
-  });
-
-  const stop = () => {
-    if (!particleDragging) return;
-    particleDragging = false;
-    particleDragMode = null;
-    momentumDragHasInitialDir = false;
-
-    // Commit a single history entry for this completed drag of the
-    // wave-function initial condition controls.
-    if (typeof savePotentialHistory === "function") {
-      savePotentialHistory();
-    }
-  };
-
-  window.addEventListener("pointerup", stop);
-  window.addEventListener("pointercancel", stop);
-
-  updateParticleOverlay();
-}
-
+// Potential editing tools: brush, shapes, bucket fill, imports, and keyboard shortcuts.
 function getCanvasCoords(event) {
   if (!potentialCanvas) return null;
   const rect = potentialCanvas.getBoundingClientRect();
@@ -1240,8 +7,12 @@ function getCanvasCoords(event) {
   const x = (event.clientX - rect.left) * scaleX;
   const y = (event.clientY - rect.top) * scaleY;
   return {
-    x: Math.floor(x),
-    y: Math.floor(y),
+    // Keep both floating and integer coordinates: brush strokes use subpixel
+    // precision for smoother small sizes, while discrete tools use ints.
+    x,
+    y,
+    xi: Math.floor(x),
+    yi: Math.floor(y),
   };
 }
 
@@ -1708,7 +479,12 @@ function bucketFill(startX, startY) {
   const targetValue = potentialField[index0] || 0;
   const newValue = potentialGray / 255;
 
-  const threshold = BUCKET_TOLERANCE;
+  let threshold = Number.isFinite(bucketTolerance)
+    ? bucketTolerance
+    : BUCKET_TOLERANCE;
+  if (!Number.isFinite(threshold) || threshold <= 0) {
+    threshold = BUCKET_TOLERANCE;
+  }
 
   if (Math.abs(newValue - targetValue) < 0.01) return;
 
@@ -1876,8 +652,12 @@ function applyImageAsPotential(image) {
     potentialField = new Float32Array(w * h);
   }
 
-  const vMax = Number.isFinite(currentVMax) && currentVMax > 0 ? currentVMax : INITIAL_V_MAX;
+  const scale =
+    typeof POTENTIAL_SCALE === "number" && Number.isFinite(POTENTIAL_SCALE)
+      ? POTENTIAL_SCALE
+      : 1;
 
+  let rawMax = 0;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const idx = y * w + x;
@@ -1887,9 +667,24 @@ function applyImageAsPotential(image) {
       const b = data[base + 2];
       const gray = 0.299 * r + 0.587 * g + 0.114 * b;
       const normalized = gray / 255;
-      const value = Math.max(0, Math.min(1, normalized * vMax));
-      potentialField[idx] = value;
+      rawMax = Math.max(rawMax, normalized);
+      potentialField[idx] = Math.max(0, normalized);
     }
+  }
+
+  const targetPhysicalMax =
+    Number.isFinite(currentVMax) && currentVMax > 0
+      ? currentVMax
+      : rawMax * scale;
+
+  if (rawMax > 0 && targetPhysicalMax > 0) {
+    const factor = targetPhysicalMax / (rawMax * scale);
+    const n = potentialField.length;
+    for (let i = 0; i < n; i++) {
+      const v = potentialField[i] || 0;
+      potentialField[i] = Math.max(0, v * factor);
+    }
+    currentVMax = targetPhysicalMax;
   }
 
   if (typeof savePotentialHistory === "function") {
@@ -1898,6 +693,20 @@ function applyImageAsPotential(image) {
   redrawPotential();
   if (typeof drawScene === "function") {
     drawScene();
+  }
+  if (typeof document !== "undefined") {
+    const vMaxEdit = document.getElementById("v-max-edit");
+    const vMaxSlider = document.getElementById("v-max-slider");
+    if (vMaxEdit && document.activeElement !== vMaxEdit) {
+      vMaxEdit.value = Number.isFinite(currentVMax)
+        ? currentVMax.toFixed(2)
+        : vMaxEdit.value;
+    }
+    if (vMaxSlider && document.activeElement !== vMaxSlider) {
+      vMaxSlider.value = Number.isFinite(currentVMax)
+        ? String(currentVMax)
+        : vMaxSlider.value;
+    }
   }
 }
 
@@ -2032,7 +841,7 @@ function setupPotentialDrawing() {
     if (!coords) return;
 
     if (currentTool === "bucket") {
-      bucketFill(coords.x, coords.y);
+      bucketFill(coords.xi, coords.yi);
       redrawPotential();
       savePotentialHistory();
        if (typeof drawScene === "function") {
@@ -2040,8 +849,8 @@ function setupPotentialDrawing() {
       }
       console.log(
         "[Schrödinger] Bucket fill at",
-        coords.x,
-        coords.y,
+        coords.xi,
+        coords.yi,
         "gray =",
         potentialGray
       );
@@ -2050,7 +859,7 @@ function setupPotentialDrawing() {
 
     if (currentTool === "eyedropper") {
       isEyedropperSampling = true;
-      sampleEyedropperAt(coords.x, coords.y, event);
+      sampleEyedropperAt(coords.xi, coords.yi, event);
       return;
     }
 
@@ -2063,8 +872,8 @@ function setupPotentialDrawing() {
         return;
       }
 
-      const startX = coords.x;
-      const startY = coords.y;
+      const startX = coords.xi;
+      const startY = coords.yi;
       if (
         startX < 0 ||
         startX >= potentialWidth ||
@@ -2147,8 +956,8 @@ function setupPotentialDrawing() {
       moveSelectionOriginX = minX;
       moveSelectionOriginY = minY;
       moveBaseField = baseField;
-      moveDragStartX = coords.x;
-      moveDragStartY = coords.y;
+      moveDragStartX = coords.xi;
+      moveDragStartY = coords.yi;
 
       isDrawing = true;
       strokeConstrainActive = false;
@@ -2172,10 +981,10 @@ function setupPotentialDrawing() {
         return;
       }
 
-      shapeStartX = coords.x;
-      shapeStartY = coords.y;
-      shapeCurrentX = coords.x;
-      shapeCurrentY = coords.y;
+      shapeStartX = coords.xi;
+      shapeStartY = coords.yi;
+      shapeCurrentX = coords.xi;
+      shapeCurrentY = coords.yi;
       shapeBaseField = new Float32Array(potentialField);
 
       isDrawing = true;
@@ -2308,7 +1117,7 @@ function setupPotentialDrawing() {
     if (currentTool === "eyedropper" && (event.buttons & 1)) {
       const coords = getCanvasCoords(event);
       if (coords) {
-        sampleEyedropperAt(coords.x, coords.y, event);
+        sampleEyedropperAt(coords.xi, coords.yi, event);
       }
     }
   });
@@ -2334,10 +1143,11 @@ function setupPotentialDrawing() {
     const coords = getCanvasCoords(event);
     if (!coords) return;
 
-    let x = coords.x;
-    let y = coords.y;
+    const { x, y, xi, yi } = coords;
 
     if (currentTool === "brush" || currentTool === "eraser") {
+      let px = x;
+      let py = y;
       // Allow enabling constraint any time Shift is held during the stroke.
       // Once a constraint direction is chosen, it stays fixed until stroke end.
       if (event.shiftKey) {
@@ -2346,8 +1156,8 @@ function setupPotentialDrawing() {
 
       if (strokeConstrainActive) {
         if (!strokeConstrainMode) {
-          const dx0 = x - strokeStartX;
-          const dy0 = y - strokeStartY;
+          const dx0 = px - strokeStartX;
+          const dy0 = py - strokeStartY;
           if (dx0 !== 0 || dy0 !== 0) {
             strokeConstrainMode =
               Math.abs(dx0) >= Math.abs(dy0) ? "horizontal" : "vertical";
@@ -2355,14 +1165,14 @@ function setupPotentialDrawing() {
         }
 
         if (strokeConstrainMode === "horizontal") {
-          y = strokeStartY;
+          py = strokeStartY;
         } else if (strokeConstrainMode === "vertical") {
-          x = strokeStartX;
+          px = strokeStartX;
         }
       }
 
       const erase = currentTool === "eraser";
-      const point = { x, y };
+      const point = { x: px, y: py };
 
       if (!strokeSplineP0) {
         strokeSplineP0 = point;
@@ -2396,8 +1206,8 @@ function setupPotentialDrawing() {
         return;
       }
 
-      const dx = Math.round(x - moveDragStartX);
-      const dy = Math.round(y - moveDragStartY);
+      const dx = Math.round(xi - moveDragStartX);
+      const dy = Math.round(yi - moveDragStartY);
 
       const w2 = potentialWidth;
       const h2 = potentialHeight;
@@ -2441,11 +1251,11 @@ function setupPotentialDrawing() {
         return;
       }
 
-      shapeCurrentX = x;
-      shapeCurrentY = y;
+      shapeCurrentX = xi;
+      shapeCurrentY = yi;
 
       potentialField.set(shapeBaseField);
-      drawShapeStroke(shapeStartX, shapeStartY, x, y);
+      drawShapeStroke(shapeStartX, shapeStartY, xi, yi);
       redrawPotential();
       didModifyPotentialThisStroke = true;
     }
@@ -2490,12 +1300,12 @@ function handlePotentialHistoryKeydown(event) {
   if (!event.ctrlKey && !event.metaKey && !event.altKey) {
     if (key === "[" && (currentTool === "brush" || currentTool === "eraser")) {
       event.preventDefault();
-      applyBrushSizeDelta(-1);
+      applyBrushSizeDelta(-0.5);
       return;
     }
     if (key === "]" && (currentTool === "brush" || currentTool === "eraser")) {
       event.preventDefault();
-      applyBrushSizeDelta(1);
+      applyBrushSizeDelta(0.5);
       return;
     }
   }
@@ -2618,8 +1428,68 @@ async function exportCurrentSetup() {
     };
   }
 
+  let eigenstatesPayload = null;
+  if (
+    typeof getDiscoveredEigenstates === "function" &&
+    simWidth > 0 &&
+    simHeight > 0
+  ) {
+    const list = getDiscoveredEigenstates() || [];
+    if (Array.isArray(list) && list.length) {
+      const count = simWidth * simHeight;
+      const states = [];
+      for (let k = 0; k < list.length; k++) {
+        const st = list[k];
+        if (
+          !st ||
+          !st.re ||
+          !st.im ||
+          st.re.length !== count ||
+          st.im.length !== count
+        ) {
+          continue;
+        }
+        states.push({
+          re: Array.from(st.re),
+          im: Array.from(st.im),
+        });
+      }
+      if (states.length) {
+        eigenstatesPayload = {
+          width: simWidth,
+          height: simHeight,
+          states,
+        };
+      }
+    }
+  }
+
+  let version = 1;
+  if (wavefunction) {
+    version = 2;
+  }
+  if (eigenstatesPayload) {
+    version = 3;
+  }
+
+  let functionExpression = "";
+  const functionInput = document.getElementById("potential-function-input");
+  if (functionInput && typeof functionInput.value === "string") {
+    functionExpression = functionInput.value.trim();
+  }
+
+  const potentialPayload = {
+    width: potentialWidth,
+    height: potentialHeight,
+    data: Array.from(potentialField),
+  };
+
+  if (functionExpression) {
+    potentialPayload.functionExpression = functionExpression;
+  }
+
   const payload = {
-    version: wavefunction ? 2 : 1,
+    version,
     grid: {
       width:
         typeof currentResolutionWidth !== "undefined"
@@ -2630,11 +1500,7 @@ async function exportCurrentSetup() {
           ? currentResolutionHeight
           : potentialHeight,
     },
-    potential: {
-      width: potentialWidth,
-      height: potentialHeight,
-      data: Array.from(potentialField),
-    },
+    potential: potentialPayload,
     initialCondition: controls || null,
     controls: {
       boundaryMode:
@@ -2649,11 +1515,17 @@ async function exportCurrentSetup() {
         typeof isImaginaryTime !== "undefined" ? !!isImaginaryTime : false,
       rescaleMode:
         typeof psiRescaleMode === "string" ? psiRescaleMode : "none",
+      integrator:
+        typeof integratorScheme === "string" ? integratorScheme : "crank",
     },
   };
 
   if (wavefunction) {
     payload.wavefunction = wavefunction;
+  }
+
+  if (eigenstatesPayload) {
+    payload.eigenstates = eigenstatesPayload;
   }
 
   const jsonText = JSON.stringify(payload, null, 2);
@@ -2729,6 +1601,14 @@ function applySetupObject(setup) {
   if (!setup || typeof setup !== "object") return;
 
   let appliedWavefunction = false;
+  let loadedEigenstates = false;
+
+  // Always clear any previously discovered eigenstates before applying a new setup.
+  if (typeof clearEigenstates === "function") {
+    clearEigenstates();
+  } else if (typeof eigenstates !== "undefined") {
+    eigenstates = [];
+  }
 
   // 1) Grid resolution (if present)
   if (
@@ -2774,11 +1654,41 @@ function applySetupObject(setup) {
       }
       for (let i = 0; i < data.length; i++) {
         const v = data[i];
-        potentialField[i] = Number.isFinite(v)
-          ? Math.max(0, Math.min(1, v))
-          : 0;
+        // Preserve the raw potential values; function-defined potentials
+        // may legitimately fall outside [0, 1].
+        potentialField[i] = Number.isFinite(v) ? v : 0;
       }
       redrawPotential();
+    }
+  }
+
+  const functionExpr =
+    setup.potential &&
+    typeof setup.potential.functionExpression === "string"
+      ? setup.potential.functionExpression
+      : "";
+
+  const functionInput = document.getElementById("potential-function-input");
+  if (functionInput) {
+    functionInput.value = functionExpr;
+  }
+
+  if (functionExpr) {
+    let activatedFunctionTool = false;
+    if (typeof setActiveTool === "function") {
+      activatedFunctionTool = !!setActiveTool("function");
+    }
+    if (!activatedFunctionTool) {
+      const functionButton = document.querySelector(
+        '.tool-button[data-tool="function"]'
+      );
+      if (functionButton && typeof functionButton.click === "function") {
+        functionButton.click();
+        activatedFunctionTool = true;
+      }
+    }
+    if (!activatedFunctionTool && typeof currentTool !== "undefined") {
+      currentTool = "function";
     }
   }
 
@@ -2865,6 +1775,22 @@ function applySetupObject(setup) {
         maxInput.checked = mode === "max";
       }
     }
+
+    if (
+      typeof c.integrator === "string" &&
+      typeof integratorScheme !== "undefined"
+    ) {
+      const scheme = c.integrator === "euler" ? "euler" : "crank";
+      integratorScheme = scheme;
+      const integratorEulerInput = document.getElementById("integrator-euler");
+      const integratorCrankInput = document.getElementById("integrator-crank");
+      if (integratorEulerInput) {
+        integratorEulerInput.checked = scheme === "euler";
+      }
+      if (integratorCrankInput) {
+        integratorCrankInput.checked = scheme === "crank";
+      }
+    }
   }
 
   // 5) Explicit wavefunction (if present)
@@ -2922,6 +1848,13 @@ function applySetupObject(setup) {
         }
       }
 
+      if (typeof normalizeWavefunctionToUnitNorm === "function") {
+        normalizeWavefunctionToUnitNorm();
+      }
+      if (typeof updatePlotScaleFromCurrentPsi === "function") {
+        updatePlotScaleFromCurrentPsi();
+      }
+
       if (typeof initialPsiDirty !== "undefined") {
         initialPsiDirty = false;
       }
@@ -2932,14 +1865,78 @@ function applySetupObject(setup) {
 
       appliedWavefunction = true;
 
-      if (typeof creationToolsVisible !== "undefined") {
+      if (typeof markSimulationStarted === "function") {
+        markSimulationStarted();
+      } else if (typeof creationToolsVisible !== "undefined") {
         creationToolsVisible = false;
+      }
+    }
+  }
+
+  // 6) Stored eigenstates (if present)
+  if (
+    setup.eigenstates &&
+    typeof setup.eigenstates === "object" &&
+    Array.isArray(setup.eigenstates.states)
+  ) {
+    const es = setup.eigenstates;
+    const ew = Number.isFinite(es.width) ? es.width : simWidth;
+    const eh = Number.isFinite(es.height) ? es.height : simHeight;
+    const count = ew * eh;
+
+    if (
+      ew > 0 &&
+      eh > 0 &&
+      Number.isFinite(count) &&
+      count > 0 &&
+      typeof eigenstates !== "undefined" &&
+      Array.isArray(es.states)
+    ) {
+      eigenstates = [];
+      for (let k = 0; k < es.states.length; k++) {
+        const st = es.states[k];
+        if (
+          !st ||
+          !Array.isArray(st.re) ||
+          !Array.isArray(st.im) ||
+          st.re.length !== count ||
+          st.im.length !== count
+        ) {
+          continue;
+        }
+        eigenstates.push({
+          re: new Float32Array(st.re),
+          im: new Float32Array(st.im),
+        });
+      }
+      loadedEigenstates = eigenstates.length > 0;
+
+      // If eigenstates are present, activate the Eigenstates tab so the
+      // computed states are immediately visible.
+      const eigenTab = document.querySelector('.wf-tab[data-tab="eigenstates"]');
+      if (eigenTab && typeof eigenTab.click === "function") {
+        eigenTab.click();
       }
     }
   }
 
   if (typeof savePotentialHistory === "function") {
     savePotentialHistory();
+  }
+
+  if (typeof markSimulationStopped === "function") {
+    // If no explicit wavefunction was applied, treat the system as stopped; otherwise, visibility will be handled above.
+    if (!appliedWavefunction) {
+      markSimulationStopped();
+    }
+  }
+
+  // When loading a setup without eigenstates, return to the Gaussian tab so the UI reflects the packet state.
+  if (!loadedEigenstates) {
+    const gaussianTab = document.querySelector('.wf-tab[data-tab="gaussian"]');
+    if (gaussianTab && typeof gaussianTab.click === "function") {
+      gaussianTab.click();
+    }
   }
 
   drawScene();

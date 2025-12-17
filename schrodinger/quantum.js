@@ -59,6 +59,10 @@ let psiImNext = null;
 let simWidth = 0;
 let simHeight = 0;
 
+// Scratch buffers for the Crank–Nicolson integrator right-hand side.
+let cnRhsRe = null;
+let cnRhsIm = null;
+
 // Time evolution state
 let isPlaying = false;
 let animationFrameId = null;
@@ -85,6 +89,34 @@ let lastEnergyValue = null;
 // Analytic normalization factor returned by phi for the current
 // initial wavefunction shape (independent of x, y).
 let currentNormFactor = 1;
+
+// Discovered eigenstates ψ_n stored as { re: Float32Array, im: Float32Array }.
+// These are defined on the current simulation grid and are invalidated when
+// the grid resolution or potential changes.
+let eigenstates = [];
+
+// True while an eigenstate search (imaginary-time relaxation) is in progress.
+let eigenstateSearchInProgress = false;
+
+// Fixed visualization scale factor for plotting |ψ| on the canvas. This is
+// recomputed whenever a new wavefunction is constructed or loaded, not every frame.
+let plotScaleFactor = 1;
+
+// Mutable convergence threshold for eigenstate relaxation, initialized from
+// the default exponent constant but adjustable from the UI.
+let eigenstateRelaxationDelta =
+  typeof EIGENSTATE_RELAXATION_DELTA_EXP === "number" &&
+  Number.isFinite(EIGENSTATE_RELAXATION_DELTA_EXP)
+    ? Math.pow(10, EIGENSTATE_RELAXATION_DELTA_EXP)
+    : 1e-6;
+
+// Mutable cap on the number of imaginary-time iterations per eigenstate, initialized
+// from the default exponent constant but adjustable from the UI.
+let eigenstateMaxIterationsPerState =
+  typeof EIGENSTATE_MAX_ITERATIONS_EXP === "number" &&
+  Number.isFinite(EIGENSTATE_MAX_ITERATIONS_EXP)
+    ? Math.max(1, Math.round(Math.pow(10, EIGENSTATE_MAX_ITERATIONS_EXP)))
+    : 100000;
 
 // Compute the physical potential range used for color mapping.
 // V_max (white) corresponds to max between the field maximum and POTENTIAL_SCALE.
@@ -138,6 +170,8 @@ function initPotentialField(width, height) {
   potentialWidth = width;
   potentialHeight = height;
   potentialField = new Float32Array(width * height);
+  // Potential change invalidates previously found eigenstates.
+  eigenstates = [];
 }
 
 function initSimulationGrid(width, height) {
@@ -148,6 +182,8 @@ function initSimulationGrid(width, height) {
   psiReNext = new Float32Array(width * height);
   psiImNext = new Float32Array(width * height);
   initialPsiDirty = true;
+  // Grid changes invalidate previously found eigenstates.
+  eigenstates = [];
 }
 
 function markInitialPsiDirty() {
@@ -218,6 +254,51 @@ function complexToRGBA(re, im) {
   ];
 }
 
+function normalizeWavefunctionToUnitNorm() {
+  if (!psiRe || !psiIm || !canvas) return;
+
+  const width = canvas.width;
+  const scalePos = (BASE_SCALE_POS * width) / BASE_RESOLUTION;
+  const dA = 1 / (scalePos * scalePos);
+
+  const n = psiRe.length;
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    const re = psiRe[i], im = psiIm[i];
+    sum += re * re + im * im;
+  }
+
+  // physical norm: Σ |ψ|^2 dA
+  const norm = sum * dA;
+  if (!Number.isFinite(norm) || norm <= 0) return;
+
+  const factor = 1 / Math.sqrt(norm);
+  for (let i = 0; i < n; i++) {
+    psiRe[i] *= factor;
+    psiIm[i] *= factor;
+  }
+
+  currentNormFactor = 1;
+}
+
+function updatePlotScaleFromCurrentPsi() {
+  if (!psiRe || !psiIm) return;
+  const n = Math.min(psiRe.length, psiIm.length);
+  if (!Number.isFinite(n) || n <= 0) return;
+
+  let maxAmp = 0;
+  for (let i = 0; i < n; i++) {
+    const re = psiRe[i];
+    const im = psiIm[i];
+    const amp = Math.hypot(re, im);
+    if (amp > maxAmp) {
+      maxAmp = amp;
+    }
+  }
+
+  plotScaleFactor = maxAmp > 0 && Number.isFinite(maxAmp) ? 1 / maxAmp : 1;
+}
+
 function drawScene() {
   if (!canvas || !ctx || !psiRe || !psiIm) return;
   const { width, height } = canvas;
@@ -240,9 +321,15 @@ function drawScene() {
   const data = imageData.data;
 
   const total = width * height;
+
+  const plotScale =
+    typeof plotScaleFactor === "number" && Number.isFinite(plotScaleFactor)
+      ? plotScaleFactor
+      : 1;
+
   for (let idx = 0; idx < total; idx++) {
-    const re = psiRe[idx];
-    const im = psiIm[idx];
+    const re = psiRe[idx] * plotScale;
+    const im = psiIm[idx] * plotScale;
     const [r, g, b, a] = complexToRGBA(re, im);
 
     const base = idx * 4;
@@ -309,6 +396,11 @@ function resetWavefunctionFromControls() {
       idx++;
     }
   }
+
+  // Normalize the constructed wave-packet so that it has unit norm
+  // by default, independent of the optional rescaling mode.
+  normalizeWavefunctionToUnitNorm();
+  updatePlotScaleFromCurrentPsi();
 
   initialPsiDirty = false;
   wavefunctionCanBeReconstructedFromControls = true;
@@ -451,9 +543,17 @@ function stepSchrodingerCrankNicolsonFixedPointIters() {
 
   const hasPotential = !!potentialField && potentialWidth > 0 && potentialHeight > 0;
 
-  // Right-hand side for (I - dt/2 * L) psi^{n+1} = psi^n + dt/2 * L psi^n
-  const rhsRe = new Float32Array(N);
-  const rhsIm = new Float32Array(N);
+  // Right-hand side for (I - dt/2 * L) psi^{n+1} = psi^n + dt/2 * L psi^n.
+  // Reuse module-level buffers to avoid per-step allocations; resize only
+  // when the simulation grid size N changes.
+  if (!cnRhsRe || cnRhsRe.length !== N) {
+    cnRhsRe = new Float32Array(N);
+  }
+  if (!cnRhsIm || cnRhsIm.length !== N) {
+    cnRhsIm = new Float32Array(N);
+  }
+  const rhsRe = cnRhsRe;
+  const rhsIm = cnRhsIm;
 
   // --- 1) Build RHS using the OLD wavefunction (explicit part) ---
   for (let y = 0; y < h; y++) {
@@ -639,17 +739,11 @@ function rescaleWavefunctionIfNeeded() {
   if (!Number.isFinite(n) || n <= 0) return;
 
   if (psiRescaleMode === "norm") {
-    let sum = 0;
-    for (let i = 0; i < n; i++) {
-      const re = psiRe[i];
-      const im = psiIm[i];
-      sum += re * re + im * im;
-    }
-    if (!Number.isFinite(sum) || sum <= 0) return;
-    const factor = 1 / Math.sqrt(sum);
-    for (let i = 0; i < n; i++) {
-      psiRe[i] *= factor;
-      psiIm[i] *= factor;
+    // Reuse the existing normalization helper so that the
+    // norm is computed consistently with the rest of the code
+    // (including the spatial area element).
+    if (typeof normalizeWavefunctionToUnitNorm === "function") {
+      normalizeWavefunctionToUnitNorm();
     }
   } else if (psiRescaleMode === "max") {
     let maxAmp2 = 0;
@@ -675,12 +769,20 @@ function stepSchrodinger() {
   // and a simpler explicit Euler step for imaginary time relaxation.
   wavefunctionCanBeReconstructedFromControls = false;
   if (typeof isImaginaryTime !== "undefined" && isImaginaryTime) {
+    // Imaginary-time evolution always uses Euler.
     stepSchrodingerEuler();
   } else {
-    stepSchrodingerCrankNicolsonFixedPointIters();
+    // Real-time evolution uses the integrator selected in the UI.
+    const scheme =
+      typeof integratorScheme === "string" ? integratorScheme : "crank";
+    if (scheme === "euler") {
+      stepSchrodingerEuler();
+    } else {
+      stepSchrodingerCrankNicolsonFixedPointIters();
+    }
   }
 
-   if (
+  if (
     typeof psiRescaleMode !== "undefined" &&
     psiRescaleMode !== "none"
   ) {
@@ -755,18 +857,13 @@ function computeEnergyExpectation() {
     }
   }
 
-  const normalizationScale =
-    typeof currentNormFactor === "number" && Number.isFinite(currentNormFactor)
-      ? currentNormFactor * currentNormFactor
-      : 1;
-
   // Divide by scalePos^2 to account for discretization of the spatial grid.
-  return (energy * normalizationScale) / (scalePos * scalePos);
+  return energy / (scalePos * scalePos);
 }
 
 function drawPotentialColorbar(ctx, width, height) {
-  const barWidth = Math.max(10, Math.round(width * 0.02));
-  const barHeight = Math.max(50, Math.round(height * 0.2));
+  const barWidth = Math.max(15, Math.round(width * 0.03));
+  const barHeight = Math.max(75, Math.round(width * 0.12));
   const x0 = 10;
   const y0 = 10;
 
@@ -784,7 +881,8 @@ function drawPotentialColorbar(ctx, width, height) {
   gradient.addColorStop(0, "rgba(0, 0, 0, 1)");
   gradient.addColorStop(1, "rgba(255, 255, 255, 1)");
 
-  ctx.font = "12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  // Match the overlay energy text size for consistent typography.
+  ctx.font = "24px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
   const vLabel = "V";
 
@@ -836,10 +934,10 @@ function drawEnergyOverlay(ctx, width, height, energyValue) {
   const margin = 10;
   const text =
     "E = " +
-    (Number.isFinite(energyValue) ? energyValue.toFixed(2) : "—");
+    (Number.isFinite(energyValue) ? energyValue.toPrecision(2) : "—");
 
   ctx.save();
-  ctx.font = "12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.font = "24px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   ctx.textAlign = "right";
   ctx.textBaseline = "top";
 
@@ -847,7 +945,7 @@ function drawEnergyOverlay(ctx, width, height, energyValue) {
   const yTop = margin;
 
   // Thin black outline plus green fill for the energy text.
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 4;
   ctx.strokeStyle = "rgba(0, 0, 0, 1)";
   ctx.lineJoin = "round";
   ctx.miterLimit = 2;
@@ -862,26 +960,17 @@ function drawEnergyOverlay(ctx, width, height, energyValue) {
 function drawOverlayLayer() {
   if (!overlayCanvas || !overlayCtx) return;
 
-  // Use the simulation grid dimensions for geometry; the overlay canvas
-  // may be a supersampled version of this grid.
-  const baseWidth =
-    typeof currentResolutionWidth === "number" && currentResolutionWidth > 0
-      ? currentResolutionWidth
-      : overlayCanvas.width;
-  const baseHeight =
-    typeof currentResolutionHeight === "number" && currentResolutionHeight > 0
-      ? currentResolutionHeight
-      : overlayCanvas.height;
+  // Draw overlays in the overlay canvas' own coordinate system so sizes
+  // remain consistent regardless of simulation resolution.
+  const baseWidth = overlayCanvas.width;
+  const baseHeight = overlayCanvas.height;
 
   // Reset to identity to clear the full device-sized canvas.
   overlayCtx.setTransform(1, 0, 0, 1, 0, 0);
   overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-  // Scale drawing so that logical coordinates match the simulation grid.
-  const scaleX = overlayCanvas.width / baseWidth;
-  const scaleY = overlayCanvas.height / baseHeight;
-  const scale = Math.min(scaleX || 1, scaleY || 1);
-  overlayCtx.setTransform(scale, 0, 0, scale, 0, 0);
+  // No additional scaling: draw directly in overlay pixel space.
+  overlayCtx.setTransform(1, 0, 0, 1, 0, 0);
 
   if (showColorbar) {
     drawPotentialColorbar(overlayCtx, baseWidth, baseHeight);
