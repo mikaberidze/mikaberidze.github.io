@@ -467,6 +467,14 @@ function enhanceDropdown(selectEl, { align = "center", staticLabel = "" } = {}) 
   display.setAttribute("aria-expanded", "false");
   display.setAttribute("role", "combobox");
 
+  const tooltipText =
+    typeof selectEl.getAttribute === "function"
+      ? selectEl.getAttribute("data-tooltip")
+      : null;
+  if (tooltipText) {
+    display.setAttribute("data-tooltip", tooltipText);
+  }
+
   const displayLabel = document.createElement("span");
   displayLabel.className = "select-display-label";
   display.appendChild(displayLabel);
@@ -772,6 +780,7 @@ function initApp() {
   const eigenMaxItersInput = document.getElementById("eigenstates-max-iters");
   const eigenListEl = document.getElementById("eigenstates-list");
   const eigenStatusEl = document.getElementById("eigenstates-status");
+  let eigenSearchRecentlyAborted = false;
 
   // Keep the eigenstate GO button disabled while the simulation is running.
   const updateEigenGoButtonDisabled = () => {
@@ -1107,6 +1116,7 @@ function initApp() {
         btn.type = "button";
         btn.className = "eigenstate-pill";
         btn.innerHTML = `\\(\\psi_{${index}}\\)`;
+        btn.setAttribute("data-tooltip", "n-th eigenstate.");
         if (index === activeEigenstateIndex) {
           btn.classList.add("is-active");
         }
@@ -1123,6 +1133,26 @@ function initApp() {
             renderEigenstatesList();
           }
         });
+
+        if (
+          typeof scheduleHoverTooltip === "function" &&
+          typeof hideHoverTooltip === "function"
+        ) {
+          const handleEnter = () => {
+            scheduleHoverTooltip(btn);
+          };
+          const handleLeave = () => {
+            hideHoverTooltip(btn);
+          };
+          const handleFocus = () => {
+            scheduleHoverTooltip(btn);
+          };
+          btn.addEventListener("mouseenter", handleEnter);
+          btn.addEventListener("mouseleave", handleLeave);
+          btn.addEventListener("focus", handleFocus);
+          btn.addEventListener("blur", handleLeave);
+        }
+
         eigenListEl.appendChild(btn);
       });
 
@@ -1176,6 +1206,27 @@ function initApp() {
         const isActive = name === targetName;
         panel.classList.toggle("is-active", isActive);
       });
+
+      // If an eigenstate search was recently aborted and the user switches
+      // back to the Gaussian tab, restore the Gaussian wave-packet controls
+      // and redraw the corresponding wave-packet on the canvas.
+      if (targetName === "gaussian" && eigenSearchRecentlyAborted) {
+        eigenSearchRecentlyAborted = false;
+        if (typeof markSimulationStopped === "function") {
+          markSimulationStopped();
+        } else if (typeof simulationStopped !== "undefined") {
+          simulationStopped = true;
+        }
+        if (typeof resetWavefunctionFromControls === "function") {
+          resetWavefunctionFromControls();
+        }
+        if (typeof drawScene === "function") {
+          drawScene();
+        }
+        if (typeof updateParticleOverlay === "function") {
+          updateParticleOverlay();
+        }
+      }
 
       // Wave-packet creation tools depend on both the active tab and simulation state.
       if (typeof syncCreationToolsVisibility === "function") {
@@ -1409,6 +1460,7 @@ function initApp() {
 
         const abortController = { aborted: false };
         eigenSearchAbortController = abortController;
+        eigenSearchRecentlyAborted = false;
 
         try {
           const result = await findEigenstates(count, {
@@ -1501,6 +1553,12 @@ function initApp() {
           frozenLabels.forEach((label) => {
             label.classList.remove("is-frozen-search");
           });
+
+          const wasCancelled =
+            result && typeof result.cancelled === "boolean"
+              ? !!result.cancelled
+              : false;
+          eigenSearchRecentlyAborted = wasCancelled;
 
           // If recording was enabled during the eigenstate search, finalize
           // the video and disable further recording until explicitly re-enabled.

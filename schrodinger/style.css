@@ -323,7 +323,7 @@ body {
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, 4px);
-  transition: opacity 120ms ease-out, transform 120ms ease-out;
+  transition: opacity 120ms ease-out;
 }
 
 .help-tooltip.is-visible {

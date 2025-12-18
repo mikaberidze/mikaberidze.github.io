@@ -17,35 +17,17 @@ function positionHoverTooltip(target) {
   if (!hoverTooltipEl || !target) return;
   const rect = target.getBoundingClientRect();
   const margin = 8;
-  const viewportWidth =
-    window.innerWidth ||
-    document.documentElement.clientWidth ||
-    document.body.clientWidth ||
-    0;
-  const viewportHeight =
-    window.innerHeight ||
-    document.documentElement.clientHeight ||
-    document.body.clientHeight ||
-    0;
-
   const inPotentialEditor = !!target.closest(".potential-editor");
 
   if (inPotentialEditor) {
-    let left = rect.right + margin;
-    let top = rect.top + rect.height / 2;
-
-    left = Math.min(left, viewportWidth - margin);
-    top = Math.max(margin, Math.min(viewportHeight - margin, top));
-
+    const left = rect.right + margin;
+    const top = rect.top + rect.height / 2;
     hoverTooltipEl.style.left = `${left}px`;
     hoverTooltipEl.style.top = `${top}px`;
     hoverTooltipEl.style.transform = "translateY(-50%)";
   } else {
-    let left = rect.left + rect.width / 2;
-    left = Math.max(margin, Math.min(viewportWidth - margin, left));
-    let top = rect.bottom + margin;
-    top = Math.max(margin, Math.min(viewportHeight - margin, top));
-
+    const left = rect.left + rect.width / 2;
+    const top = rect.bottom + margin;
     hoverTooltipEl.style.left = `${left}px`;
     hoverTooltipEl.style.top = `${top}px`;
     hoverTooltipEl.style.transform = "translate(-50%, 0)";
@@ -60,7 +42,20 @@ function showHoverTooltipNow(target) {
   if (!text) return;
   const el = getOrCreateHoverTooltipElement();
   hoverTooltipTarget = target;
-  el.textContent = text;
+  el.innerHTML = text;
+  const plainText = el.textContent || "";
+  if (plainText.length > 120) {
+    el.classList.add("is-wide");
+  } else {
+    el.classList.remove("is-wide");
+  }
+  if (typeof typesetMathInElement === "function") {
+    try {
+      typesetMathInElement(el);
+    } catch (err) {
+      // Math rendering is cosmetic; ignore failures.
+    }
+  }
   positionHoverTooltip(target);
   el.classList.add("is-visible");
 }

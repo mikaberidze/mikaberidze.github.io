@@ -481,7 +481,7 @@
         class="top-button record-button"
         aria-label="Toggle recording"
         aria-pressed="false"
-        data-tooltip="Simulation recording. If enabled, the video downloads when you stop the simulation."
+        data-tooltip="Records the simulation as a video. The download starts when recording or the simulation stops."
       >
         <span class="record-label">REC</span>
         <span class="record-dot"></span>
@@ -509,7 +509,7 @@
     <main class="layout">
       <section class="canvas-shell">
         <aside class="potential-editor">
-          <h2>V(<span class="potential-editor-r">r</span>) editor</h2>
+          <h2 data-tooltip="Tools for defining the potential landscape V(r) using drawing, math, or images.">V(<span class="potential-editor-r">r</span>) editor</h2>
           <div class="potential-editor-separator"></div>
           <div class="potential-tool-list">
             <button
@@ -600,12 +600,12 @@
               <span
                 id="particle-sigma-label"
                 class="particle-label"
-              >\(2\sigma_{\mathbb r}\)</span>
+              >\(2\sigma_{\mathbf r}\)</span>
             </div>
             <div id="particle-p-vector" class="particle-p-vector">
               <div id="particle-p-line" class="particle-p-line"></div>
               <div id="particle-p-head" class="particle-p-head"></div>
-              <span id="particle-p-label" class="particle-label">\(\vec p\)</span>
+              <span id="particle-p-label" class="particle-label">\(\mathbf p\)</span>
             </div>
           </div>
         </section>
@@ -613,14 +613,18 @@
         <aside id="particle-controls" class="particle-controls">
           <h2 class="particle-controls-title">EXPERIMENT SETUP</h2>
           <div class="setup-row">
-            <select id="preset-select" class="setup-select">
+            <select
+              id="preset-select"
+              class="setup-select"
+              data-tooltip="Curated experiment setups showing notable phenomena or eigenstates. You can share your own by saving an .iso file and sending it to the author for possible inclusion on this list."
+            >
               <option value="" disabled selected hidden>Preset Experiments</option>
             </select>
             <button
               id="save-setup"
               class="top-button global-button"
               type="button"
-              data-tooltip="Save current experimental setup"
+              data-tooltip="Save current experimental setup as a .psi file"
             >
               Save
             </button>
@@ -628,7 +632,7 @@
               id="load-setup"
               class="top-button global-button"
               type="button"
-              data-tooltip="Load current experimental setup"
+              data-tooltip="Load an experimental setup from a .psi file"
             >
               Load
             </button>
@@ -657,9 +661,12 @@
           </h2>
           <section class="global-controls" data-section-panel="general">
             <div class="particle-field">
-              <label>Lattice</label>
+              <label data-tooltip="Size of the 2D grid used for the simulation.">Lattice</label>
               <div class="lattice-input-row">
-                <span class="lattice-inline-label">W:</span>
+                <span
+                  class="lattice-inline-label"
+                  data-tooltip="Grid width."
+                >W:</span>
                 <input
                   id="lattice-width"
                   type="number"
@@ -667,7 +674,10 @@
                   max="2000"
                   step="50"
                 />
-                <span class="lattice-inline-label">H:</span>
+                <span
+                  class="lattice-inline-label"
+                  data-tooltip="Grid height."
+                >H:</span>
                 <input
                   id="lattice-height"
                   type="number"
@@ -678,7 +688,10 @@
               </div>
             </div>
             <div class="particle-field">
-              <label for="time-step-edit">\(\Delta t\)</label>
+              <label
+                for="time-step-edit"
+                data-tooltip="Time step. Smaller values are slower but more accurate."
+              >\(\Delta t\)</label>
               <div class="global-toggle-row time-step-row">
                 <input
                   id="time-step-edit"
@@ -687,7 +700,10 @@
                   max="1"
                   step="0.005"
                 />
-                <label class="toggle-label imaginary-toggle">
+                <label
+                  class="toggle-label imaginary-toggle"
+                  data-tooltip="Evolves time as \(t \to -i\tau\), causing higher-energy states to decay faster. Used to find eigenstates via Gram–Schmidt."
+                >
                   <input
                     id="imaginary-time-toggle"
                     type="checkbox"
@@ -697,12 +713,15 @@
               </div>
             </div>
             <div class="particle-field">
-              <label>Integrator</label>
+              <label data-tooltip="Numerical scheme used to evolve the Schrödinger equation.">Integrator</label>
               <div
                 class="global-toggle-row integrator-row"
                 aria-label="Time integrator"
               >
-                <label class="toggle-label rescale-toggle integrator-toggle">
+                <label
+                  class="toggle-label rescale-toggle integrator-toggle"
+                  data-tooltip="Simple but unstable. Mainly useful for imaginary-time evolution."
+                >
                   <input
                     id="integrator-euler"
                     type="checkbox"
@@ -710,7 +729,10 @@
                   />
                   Euler
                 </label>
-                <label class="toggle-label rescale-toggle integrator-toggle">
+                <label
+                  class="toggle-label rescale-toggle integrator-toggle"
+                  data-tooltip="Crank–Nicolson - Stable method that preserves norm and energy with high accuracy."
+                >
                   <input
                     id="integrator-crank"
                     type="checkbox"
@@ -722,12 +744,15 @@
             </div>
 
             <div class="particle-field">
-              <label>\(\Psi\) rescaling</label>
+              <label data-tooltip="Optional rescaling after each iteration. Prevents wave-functions from vanishing during Gram–Schmidt.">\(\Psi\) rescaling</label>
               <div
                 class="global-toggle-row psi-rescale-row"
                 aria-label="Wavefunction rescaling mode"
               >
-                <label class="toggle-label rescale-toggle">
+                <label
+                  class="toggle-label rescale-toggle"
+                  data-tooltip="Normalizes the wave-function."
+                >
                   <input
                     id="psi-rescale-norm"
                     type="checkbox"
@@ -735,7 +760,10 @@
                   />
                   Norm
                 </label>
-                <label class="toggle-label rescale-toggle">
+                <label
+                  class="toggle-label rescale-toggle"
+                  data-tooltip="Scales the wave-function so its maximum amplitude is 1."
+                >
                   <input
                     id="psi-rescale-max"
                     type="checkbox"
@@ -747,13 +775,16 @@
             </div>
 
             <div class="particle-field">
-              <label>Boundary</label>
+              <label data-tooltip="Boundary conditions at the edges of the grid.">Boundary</label>
               <div
                 class="boundary-radio-group global-toggle-row"
                 role="radiogroup"
                 aria-label="Boundary mode"
               >
-                <label class="boundary-radio">
+                <label
+                  class="boundary-radio"
+                  data-tooltip="Absorbing boundaries that allow waves to exit. Implemented via an imaginary potential; small reflections may occur."
+                >
                   <input
                     type="radio"
                     name="boundary-mode"
@@ -762,7 +793,10 @@
                   />
                   <span class="boundary-radio-label">Open</span>
                 </label>
-                <label class="boundary-radio">
+                <label
+                  class="boundary-radio"
+                  data-tooltip="Reflective boundaries enforced by \(\psi = 0\) at the edges (infinite potential walls)."
+                >
                   <input
                     type="radio"
                     name="boundary-mode"
@@ -774,9 +808,12 @@
             </div>
 
             <div class="particle-field">
-              <label>Overlays</label>
+              <label data-tooltip="Additional visual information on the canvas.">Overlays</label>
               <div class="global-toggle-row">
-                <label class="toggle-label">
+                <label
+                  class="toggle-label"
+                  data-tooltip="Grayscale color bar for the potential \(V(\mathbf r)\)."
+                >
                   <input
                     id="toggle-colorbar"
                     type="checkbox"
@@ -784,7 +821,10 @@
                   />
                   Colorbar
                 </label>
-                <label class="toggle-label">
+                <label
+                  class="toggle-label"
+                  data-tooltip="Energy of the wave-function currently inside the grid."
+                >
                   <input
                     id="toggle-energy"
                     type="checkbox"
@@ -819,6 +859,7 @@
                 data-tab="gaussian"
                 role="tab"
                 aria-selected="true"
+                data-tooltip="Initialize a localized particle with minimal uncertainty \(\sigma_{\mathbf r}\cdot\sigma_{\mathbf p}=1/2\)."
               >
                 Gaussian packets
               </button>
@@ -828,6 +869,7 @@
                 data-tab="eigenstates"
                 role="tab"
                 aria-selected="false"
+                data-tooltip="Find energy eigenstates using the Gram–Schmidt process."
               >
                 Eigenstates
               </button>
@@ -840,27 +882,45 @@
               >
                 <div class="particle-fields">
                   <div class="particle-field">
-                    <label for="x-edit">x</label>
+                    <label
+                      for="x-edit"
+                      data-tooltip="\(x\)-coordinate of the packet center."
+                    >x</label>
                     <input id="x-edit" type="number" step="0.1" />
                   </div>
                   <div class="particle-field">
-                    <label for="y-edit">y</label>
+                    <label
+                      for="y-edit"
+                      data-tooltip="\(y\)-coordinate of the packet center."
+                    >y</label>
                     <input id="y-edit" type="number" step="0.1" />
                   </div>
                   <div class="particle-field">
-                    <label for="px-edit">\(p_x\)</label>
+                    <label
+                      for="px-edit"
+                      data-tooltip="Average momentum in the \(x\) direction."
+                    >\(p_x\)</label>
                     <input id="px-edit" type="number" step="0.01" />
                   </div>
                   <div class="particle-field">
-                    <label for="py-edit">\(p_y\)</label>
+                    <label
+                      for="py-edit"
+                      data-tooltip="Average momentum in the \(y\) direction."
+                    >\(p_y\)</label>
                     <input id="py-edit" type="number" step="0.01" />
                   </div>
                   <div class="particle-field">
-                    <label for="sigma-x-edit">\(\sigma_{\mathbb r}\)</label>
+                    <label
+                      for="sigma-x-edit"
+                      data-tooltip="Position uncertainty."
+                    >\(\sigma_{\mathbf r}\)</label>
                     <input id="sigma-x-edit" type="number" step="0.01" />
                   </div>
                   <div class="particle-field">
-                    <label for="sigma-p-edit">\(\sigma_{\mathbb p}\)</label>
+                    <label
+                      for="sigma-p-edit"
+                      data-tooltip="Momentum uncertainty."
+                    >\(\sigma_{\mathbf p}\)</label>
                     <input id="sigma-p-edit" type="number" step="0.01" />
                   </div>
                 </div>
@@ -877,9 +937,11 @@
               >
                 <div class="eigenstates-panel">
                   <div class="particle-field eigenstates-find-row">
-                    <label for="eigenstates-count">Find</label>
+                    <label
+                      for="eigenstates-count"
+                      data-tooltip="Number of additional eigenstates to compute."
+                    >Find N =</label>
                     <div class="eigenstates-find-controls">
-                      <span class="eigenstates-count-prefix">N =</span>
                       <input
                         id="eigenstates-count"
                         type="number"
@@ -892,24 +954,33 @@
                         id="eigenstates-go"
                         type="button"
                         class="eigenstates-go-button"
+                        data-tooltip="Start or stop eigenstate computation."
                       >
                         GO
                       </button>
                     </div>
                   </div>
                   <div class="particle-field eigenstates-threshold-row">
-                    <label for="eigenstates-threshold">
+                    <label
+                      for="eigenstates-threshold"
+                      data-tooltip="Convergence threshold. When changes fall below this value, the state is considered converged."
+                    >
                       \(\|\Delta\Psi_\text{thresh.}\|_{\infty} =\)
                     </label>
                     <div class="eigenstates-threshold-controls">
                       <input
                         id="eigenstates-threshold"
                         type="text"
+                        data-tooltip="Convergence threshold. When changes fall below this value, the state is considered converged."
                       />
-                      <span class="eigenstates-max-iters-label">max iters =</span>
+                      <span
+                        class="eigenstates-max-iters-label"
+                        data-tooltip="Maximum number of iterations to try before giving up on convergence."
+                      >max iters =</span>
                       <input
                         id="eigenstates-max-iters"
                         type="text"
+                        data-tooltip="Upper limit on iteration count used in the eigenstate search."
                       />
                     </div>
                   </div>
