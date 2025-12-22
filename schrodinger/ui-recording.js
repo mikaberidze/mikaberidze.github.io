@@ -1,4 +1,4 @@
-// Recording helpers, combined canvas compositing, and MathJax typesetting.
+// Recording helpers, combined canvas compositing, Picture-in-Picture, and MathJax typesetting.
 
 let isRecording = false;
 
@@ -9,6 +9,10 @@ let recordingMediaRecorder = null;
 let recordingChunks = [];
 let recordingMimeType = "";
 let recordingStream = null;
+
+// Picture-in-Picture elements and state.
+let pipVideoElement = null;
+let pipStream = null;
 
 const RECORDING_FPS = 30;
 
@@ -68,7 +72,7 @@ function typesetMathInElement(element) {
   }
 }
 
-function updateCombinedCanvas() {
+function updateCombinedCanvas(includeWatermark) {
   if (!ensureCombinedCanvas()) return;
   const width = combinedCanvas.width;
   const height = combinedCanvas.height;
@@ -82,7 +86,14 @@ function updateCombinedCanvas() {
     combinedCtx.drawImage(overlayCanvas, 0, 0, width, height);
   }
 
-  // Signature only in exported video, not on the live page.
+  const shouldWatermark =
+    typeof includeWatermark === "undefined" ? true : !!includeWatermark;
+
+  if (!shouldWatermark) {
+    return;
+  }
+
+  // Signature only in exported video (recordings), not in live PiP.
   const watermarkText = "mikaberidze.github.io/schrodinger";
   const overlayScale = 1.5; // enlarge watermark in exports
   const margin = 10 * overlayScale;
@@ -109,6 +120,204 @@ function updateCombinedCanvas() {
       : "#00ffff";
   combinedCtx.fillText(watermarkText, x, y);
   combinedCtx.restore();
+}
+
+function isPictureInPictureSupported() {
+  if (typeof document === "undefined") return false;
+  try {
+    const enabled =
+      "pictureInPictureEnabled" in document && document.pictureInPictureEnabled;
+    const hasRequest =
+      typeof HTMLVideoElement !== "undefined" &&
+      HTMLVideoElement.prototype &&
+      typeof HTMLVideoElement.prototype.requestPictureInPicture === "function";
+    return !!(enabled && hasRequest);
+  } catch {
+    return false;
+  }
+}
+
+function updatePipButtonVisualState(isActive) {
+  const pipButton = document.getElementById("pip-toggle");
+  if (!pipButton) return;
+  const active = !!isActive;
+  pipButton.classList.toggle("pip-button-active", active);
+  pipButton.setAttribute("aria-pressed", active ? "true" : "false");
+}
+
+function ensurePipVideoElement() {
+  if (!ensureCombinedCanvas()) {
+    return false;
+  }
+
+  if (!pipVideoElement) {
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.controls = false;
+    video.setAttribute("aria-hidden", "true");
+    video.style.position = "fixed";
+    video.style.right = "0";
+    video.style.bottom = "0";
+    video.style.width = "1px";
+    video.style.height = "1px";
+    video.style.opacity = "0";
+    video.style.pointerEvents = "none";
+    video.style.zIndex = "-1";
+
+    video.addEventListener("enterpictureinpicture", () => {
+      updatePipButtonVisualState(true);
+    });
+
+    video.addEventListener("leavepictureinpicture", () => {
+      updatePipButtonVisualState(false);
+      if (pipStream && typeof pipStream.getTracks === "function") {
+        pipStream.getTracks().forEach((track) => track.stop());
+      }
+      pipStream = null;
+    });
+
+    document.body.appendChild(video);
+    pipVideoElement = video;
+  }
+
+  if (!pipStream) {
+    pipStream = combinedCanvas.captureStream(RECORDING_FPS);
+    if (!pipStream) {
+      console.warn(
+        "[Schrödinger] Unable to capture canvas stream for Picture-in-Picture"
+      );
+      return false;
+    }
+    pipVideoElement.srcObject = pipStream;
+  }
+
+  // Start playback so external PiP triggers (e.g. browser extension)
+  // always see a live video element streaming the combined canvas.
+  try {
+    const playPromise = pipVideoElement.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {});
+    }
+  } catch {
+    // Ignore autoplay errors; PiP can still be requested explicitly.
+  }
+
+  return true;
+}
+
+async function enterPictureInPicture() {
+  if (!isPictureInPictureSupported()) {
+    console.warn("[Schrödinger] Picture-in-Picture is not supported");
+    updatePipButtonVisualState(false);
+    return;
+  }
+
+  if (!ensurePipVideoElement()) {
+    console.warn(
+      "[Schrödinger] Unable to initialize combined canvas for Picture-in-Picture"
+    );
+    updatePipButtonVisualState(false);
+    return;
+  }
+
+  // Ensure the first PiP frame reflects the latest canvases without watermark.
+  updateCombinedCanvas(false);
+
+  try {
+
+    // If another element is already in PiP, exit it first.
+    if (
+      typeof document.pictureInPictureElement !== "undefined" &&
+      document.pictureInPictureElement &&
+      document.pictureInPictureElement !== pipVideoElement
+    ) {
+      try {
+        await document.exitPictureInPicture();
+      } catch (err) {
+        console.warn(
+          "[Schrödinger] Failed to exit existing Picture-in-Picture element:",
+          err
+        );
+      }
+    }
+
+    await pipVideoElement.requestPictureInPicture();
+    updatePipButtonVisualState(true);
+  } catch (err) {
+    console.error("[Schrödinger] Failed to enter Picture-in-Picture:", err);
+    updatePipButtonVisualState(false);
+  }
+}
+
+async function exitPictureInPicture() {
+  if (typeof document === "undefined") {
+    updatePipButtonVisualState(false);
+    return;
+  }
+
+  const isCurrentElement =
+    document.pictureInPictureElement &&
+    pipVideoElement &&
+    document.pictureInPictureElement === pipVideoElement;
+
+  try {
+    if (isCurrentElement && typeof document.exitPictureInPicture === "function") {
+      await document.exitPictureInPicture();
+    }
+  } catch (err) {
+    console.warn("[Schrödinger] Failed to exit Picture-in-Picture:", err);
+  }
+
+  if (pipStream && typeof pipStream.getTracks === "function") {
+    pipStream.getTracks().forEach((track) => track.stop());
+  }
+  pipStream = null;
+
+  updatePipButtonVisualState(false);
+}
+
+async function togglePictureInPicture() {
+  if (!isPictureInPictureSupported()) {
+    console.warn("[Schrödinger] Picture-in-Picture is not supported");
+    const pipButton = document.getElementById("pip-toggle");
+    if (pipButton) {
+      pipButton.disabled = true;
+      pipButton.setAttribute(
+        "data-tooltip",
+        "Picture-in-Picture is not supported in this browser."
+      );
+    }
+    return;
+  }
+
+  if (
+    typeof document !== "undefined" &&
+    document.pictureInPictureElement &&
+    pipVideoElement &&
+    document.pictureInPictureElement === pipVideoElement
+  ) {
+    await exitPictureInPicture();
+  } else {
+    await enterPictureInPicture();
+  }
+}
+
+function updateCombinedCanvasForPip() {
+  if (!ensureCombinedCanvas()) {
+    return;
+  }
+  // Keep the combined potential+quantum+overlay canvas in sync continuously
+  // so that both the built-in PiP toggle and any browser PiP extensions
+  // always see an up-to-date stream.
+  updateCombinedCanvas(false);
+
+  // Ensure a hidden video element is streaming the combined canvas so
+  // external PiP triggers (e.g. Chrome's PiP extension) can target it
+  // even if the in-page PiP button has never been pressed.
+  if (isPictureInPictureSupported()) {
+    ensurePipVideoElement();
+  }
 }
 
 function startCanvasRecorderIfNeeded() {

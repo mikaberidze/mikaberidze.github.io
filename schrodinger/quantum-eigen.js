@@ -411,6 +411,19 @@ async function findEigenstates(targetCount, options = {}) {
         re: new Float32Array(psiRe),
         im: new Float32Array(psiIm),
       });
+
+      // Incrementally update the UI list of eigenstates as new
+      // states are discovered during the search.
+      if (typeof updateEigenstateList === "function") {
+        try {
+          updateEigenstateList();
+        } catch (err) {
+          console.error(
+            "[Schrödinger] Failed to update eigenstate list during search:",
+            err
+          );
+        }
+      }
     }
 
     // After the last state, draw the final wavefunction and capture a final frame.

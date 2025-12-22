@@ -629,6 +629,13 @@ function applyFunctionAsPotential(expression) {
     drawScene();
   }
 
+  if (typeof trackToolUsage === "function") {
+    trackToolUsage("potential_equation_editor", {
+      action: "apply_function",
+      expression_length: trimmed.length,
+    });
+  }
+
   console.log("[Schrödinger] Applied function-defined potential:", trimmed);
 }
 
@@ -707,6 +714,14 @@ function applyImageAsPotential(image) {
         ? String(currentVMax)
         : vMaxSlider.value;
     }
+  }
+
+  if (typeof trackToolUsage === "function") {
+    trackToolUsage("potential_image_upload", {
+      action: "apply_image",
+      width: w,
+      height: h,
+    });
   }
 }
 
@@ -1417,6 +1432,15 @@ async function exportCurrentSetup() {
       savedFrameCount = Math.max(0, Math.floor(frameCount));
     }
 
+    let savedPlotScaleFactor = 1;
+    if (
+      typeof plotScaleFactor === "number" &&
+      Number.isFinite(plotScaleFactor) &&
+      plotScaleFactor > 0
+    ) {
+      savedPlotScaleFactor = plotScaleFactor;
+    }
+
     wavefunction = {
       width: simWidth,
       height: simHeight,
@@ -1425,6 +1449,7 @@ async function exportCurrentSetup() {
       normFactor,
       simTime: savedSimTime,
       frameCount: savedFrameCount,
+      plotScaleFactor: savedPlotScaleFactor,
     };
   }
 
@@ -1517,6 +1542,18 @@ async function exportCurrentSetup() {
         typeof psiRescaleMode === "string" ? psiRescaleMode : "none",
       integrator:
         typeof integratorScheme === "string" ? integratorScheme : "crank",
+      overlays: {
+        colorbar:
+          typeof showColorbar !== "undefined" ? !!showColorbar : true,
+        energy:
+          typeof showEnergy !== "undefined" ? !!showEnergy : true,
+        phaseCircle:
+          typeof showPhaseCircle !== "undefined" ? !!showPhaseCircle : false,
+      },
+      colormap:
+        typeof activeColorSchemeId === "string"
+          ? activeColorSchemeId
+          : "phase",
     },
   };
 
@@ -1576,25 +1613,47 @@ async function loadSetupFromPsiArrayBuffer(arrayBuffer) {
     throw new Error("JSZip is not available to read .psi setup");
   }
 
-  const zip = await JSZip.loadAsync(arrayBuffer);
+  const wasPlaying =
+    typeof isPlaying === "boolean" ? isPlaying : false;
+  if (typeof isPlaying !== "undefined") {
+    isPlaying = false;
+  }
 
-  let entry = zip.file("setup.json");
-  if (!entry || !entry.length) {
-    const candidates = zip.file(/\.json$/i);
-    if (candidates && candidates.length) {
-      entry = candidates[0];
+  try {
+    const zip = await JSZip.loadAsync(arrayBuffer);
+
+    let entry = zip.file("setup.json");
+    if (!entry || !entry.length) {
+      const candidates = zip.file(/\.json$/i);
+      if (candidates && candidates.length) {
+        entry = candidates[0];
+      }
+    }
+
+    if (!entry || (entry.length && !entry[0])) {
+      throw new Error("No JSON entry found in .psi archive");
+    }
+
+    const fileEntry = Array.isArray(entry) ? entry[0] : entry;
+    const jsonText = await fileEntry.async("string");
+
+    const obj = JSON.parse(String(jsonText || ""));
+    applySetupObject(obj);
+  } finally {
+    if (typeof isPlaying !== "undefined") {
+      isPlaying = wasPlaying;
+    }
+    if (wasPlaying) {
+      if (typeof markSimulationStarted === "function") {
+        markSimulationStarted();
+      } else if (typeof creationToolsVisible !== "undefined") {
+        creationToolsVisible = false;
+        if (typeof updateParticleOverlay === "function") {
+          updateParticleOverlay();
+        }
+      }
     }
   }
-
-  if (!entry || (entry.length && !entry[0])) {
-    throw new Error("No JSON entry found in .psi archive");
-  }
-
-  const fileEntry = Array.isArray(entry) ? entry[0] : entry;
-  const jsonText = await fileEntry.async("string");
-
-  const obj = JSON.parse(String(jsonText || ""));
-  applySetupObject(obj);
 }
 
 function applySetupObject(setup) {
@@ -1608,6 +1667,20 @@ function applySetupObject(setup) {
     clearEigenstates();
   } else if (typeof eigenstates !== "undefined") {
     eigenstates = [];
+  }
+
+  // Reset ψ rescaling to a neutral default for this setup;
+  // the file can override this below if it specifies a mode.
+  if (typeof psiRescaleMode !== "undefined") {
+    psiRescaleMode = "none";
+    const normInput = document.getElementById("psi-rescale-norm");
+    const maxInput = document.getElementById("psi-rescale-max");
+    if (normInput) {
+      normInput.checked = false;
+    }
+    if (maxInput) {
+      maxInput.checked = false;
+    }
   }
 
   // 1) Grid resolution (if present)
@@ -1676,7 +1749,9 @@ function applySetupObject(setup) {
   if (functionExpr) {
     let activatedFunctionTool = false;
     if (typeof setActiveTool === "function") {
-      activatedFunctionTool = !!setActiveTool("function");
+      activatedFunctionTool = !!setActiveTool("function", {
+        trackEvent: false,
+      });
     }
     if (!activatedFunctionTool) {
       const functionButton = document.querySelector(
@@ -1791,6 +1866,87 @@ function applySetupObject(setup) {
         integratorCrankInput.checked = scheme === "crank";
       }
     }
+
+    if (c.overlays && typeof c.overlays === "object") {
+      const overlays = c.overlays;
+
+      if (typeof overlays.colorbar === "boolean") {
+        if (typeof showColorbar !== "undefined") {
+          showColorbar = overlays.colorbar;
+        }
+        const colorbarToggle = document.getElementById("toggle-colorbar");
+        if (colorbarToggle) {
+          colorbarToggle.checked = !!showColorbar;
+        }
+      }
+
+      if (typeof overlays.energy === "boolean") {
+        if (typeof showEnergy !== "undefined") {
+          showEnergy = overlays.energy;
+        }
+        const energyToggle = document.getElementById("toggle-energy");
+        if (energyToggle) {
+          energyToggle.checked = !!showEnergy;
+        }
+      }
+
+      if (typeof overlays.phaseCircle === "boolean") {
+        if (typeof showPhaseCircle !== "undefined") {
+          showPhaseCircle = overlays.phaseCircle;
+        }
+        const phaseCircleToggle = document.getElementById(
+          "toggle-phase-circle"
+        );
+        if (phaseCircleToggle) {
+          phaseCircleToggle.checked = !!showPhaseCircle;
+        }
+      }
+    }
+
+    if (typeof c.colormap === "string") {
+      const schemeId = c.colormap;
+      const colormapSelect = document.getElementById("colormap-select");
+
+      if (colormapSelect) {
+        colormapSelect.value = schemeId;
+        colormapSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      } else if (
+        typeof activeColorSchemeId !== "undefined" &&
+        typeof COMPLEX_COLOR_SCHEMES === "object" &&
+        COMPLEX_COLOR_SCHEMES !== null
+      ) {
+        if (COMPLEX_COLOR_SCHEMES[schemeId]) {
+          activeColorSchemeId = schemeId;
+        } else {
+          activeColorSchemeId = "phase";
+        }
+        if (typeof drawScene === "function") {
+          drawScene();
+        }
+      }
+    } else if (!("colormap" in c)) {
+      const colormapSelect = document.getElementById("colormap-select");
+      if (colormapSelect && colormapSelect.options && colormapSelect.options.length > 0) {
+        const firstValue = colormapSelect.options[0].value;
+        colormapSelect.value = firstValue;
+        colormapSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      } else if (
+        typeof activeColorSchemeId !== "undefined" &&
+        typeof COMPLEX_COLOR_SCHEMES === "object" &&
+        COMPLEX_COLOR_SCHEMES !== null
+      ) {
+        const schemeIds = Object.keys(COMPLEX_COLOR_SCHEMES);
+        const fallbackId = schemeIds.length > 0 ? schemeIds[0] : "phase";
+        if (COMPLEX_COLOR_SCHEMES[fallbackId]) {
+          activeColorSchemeId = fallbackId;
+        } else {
+          activeColorSchemeId = "phase";
+        }
+        if (typeof drawScene === "function") {
+          drawScene();
+        }
+      }
+    }
   }
 
   // 5) Explicit wavefunction (if present)
@@ -1808,6 +1964,15 @@ function applySetupObject(setup) {
     const reArr = wf.re;
     const imArr = wf.im;
     const count = w * h;
+
+    let savedPlotScaleFactor = null;
+    if (
+      typeof wf.plotScaleFactor === "number" &&
+      Number.isFinite(wf.plotScaleFactor) &&
+      wf.plotScaleFactor > 0
+    ) {
+      savedPlotScaleFactor = wf.plotScaleFactor;
+    }
 
     if (w > 0 && h > 0 && reArr.length === count && imArr.length === count) {
       if (!psiRe || !psiIm || simWidth !== w || simHeight !== h || psiRe.length !== count || psiIm.length !== count) {
@@ -1851,7 +2016,18 @@ function applySetupObject(setup) {
       if (typeof normalizeWavefunctionToUnitNorm === "function") {
         normalizeWavefunctionToUnitNorm();
       }
-      if (typeof updatePlotScaleFromCurrentPsi === "function") {
+      if (typeof plotScaleFactor !== "undefined") {
+        if (
+          savedPlotScaleFactor !== null &&
+          typeof savedPlotScaleFactor === "number" &&
+          Number.isFinite(savedPlotScaleFactor) &&
+          savedPlotScaleFactor > 0
+        ) {
+          plotScaleFactor = savedPlotScaleFactor;
+        } else if (typeof updatePlotScaleFromCurrentPsi === "function") {
+          updatePlotScaleFromCurrentPsi();
+        }
+      } else if (typeof updatePlotScaleFromCurrentPsi === "function") {
         updatePlotScaleFromCurrentPsi();
       }
 

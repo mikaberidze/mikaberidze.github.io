@@ -4,6 +4,24 @@ let hoverTooltipEl = null;
 let hoverTooltipTimer = null;
 let hoverTooltipTarget = null;
 
+function isMobileTooltipEnvironment() {
+  if (typeof window === "undefined") return false;
+
+  const hasTouch =
+    "ontouchstart" in window ||
+    (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0);
+
+  const isCoarsePointer =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches;
+
+  const isNarrowScreen =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(max-width: 768px)").matches;
+
+  return hasTouch && (isCoarsePointer || isNarrowScreen);
+}
+
 function getOrCreateHoverTooltipElement() {
   if (hoverTooltipEl) return hoverTooltipEl;
   const el = document.createElement("div");
@@ -18,6 +36,7 @@ function positionHoverTooltip(target) {
   const rect = target.getBoundingClientRect();
   const margin = 8;
   const inPotentialEditor = !!target.closest(".potential-editor");
+  const inCanvasTransport = !!target.closest(".canvas-transport");
 
   if (inPotentialEditor) {
     const left = rect.right + margin;
@@ -25,6 +44,12 @@ function positionHoverTooltip(target) {
     hoverTooltipEl.style.left = `${left}px`;
     hoverTooltipEl.style.top = `${top}px`;
     hoverTooltipEl.style.transform = "translateY(-50%)";
+  } else if (inCanvasTransport) {
+    const left = rect.left + rect.width / 2;
+    const top = rect.top - margin;
+    hoverTooltipEl.style.left = `${left}px`;
+    hoverTooltipEl.style.top = `${top}px`;
+    hoverTooltipEl.style.transform = "translate(-50%, -100%)";
   } else {
     const left = rect.left + rect.width / 2;
     const top = rect.bottom + margin;
@@ -85,6 +110,13 @@ function hideHoverTooltip(target) {
 }
 
 function setupHoverTooltips() {
+  if (isMobileTooltipEnvironment()) {
+    if (hoverTooltipEl) {
+      hoverTooltipEl.classList.remove("is-visible");
+    }
+    return;
+  }
+
   const tooltipTargets = Array.from(
     document.querySelectorAll("[data-tooltip]")
   );

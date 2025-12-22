@@ -7,6 +7,11 @@ let particlePLine = null;
 let particlePHead = null;
 let particlePLabel = null;
 
+// When layout is not yet ready (e.g. the canvas has zero size),
+// defer overlay positioning to the next animation frame so we
+// don't lock in a misaligned overlay on first load.
+let pendingParticleOverlayUpdate = null;
+
 // Cached custom cursor for sigma resizing to avoid regenerating on every tiny move.
 let sigmaCursorAngleCache = null;
 let sigmaCursorUrlCache = null;
@@ -180,6 +185,19 @@ function updateParticleOverlay() {
 
   const canvasRect = canvas.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
+
+  // If the canvas has not been laid out yet (zero-sized),
+  // postpone overlay positioning to the next animation frame.
+  if (canvasRect.width <= 0 || canvasRect.height <= 0) {
+    if (typeof window !== "undefined" && !pendingParticleOverlayUpdate) {
+      pendingParticleOverlayUpdate = window.requestAnimationFrame(() => {
+        pendingParticleOverlayUpdate = null;
+        updateParticleOverlay();
+      });
+    }
+    particleOverlay.style.display = "none";
+    return;
+  }
 
   const overlayLeft = canvasRect.left - containerRect.left;
   const overlayTop = canvasRect.top - containerRect.top;

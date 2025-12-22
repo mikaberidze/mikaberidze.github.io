@@ -85,6 +85,7 @@ let boundaryMode = "open";
 let showColorbar = true;
 let showEnergy = true;
 let lastEnergyValue = null;
+let showPhaseCircle = false;
 
 // Analytic normalization factor returned by phi for the current
 // initial wavefunction shape (independent of x, y).
@@ -192,66 +193,390 @@ function markInitialPsiDirty() {
   }
 }
 
-// Map complex value (re, im) to RGBA using amplitude for alpha
-// and argument for a rainbow hue.
+// Color mapping for complex wavefunctions. Encapsulated so additional
+// schemes can be added later without touching the rest of the code.
+const COMPLEX_COLOR_SCHEMES = {
+  phase: {
+    id: "phase",
+    label: "Phase (rainbow)",
+    // Map complex value (re, im) to RGBA using amplitude for alpha
+    // and argument for a rainbow hue.
+    map(re, im) {
+      const amp2 = re * re + im * im;
+
+      if (!Number.isFinite(amp2) || amp2 <= 0) {
+        return [0, 0, 0, 0];
+      }
+
+      const alpha = Math.max(0, Math.min(1, amp2));
+
+      // Hue from angle in [-π, π]
+      const angle = Math.atan2(im, re);
+      const h = (angle + Math.PI) / (2 * Math.PI); // [0,1)
+
+      const i = Math.floor(h * 6);
+      const f = h * 6 - i;
+      const q = 1 - f;
+
+      let r, g, b;
+      switch (i % 6) {
+        case 0:
+          r = 1;
+          g = f;
+          b = 0;
+          break;
+        case 1:
+          r = q;
+          g = 1;
+          b = 0;
+          break;
+        case 2:
+          r = 0;
+          g = 1;
+          b = f;
+          break;
+        case 3:
+          r = 0;
+          g = q;
+          b = 1;
+          break;
+        case 4:
+          r = f;
+          g = 0;
+          b = 1;
+          break;
+        case 5:
+        default:
+          r = 1;
+          g = 0;
+          b = q;
+          break;
+      }
+
+      return [
+        Math.round(r * 255),
+        Math.round(g * 255),
+        Math.round(b * 255),
+        Math.round(alpha * 255),
+      ];
+    },
+  },
+  qualitativeSoft: {
+    id: "qualitativeSoft",
+    label: "Qualitative (soft)",
+    // Phase-binned pastel qualitative scheme; amplitude controls opacity.
+    map(re, im) {
+      const amp2 = re * re + im * im;
+      if (!Number.isFinite(amp2) || amp2 <= 0) {
+        return [0, 0, 0, 0];
+      }
+
+      const alpha = Math.max(0, Math.min(1, amp2));
+      const palette = [
+        { r: 249, g: 168, b: 212 }, // pink-300
+        { r: 110, g: 231, b: 183 }, // emerald-300 (brighter green)
+        { r: 147, g: 197, b: 253 }, // blue-300 (more vivid blue)
+      ];
+
+      const n = palette.length;
+      const angle = Math.atan2(im, re);
+      // Map phase with an additional 30° rotation so that
+      // the soft pastel bands are rotated relative to the
+      // default phase reference.
+      let u =
+        (angle + Math.PI) / (2 * Math.PI) +
+        1 / 12; // +30° = 1/12 of a full turn
+      if (!Number.isFinite(u)) u = 0;
+      u = u - Math.floor(u); // wrap to [0,1)
+      let idx = Math.floor(u * n);
+      if (idx < 0) idx = 0;
+      if (idx >= n) idx = n - 1;
+      const c = palette[idx];
+
+      return [c.r, c.g, c.b, Math.round(alpha * 255)];
+    },
+  },
+  qualitativeBold: {
+    id: "qualitativeBold",
+    label: "Qualitative (bold)",
+    // Phase-binned saturated qualitative scheme; amplitude controls opacity.
+    map(re, im) {
+      const amp2 = re * re + im * im;
+      if (!Number.isFinite(amp2) || amp2 <= 0) {
+        return [0, 0, 0, 0];
+      }
+
+      const alpha = Math.max(0, Math.min(1, amp2));
+      const palette = [
+        { r: 239, g: 68, b: 68 },   // red-500
+        { r: 249, g: 115, b: 22 },  // orange-500
+        { r: 234, g: 179, b: 8 },   // yellow-500
+        { r: 34, g: 197, b: 94 },   // emerald-500
+        { r: 59, g: 130, b: 246 },  // blue-500
+        { r: 139, g: 92, b: 246 },  // violet-500
+      ];
+
+      const n = palette.length;
+      const angle = Math.atan2(im, re);
+      let u = (angle + Math.PI) / (2 * Math.PI);
+      if (n % 2 === 0) {
+        u += 0.5 / n;
+      }
+      if (!Number.isFinite(u)) u = 0;
+      u = u - Math.floor(u); // wrap to [0,1)
+      let idx = Math.floor(u * n);
+      if (idx < 0) idx = 0;
+      if (idx >= n) idx = n - 1;
+      const c = palette[idx];
+
+      return [c.r, c.g, c.b, Math.round(alpha * 255)];
+    },
+  },
+  gold: {
+    id: "gold",
+    label: "Gold",
+    // Amplitude-based golden colormap: darker background for small |ψ|,
+    // bright gold for large |ψ|.
+    map(re, im) {
+      const amp2 = re * re + im * im;
+      if (!Number.isFinite(amp2) || amp2 <= 0) {
+        return [0, 0, 0, 0];
+      }
+
+      const alpha = Math.max(0, Math.min(1, amp2));
+      let t = Math.sqrt(amp2);
+      if (!Number.isFinite(t)) t = 0;
+      t = Math.max(0, Math.min(1, t));
+
+      const stops = [
+        { r: 5, g: 7, b: 12 },    // very dark
+        { r: 92, g: 59, b: 0 },   // deep gold-brown
+        { r: 207, g: 166, b: 58 },// rich gold
+        { r: 255, g: 226, b: 138 },// bright gold
+        { r: 255, g: 246, b: 207 },// pale highlight
+      ];
+
+      const scaled = t * (stops.length - 1);
+      const idx = Math.max(
+        0,
+        Math.min(stops.length - 2, Math.floor(scaled))
+      );
+      const localT = scaled - idx;
+      const c0 = stops[idx];
+      const c1 = stops[idx + 1];
+
+      const r = Math.round(c0.r + (c1.r - c0.r) * localT);
+      const g = Math.round(c0.g + (c1.g - c0.g) * localT);
+      const b = Math.round(c0.b + (c1.b - c0.b) * localT);
+
+      return [r, g, b, Math.round(alpha * 255)];
+    },
+  },
+  heat: {
+    id: "heat",
+    label: "Heatmap",
+    // Amplitude-based heatmap: dark background for small |ψ|,
+    // bright yellow-white for large |ψ|.
+    map(re, im) {
+      const amp2 = re * re + im * im;
+      if (!Number.isFinite(amp2) || amp2 <= 0) {
+        return [0, 0, 0, 0];
+      }
+
+      const alpha = Math.max(0, Math.min(1, amp2));
+      let t = Math.sqrt(amp2);
+      if (!Number.isFinite(t)) t = 0;
+      t = Math.max(0, Math.min(1, t));
+
+      const stops = [
+        { r: 5, g: 7, b: 12 },     // very dark
+        { r: 127, g: 29, b: 29 },  // dark red
+        { r: 249, g: 115, b: 22 }, // orange
+        { r: 250, g: 204, b: 21 }, // yellow
+        { r: 254, g: 252, b: 232 },// near white
+      ];
+
+      const scaled = t * (stops.length - 1);
+      const idx = Math.max(
+        0,
+        Math.min(stops.length - 2, Math.floor(scaled))
+      );
+      const localT = scaled - idx;
+      const c0 = stops[idx];
+      const c1 = stops[idx + 1];
+
+      const r = Math.round(c0.r + (c1.r - c0.r) * localT);
+      const g = Math.round(c0.g + (c1.g - c0.g) * localT);
+      const b = Math.round(c0.b + (c1.b - c0.b) * localT);
+
+      return [r, g, b, Math.round(alpha * 255)];
+    },
+  },
+  probGray: {
+    id: "probGray",
+    label: "Grayscale (probability)",
+    // Amplitude-based grayscale: dark for small |ψ|, bright for large |ψ|.
+    map(re, im) {
+      const amp2 = re * re + im * im;
+      if (!Number.isFinite(amp2) || amp2 <= 0) {
+        return [0, 0, 0, 0];
+      }
+
+      const alpha = Math.max(0, Math.min(1, amp2));
+      let t = Math.sqrt(amp2);
+      if (!Number.isFinite(t)) t = 0;
+      t = Math.max(0, Math.min(1, t));
+
+      const v = Math.round(t * 255);
+      return [v, v, v, Math.round(alpha * 255)];
+    },
+  },
+  probGrayHot: {
+    id: "probGrayHot",
+    label: "Grayscale + red peaks",
+    // Amplitude-based grayscale with the top 10% of |ψ| highlighted
+    // in a red gradient from dark red to bright red.
+    map(re, im) {
+      const amp2 = re * re + im * im;
+      if (!Number.isFinite(amp2) || amp2 <= 0) {
+        return [0, 0, 0, 0];
+      }
+
+      const alpha = Math.max(0, Math.min(1, amp2));
+      let t = Math.sqrt(amp2);
+      if (!Number.isFinite(t)) t = 0;
+      t = Math.max(0, Math.min(1, t));
+
+      const threshold = 0.9;
+      const v = Math.max(0, Math.min(1, t)) * 255;
+
+      if (t <= threshold) {
+        const gv = Math.round(v);
+        return [gv, gv, gv, Math.round(alpha * 255)];
+      }
+
+      // Above the threshold, use a very short gray→red ramp
+      // and then a flat bright red region so the onset feels
+      // abrupt: black → gray → (tiny ramp) → solid red.
+      const maxT = 1;
+      const rampWidth = Math.min(0.02, maxT - threshold); // ~2% of full range
+      const rampEnd = threshold + rampWidth;
+
+      const gray = { r: v, g: v, b: v };
+      const hot = { r: 185, g: 28, b: 28 }; // #b91c1c – deeper red
+
+      let r, g, b;
+      if (t <= rampEnd) {
+        const localT = (t - threshold) / rampWidth; // 0..1 over tiny ramp
+        r = Math.round(gray.r + (hot.r - gray.r) * localT);
+        g = Math.round(gray.g + (hot.g - gray.g) * localT);
+        b = Math.round(gray.b + (hot.b - gray.b) * localT);
+      } else {
+        r = hot.r;
+        g = hot.g;
+        b = hot.b;
+      }
+
+      return [r, g, b, Math.round(alpha * 255)];
+    },
+  },
+  viridis: {
+    id: "viridis",
+    label: "Blue (ethereal)",
+    // Amplitude-based ethereal blue colormap: deep navy background
+    // fading into bright, misty blues for large |ψ|.
+    map(re, im) {
+      const amp2 = re * re + im * im;
+      if (!Number.isFinite(amp2) || amp2 <= 0) {
+        return [0, 0, 0, 0];
+      }
+
+      const alpha = Math.max(0, Math.min(1, amp2));
+      let t = Math.sqrt(amp2);
+      if (!Number.isFinite(t)) t = 0;
+      t = Math.max(0, Math.min(1, t));
+
+      const stops = [
+        { r: 2, g: 6, b: 23 },      // #020617 – almost black navy
+        { r: 15, g: 23, b: 42 },    // #0f172a – deep slate-blue
+        { r: 37, g: 99, b: 235 },   // #2563eb – rich blue
+        { r: 56, g: 189, b: 248 },  // #38bdf8 – bright cyan-blue
+        { r: 224, g: 242, b: 254 }, // #e0f2fe – pale ethereal highlight
+      ];
+
+      const scaled = t * (stops.length - 1);
+      const idx = Math.max(
+        0,
+        Math.min(stops.length - 2, Math.floor(scaled))
+      );
+      const localT = scaled - idx;
+      const c0 = stops[idx];
+      const c1 = stops[idx + 1];
+
+      const r = Math.round(c0.r + (c1.r - c0.r) * localT);
+      const g = Math.round(c0.g + (c1.g - c0.g) * localT);
+      const b = Math.round(c0.b + (c1.b - c0.b) * localT);
+
+      return [r, g, b, Math.round(alpha * 255)];
+    },
+  },
+  blueRed: {
+    id: "blueRed",
+    label: "Blue–Red",
+    // Diverging colormap with periodic phase boundaries: red and blue peaks
+    // occur at opposite phases and smoothly converge to a green midpoint
+    // at both angle = 0 and angle = ±π.
+    map(re, im) {
+      const amp2 = re * re + im * im;
+      if (!Number.isFinite(amp2) || amp2 <= 0) {
+        return [0, 0, 0, 0];
+      }
+
+      const alpha = Math.max(0, Math.min(1, amp2));
+      const angle = Math.atan2(im, re);
+      let u = (angle + Math.PI) / (2 * Math.PI); // [0,1) before wrap
+      if (!Number.isFinite(u)) u = 0;
+      u = u - Math.floor(u); // enforce wrap to [0,1)
+
+      const red = { r: 220, g: 38, b: 38 };   // #dc2626
+      const green = { r: 34, g: 197, b: 94 }; // #22c55e
+      const blue = { r: 37, g: 99, b: 235 };  // #2563eb
+
+      let c0, c1, localT;
+      if (u < 1 / 3) {
+        localT = u * 3; // 0..1 across red -> green
+        c0 = red;
+        c1 = green;
+      } else if (u < 2 / 3) {
+        localT = (u - 1 / 3) * 3; // 0..1 across green -> blue
+        c0 = green;
+        c1 = blue;
+      } else {
+        localT = (u - 2 / 3) * 3; // 0..1 across blue -> red for periodic wrap
+        c0 = blue;
+        c1 = red;
+      }
+
+      const r = Math.round(c0.r + (c1.r - c0.r) * localT);
+      const g = Math.round(c0.g + (c1.g - c0.g) * localT);
+      const b = Math.round(c0.b + (c1.b - c0.b) * localT);
+
+      return [r, g, b, Math.round(alpha * 255)];
+    },
+  },
+};
+
+let activeColorSchemeId = "phase";
+
+function getActiveColorScheme() {
+  const scheme = COMPLEX_COLOR_SCHEMES[activeColorSchemeId];
+  return scheme || COMPLEX_COLOR_SCHEMES.phase;
+}
+
+// Primary entry point for mapping ψ to color; uses the active scheme.
 function complexToRGBA(re, im) {
-  const amp2 = re * re + im * im;
-
-  if (!Number.isFinite(amp2) || amp2 <= 0) {
-    return [0, 0, 0, 0];
-  }
-
-  const alpha = Math.max(0, Math.min(1, amp2));
-
-  // Hue from angle in [-π, π]
-  const angle = Math.atan2(im, re);
-  const h = (angle + Math.PI) / (2 * Math.PI); // [0,1)
-
-  const i = Math.floor(h * 6);
-  const f = h * 6 - i;
-  const q = 1 - f;
-
-  let r, g, b;
-  switch (i % 6) {
-    case 0:
-      r = 1;
-      g = f;
-      b = 0;
-      break;
-    case 1:
-      r = q;
-      g = 1;
-      b = 0;
-      break;
-    case 2:
-      r = 0;
-      g = 1;
-      b = f;
-      break;
-    case 3:
-      r = 0;
-      g = q;
-      b = 1;
-      break;
-    case 4:
-      r = f;
-      g = 0;
-      b = 1;
-      break;
-    case 5:
-    default:
-      r = 1;
-      g = 0;
-      b = q;
-      break;
-  }
-
-  return [
-    Math.round(r * 255),
-    Math.round(g * 255),
-    Math.round(b * 255),
-    Math.round(alpha * 255),
-  ];
+  const scheme = getActiveColorScheme();
+  return scheme.map(re, im);
 }
 
 function normalizeWavefunctionToUnitNorm() {
@@ -344,6 +669,11 @@ function drawScene() {
   // Draw overlays (colorbar, energy, signature) on the high-resolution layer.
   if (typeof drawOverlayLayer === "function") {
     drawOverlayLayer();
+  }
+
+  // Keep the Picture-in-Picture output canvas in sync when active.
+  if (typeof updateCombinedCanvasForPip === "function") {
+    updateCombinedCanvasForPip();
   }
 }
 
@@ -543,9 +873,10 @@ function stepSchrodingerCrankNicolsonFixedPointIters() {
 
   const hasPotential = !!potentialField && potentialWidth > 0 && potentialHeight > 0;
 
-  // Right-hand side for (I - dt/2 * L) psi^{n+1} = psi^n + dt/2 * L psi^n.
-  // Reuse module-level buffers to avoid per-step allocations; resize only
-  // when the simulation grid size N changes.
+  // Right-hand side for (I - dt/2 * L) psi^{n+1} = psi^n + dt/2 * L psi^n,
+  // where L is the real- or imaginary-time Schrödinger operator depending
+  // on the isImaginaryTime flag. Reuse module-level buffers to avoid
+  // per-step allocations; resize only when the simulation grid size N changes.
   if (!cnRhsRe || cnRhsRe.length !== N) {
     cnRhsRe = new Float32Array(N);
   }
@@ -603,9 +934,18 @@ function stepSchrodingerCrankNicolsonFixedPointIters() {
         V = (potentialField[idxP] || 0) * POTENTIAL_SCALE;
       }
 
-      // Correct sign for Schrödinger: i dψ/dt = (-½∇² + V) ψ
-      const dRe = -0.5 * lapIm + V * im;
-      const dIm =  0.5 * lapRe - V * re;
+      let dRe;
+      let dIm;
+      if (typeof isImaginaryTime !== "undefined" && isImaginaryTime) {
+        // Imaginary-time Schrödinger: ∂ψ/∂τ = -( -½∇² + V ) ψ
+        // dRe/dτ = +½ ∇² Re - V Re, dIm/dτ = +½ ∇² Im - V Im.
+        dRe = 0.5 * lapRe - V * re;
+        dIm = 0.5 * lapIm - V * im;
+      } else {
+        // Real-time Schrödinger: i ∂ψ/∂t = (-½∇² + V) ψ.
+        dRe = -0.5 * lapIm + V * im;
+        dIm = 0.5 * lapRe - V * re;
+      }
 
       rhsRe[idx] = re + 0.5 * dt * dRe;
       rhsIm[idx] = im + 0.5 * dt * dIm;
@@ -670,8 +1010,15 @@ function stepSchrodingerCrankNicolsonFixedPointIters() {
           V = (potentialField[idxP] || 0) * POTENTIAL_SCALE;
         }
 
-        const dRe = -0.5 * lapIm + V * im;
-        const dIm =  0.5 * lapRe - V * re;
+        let dRe;
+        let dIm;
+        if (typeof isImaginaryTime !== "undefined" && isImaginaryTime) {
+          dRe = 0.5 * lapRe - V * re;
+          dIm = 0.5 * lapIm - V * im;
+        } else {
+          dRe = -0.5 * lapIm + V * im;
+          dIm = 0.5 * lapRe - V * re;
+        }
 
         // Fixed-point update: psi_new = rhs + dt/2 * L(psi_new_guess)
         const newRe = rhsRe[idx] + 0.5 * dt * dRe;
@@ -765,21 +1112,16 @@ function rescaleWavefunctionIfNeeded() {
 }
 
 function stepSchrodinger() {
-  // Use an unconditionally stable Crank–Nicolson integrator for real time,
-  // and a simpler explicit Euler step for imaginary time relaxation.
+  // Use the integrator selected in the UI for both real-time and
+  // imaginary-time evolution. The underlying step functions switch
+  // between real and imaginary dynamics based on isImaginaryTime.
   wavefunctionCanBeReconstructedFromControls = false;
-  if (typeof isImaginaryTime !== "undefined" && isImaginaryTime) {
-    // Imaginary-time evolution always uses Euler.
+  const scheme =
+    typeof integratorScheme === "string" ? integratorScheme : "crank";
+  if (scheme === "euler") {
     stepSchrodingerEuler();
   } else {
-    // Real-time evolution uses the integrator selected in the UI.
-    const scheme =
-      typeof integratorScheme === "string" ? integratorScheme : "crank";
-    if (scheme === "euler") {
-      stepSchrodingerEuler();
-    } else {
-      stepSchrodingerCrankNicolsonFixedPointIters();
-    }
+    stepSchrodingerCrankNicolsonFixedPointIters();
   }
 
   if (
@@ -957,6 +1299,75 @@ function drawEnergyOverlay(ctx, width, height, energyValue) {
   ctx.restore();
 }
 
+function drawPhaseCircle(ctx, width, height) {
+  const margin = 10;
+  const radius = Math.max(24, Math.round(Math.min(width, height) * 0.06));
+  const centerX = radius + margin;
+  const centerY = height - radius - margin;
+  const size = radius * 2;
+  const maxRadius = radius + 0.5;
+  const maxRadiusSq = maxRadius * maxRadius;
+
+  const imageData = ctx.createImageData(size, size);
+  const data = imageData.data;
+
+  let idx = 0;
+  for (let j = 0; j < size; j++) {
+    // Canvas y increases downward; flip sign so positive imaginary
+    // axis points upward in the phase diagram.
+    const dy = j - radius;
+    for (let i = 0; i < size; i++) {
+      const dx = i - radius;
+      const r2 = dx * dx + dy * dy;
+
+      if (r2 <= maxRadiusSq) {
+        const xNorm = dx / radius;
+        const yNorm = -dy / radius;
+        const [r, g, b, a] = complexToRGBA(xNorm, yNorm);
+
+        data[idx] = r;
+        data[idx + 1] = g;
+        data[idx + 2] = b;
+        data[idx + 3] = a;
+      } else {
+        data[idx] = 0;
+        data[idx + 1] = 0;
+        data[idx + 2] = 0;
+        data[idx + 3] = 0;
+      }
+
+      idx += 4;
+    }
+  }
+
+  ctx.save();
+  ctx.putImageData(imageData, centerX - radius, centerY - radius);
+
+  // Accent outline around the phase circle.
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = OVERLAY_ACCENT_COLOR;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius + 0.5, 0, 2 * Math.PI);
+  ctx.stroke();
+
+  // Label Ψ in the center of the circle.
+  ctx.font = "18px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const label = "Ψ";
+  const textX = centerX;
+  const textY = centerY;
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(0, 0, 0, 1)";
+  ctx.lineJoin = "round";
+  ctx.miterLimit = 2;
+  ctx.strokeText(label, textX, textY);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(label, textX, textY);
+
+  ctx.restore();
+}
+
 function drawOverlayLayer() {
   if (!overlayCanvas || !overlayCtx) return;
 
@@ -978,6 +1389,10 @@ function drawOverlayLayer() {
 
   if (showEnergy && lastEnergyValue !== null) {
     drawEnergyOverlay(overlayCtx, baseWidth, baseHeight, lastEnergyValue);
+  }
+
+  if (showPhaseCircle) {
+    drawPhaseCircle(overlayCtx, baseWidth, baseHeight);
   }
 }
 

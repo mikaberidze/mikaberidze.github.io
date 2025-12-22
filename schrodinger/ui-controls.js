@@ -347,6 +347,14 @@ function setupSigmaSliders() {
     if (typeof savePotentialHistory === "function") {
       savePotentialHistory();
     }
+
+    if (typeof trackToolUsage === "function") {
+      trackToolUsage("general_properties", {
+        property: "lattice",
+        width: w,
+        height: h,
+      });
+    }
   };
 
   sliderX.addEventListener("change", commitSigmaHistory);
@@ -451,6 +459,10 @@ function enhanceDropdown(selectEl, { align = "center", staticLabel = "" } = {}) 
     wrapper.style.minWidth = originalStyles.minWidth;
   }
 
+  if (selectEl.classList.contains("colormap-select")) {
+    wrapper.classList.add("select-enhancer-colormap");
+  }
+
   selectEl.parentElement.insertBefore(wrapper, selectEl);
   wrapper.appendChild(selectEl);
 
@@ -498,6 +510,16 @@ function enhanceDropdown(selectEl, { align = "center", staticLabel = "" } = {}) 
       selectEl.options[0];
     displayLabel.textContent =
       staticLabel || (selected ? selected.textContent : "");
+
+    const colormapId =
+      selected && selected.dataset ? selected.dataset.colormapId : null;
+    if (display.classList.contains("colormap-select")) {
+      if (colormapId) {
+        display.dataset.colormapId = colormapId;
+      } else {
+        display.removeAttribute("data-colormap-id");
+      }
+    }
 
     optionsPanel
       .querySelectorAll(".select-option")
@@ -568,6 +590,9 @@ function enhanceDropdown(selectEl, { align = "center", staticLabel = "" } = {}) 
         btn.className = "select-option";
         btn.textContent = option.textContent;
         btn.dataset.value = option.value;
+        if (option.dataset && option.dataset.colormapId) {
+          btn.dataset.colormapId = option.dataset.colormapId;
+        }
         btn.disabled = option.disabled;
         btn.setAttribute("role", "option");
 
@@ -732,6 +757,9 @@ function initApp() {
         isRecording = true;
         recordButton.classList.add("recording");
         recordButton.setAttribute("aria-pressed", "true");
+        if (typeof trackToolUsage === "function") {
+          trackToolUsage("recording", { action: "start" });
+        }
 
         if (isPlaying) {
           startCanvasRecorderIfNeeded();
@@ -745,12 +773,43 @@ function initApp() {
         isRecording = false;
         recordButton.classList.remove("recording");
         recordButton.setAttribute("aria-pressed", "false");
+        if (typeof trackToolUsage === "function") {
+          trackToolUsage("recording", { action: "stop" });
+        }
       }
 
       if (typeof updateRecordBlink === "function") {
         updateRecordBlink();
       }
     });
+  }
+
+  const pipButton = document.getElementById("pip-toggle");
+  if (pipButton) {
+    if (
+      typeof isPictureInPictureSupported === "function" &&
+      !isPictureInPictureSupported()
+    ) {
+      pipButton.disabled = true;
+      pipButton.setAttribute(
+        "data-tooltip",
+        "Picture-in-Picture is not supported in this browser."
+      );
+    } else if (typeof togglePictureInPicture === "function") {
+      pipButton.addEventListener("click", () => {
+        togglePictureInPicture();
+      });
+    }
+  }
+
+  const fullscreenButton = document.getElementById("fullscreen-toggle");
+  if (fullscreenButton && typeof toggleFullscreen === "function") {
+    fullscreenButton.addEventListener("click", () => {
+      toggleFullscreen();
+    });
+    if (typeof updateFullscreenButtonVisualState === "function") {
+      updateFullscreenButtonVisualState();
+    }
   }
 
   const undoButton = document.getElementById("undo-button");
@@ -948,6 +1007,12 @@ function initApp() {
       if (typeof savePotentialHistory === "function") {
         savePotentialHistory();
       }
+      if (typeof trackToolUsage === "function") {
+        trackToolUsage("general_properties", {
+          property: "time_step",
+          value: dt,
+        });
+      }
     });
   }
 
@@ -1047,13 +1112,8 @@ function initApp() {
   // Remember the real-time integrator to restore after leaving imaginary time.
   let prevRealTimeIntegrator = null;
 
-   // Remember the ψ rescale mode to restore after leaving imaginary time.
-   let prevPsiRescaleModeOnImaginaryToggle = null;
-
-   // Remember integrator disabled state and labels when imaginary time is active.
-   let prevIntegratorEulerDisabledForImaginary = null;
-   let prevIntegratorCrankDisabledForImaginary = null;
-   let integratorLabelsFrozenByImaginary = [];
+  // Remember the ψ rescale mode to restore after leaving imaginary time.
+  let prevPsiRescaleModeOnImaginaryToggle = null;
 
   if (integratorEulerInput || integratorCrankInput) {
     const initialIntegrator =
@@ -1062,32 +1122,32 @@ function initApp() {
 
     if (integratorEulerInput) {
       integratorEulerInput.addEventListener("change", () => {
-        // While in imaginary-time mode, the evolution always uses Euler;
-        // keep the UI pinned to Euler and ignore real-time integrator changes.
-        if (typeof isImaginaryTime !== "undefined" && isImaginaryTime) {
-          applyIntegratorSelection("euler");
-          return;
-        }
         // Treat as exclusive selection: always switch to Euler on interaction.
         applyIntegratorSelection("euler");
         if (typeof savePotentialHistory === "function") {
           savePotentialHistory();
+        }
+        if (typeof trackToolUsage === "function") {
+          trackToolUsage("general_properties", {
+            property: "integrator",
+            value: "euler",
+          });
         }
       });
     }
 
     if (integratorCrankInput) {
       integratorCrankInput.addEventListener("change", () => {
-        // While in imaginary-time mode, the evolution always uses Euler;
-        // keep the UI pinned to Euler and ignore real-time integrator changes.
-        if (typeof isImaginaryTime !== "undefined" && isImaginaryTime) {
-          applyIntegratorSelection("euler");
-          return;
-        }
         // Treat as exclusive selection: always switch to Crank–Nicolson.
         applyIntegratorSelection("crank");
         if (typeof savePotentialHistory === "function") {
           savePotentialHistory();
+        }
+        if (typeof trackToolUsage === "function") {
+          trackToolUsage("general_properties", {
+            property: "integrator",
+            value: "crank",
+          });
         }
       });
     }
@@ -1117,6 +1177,7 @@ function initApp() {
         btn.className = "eigenstate-pill";
         btn.innerHTML = `\\(\\psi_{${index}}\\)`;
         btn.setAttribute("data-tooltip", "n-th eigenstate.");
+        btn.setAttribute("data-eigen-index", String(index));
         if (index === activeEigenstateIndex) {
           btn.classList.add("is-active");
         }
@@ -1131,6 +1192,14 @@ function initApp() {
             applyEigenstateToWavefunction(index);
             activeEigenstateIndex = index;
             renderEigenstatesList();
+            if (eigenListEl) {
+              const activeBtn = eigenListEl.querySelector(
+                `button.eigenstate-pill[data-eigen-index="${index}"]`
+              );
+              if (activeBtn && typeof activeBtn.focus === "function") {
+                activeBtn.focus();
+              }
+            }
           }
         });
 
@@ -1192,6 +1261,75 @@ function initApp() {
       typesetMathInElement(eigenListEl);
     };
     window.updateEigenstateList = renderEigenstatesList;
+
+    if (eigenListEl) {
+      eigenListEl.addEventListener("keydown", (event) => {
+        const key = event.key;
+        if (key !== "ArrowLeft" && key !== "ArrowRight") {
+          return;
+        }
+
+        const target = event.target;
+        if (
+          !target ||
+          !(target instanceof HTMLElement) ||
+          !target.classList.contains("eigenstate-pill") ||
+          target.classList.contains("eigenstate-clear")
+        ) {
+          return;
+        }
+
+        if (
+          typeof isEigenstateSearchRunning === "function" &&
+          isEigenstateSearchRunning()
+        ) {
+          return;
+        }
+
+        const currentIndexAttr = target.getAttribute("data-eigen-index");
+        const currentIndex = currentIndexAttr
+          ? parseInt(currentIndexAttr, 10)
+          : -1;
+        if (!Number.isFinite(currentIndex) || currentIndex < 0) {
+          return;
+        }
+
+        const list =
+          typeof getDiscoveredEigenstates === "function"
+            ? getDiscoveredEigenstates()
+            : [];
+        const count = Array.isArray(list) ? list.length : 0;
+        if (!count) {
+          return;
+        }
+
+        let nextIndex = currentIndex;
+        if (key === "ArrowRight") {
+          nextIndex = Math.min(count - 1, currentIndex + 1);
+        } else if (key === "ArrowLeft") {
+          nextIndex = Math.max(0, currentIndex - 1);
+        }
+
+        if (nextIndex === currentIndex) {
+          return;
+        }
+
+        event.preventDefault();
+
+        if (typeof applyEigenstateToWavefunction === "function") {
+          applyEigenstateToWavefunction(nextIndex);
+        }
+        activeEigenstateIndex = nextIndex;
+        renderEigenstatesList();
+
+        const nextBtn = eigenListEl.querySelector(
+          `button.eigenstate-pill[data-eigen-index="${nextIndex}"]`
+        );
+        if (nextBtn && typeof nextBtn.focus === "function") {
+          nextBtn.focus();
+        }
+      });
+    }
 
     const activateWavefunctionTab = (targetName) => {
       wavefunctionTabs.forEach((tab) => {
@@ -1308,20 +1446,10 @@ function initApp() {
             ? rescaleMaxInput.disabled
             : null;
 
-        // Remember current integrator selection and disabled state so we can
-        // restore them after the eigenstate search finishes.
+        // Remember current integrator selection so we can restore it after
+        // the eigenstate search finishes.
         const prevIntegratorScheme =
           typeof integratorScheme === "string" ? integratorScheme : null;
-        const prevIntegratorEulerDisabled =
-          integratorEulerInput &&
-          typeof integratorEulerInput.disabled === "boolean"
-            ? integratorEulerInput.disabled
-            : null;
-        const prevIntegratorCrankDisabled =
-          integratorCrankInput &&
-          typeof integratorCrankInput.disabled === "boolean"
-            ? integratorCrankInput.disabled
-            : null;
 
         // Remember current play / reset button disabled states so we can
         // restore them after the eigenstate search finishes.
@@ -1344,19 +1472,10 @@ function initApp() {
         const rescaleMaxLabel = rescaleMaxInput
           ? rescaleMaxInput.closest(".toggle-label")
           : null;
-        const integratorEulerLabel = integratorEulerInput
-          ? integratorEulerInput.closest(".toggle-label")
-          : null;
-        const integratorCrankLabel = integratorCrankInput
-          ? integratorCrankInput.closest(".toggle-label")
-          : null;
-
         const frozenLabels = [
           imaginaryToggleLabel,
           rescaleNormLabel,
           rescaleMaxLabel,
-          integratorEulerLabel,
-          integratorCrankLabel,
         ].filter(Boolean);
 
         // Visually reflect that imaginary-time evolution with Norm rescaling
@@ -1374,15 +1493,11 @@ function initApp() {
           rescaleMaxInput.disabled = true;
         }
 
-        // Pin the integrator UI to Euler and freeze the integrator toggles.
+        // While eigenstate computation runs, temporarily switch to Euler
+        // for imaginary-time evolution but leave the integrator toggles
+        // interactive so the user can override if desired.
         if (typeof applyIntegratorSelection === "function") {
           applyIntegratorSelection("euler");
-        }
-        if (integratorEulerInput) {
-          integratorEulerInput.disabled = true;
-        }
-        if (integratorCrankInput) {
-          integratorCrankInput.disabled = true;
         }
 
         // Freeze and dim the start/stop controls while eigenstate computation runs.
@@ -1420,18 +1535,6 @@ function initApp() {
           ) {
             applyIntegratorSelection(prevIntegratorScheme);
           }
-          if (
-            integratorEulerInput &&
-            prevIntegratorEulerDisabled !== null
-          ) {
-            integratorEulerInput.disabled = prevIntegratorEulerDisabled;
-          }
-          if (
-            integratorCrankInput &&
-            prevIntegratorCrankDisabled !== null
-          ) {
-            integratorCrankInput.disabled = prevIntegratorCrankDisabled;
-          }
 
           if (playPauseButton && prevPlayPauseDisabled !== null) {
             playPauseButton.disabled = prevPlayPauseDisabled;
@@ -1461,6 +1564,13 @@ function initApp() {
         const abortController = { aborted: false };
         eigenSearchAbortController = abortController;
         eigenSearchRecentlyAborted = false;
+
+        if (typeof trackToolUsage === "function") {
+          trackToolUsage("eigenstate_computation", {
+            action: "start",
+            count,
+          });
+        }
 
         try {
           const result = await findEigenstates(count, {
@@ -1530,18 +1640,6 @@ function initApp() {
           ) {
             applyIntegratorSelection(prevIntegratorScheme);
           }
-          if (
-            integratorEulerInput &&
-            prevIntegratorEulerDisabled !== null
-          ) {
-            integratorEulerInput.disabled = prevIntegratorEulerDisabled;
-          }
-          if (
-            integratorCrankInput &&
-            prevIntegratorCrankDisabled !== null
-          ) {
-            integratorCrankInput.disabled = prevIntegratorCrankDisabled;
-          }
 
           if (playPauseButton && prevPlayPauseDisabled !== null) {
             playPauseButton.disabled = prevPlayPauseDisabled;
@@ -1574,6 +1672,12 @@ function initApp() {
             }
             if (typeof updateRecordBlink === "function") {
               updateRecordBlink();
+            }
+            if (typeof trackToolUsage === "function") {
+              trackToolUsage("recording", {
+                action: "stop_auto",
+                reason: "eigen_search",
+              });
             }
           }
         }
@@ -1624,32 +1728,48 @@ function initApp() {
 
     if (rescaleNormInput) {
       rescaleNormInput.addEventListener("change", () => {
+        let mode;
         if (rescaleNormInput.checked) {
-          applyPsiRescaleSelection("norm");
+          mode = "norm";
+          applyPsiRescaleSelection(mode);
         } else {
           // If Norm is turned off and Max is on, stay in Max; otherwise behave like "none".
-          const nextMode =
+          mode =
             rescaleMaxInput && rescaleMaxInput.checked ? "max" : "none";
-          applyPsiRescaleSelection(nextMode);
+          applyPsiRescaleSelection(mode);
         }
         if (typeof savePotentialHistory === "function") {
           savePotentialHistory();
+        }
+        if (typeof trackToolUsage === "function") {
+          trackToolUsage("general_properties", {
+            property: "psi_rescale",
+            value: mode || "none",
+          });
         }
       });
     }
 
     if (rescaleMaxInput) {
       rescaleMaxInput.addEventListener("change", () => {
+        let mode;
         if (rescaleMaxInput.checked) {
-          applyPsiRescaleSelection("max");
+          mode = "max";
+          applyPsiRescaleSelection(mode);
         } else {
           // If Max is turned off and Norm is on, stay in Norm; otherwise behave like "none".
-          const nextMode =
+          mode =
             rescaleNormInput && rescaleNormInput.checked ? "norm" : "none";
-          applyPsiRescaleSelection(nextMode);
+          applyPsiRescaleSelection(mode);
         }
         if (typeof savePotentialHistory === "function") {
           savePotentialHistory();
+        }
+        if (typeof trackToolUsage === "function") {
+          trackToolUsage("general_properties", {
+            property: "psi_rescale",
+            value: mode || "none",
+          });
         }
       });
     }
@@ -1671,18 +1791,10 @@ function initApp() {
         isImaginaryTime = nextImaginary;
       }
 
-      // Locate integrator toggle labels once.
-      const integratorEulerLabel = integratorEulerInput
-        ? integratorEulerInput.closest(".toggle-label")
-        : null;
-      const integratorCrankLabel = integratorCrankInput
-        ? integratorCrankInput.closest(".toggle-label")
-        : null;
-
       if (nextImaginary && !prevImaginary) {
         // Switching into imaginary-time evolution: remember the current
-        // real-time integrator so we can restore it later, and pin the
-        // integrator UI to Euler to reflect the actual evolution scheme.
+        // real-time integrator so we can restore it later, and temporarily
+        // switch to Euler for imaginary-time evolution.
         const currentScheme =
           typeof integratorScheme === "string" ? integratorScheme : "crank";
         prevRealTimeIntegrator = currentScheme;
@@ -1700,33 +1812,6 @@ function initApp() {
         if (typeof applyPsiRescaleSelection === "function") {
           applyPsiRescaleSelection("norm");
         }
-
-        // Freeze and gray out integrator toggles while imaginary time is active.
-        prevIntegratorEulerDisabledForImaginary =
-          integratorEulerInput &&
-          typeof integratorEulerInput.disabled === "boolean"
-            ? integratorEulerInput.disabled
-            : null;
-        prevIntegratorCrankDisabledForImaginary =
-          integratorCrankInput &&
-          typeof integratorCrankInput.disabled === "boolean"
-            ? integratorCrankInput.disabled
-            : null;
-
-        if (integratorEulerInput) {
-          integratorEulerInput.disabled = true;
-        }
-        if (integratorCrankInput) {
-          integratorCrankInput.disabled = true;
-        }
-
-        integratorLabelsFrozenByImaginary = [
-          integratorEulerLabel,
-          integratorCrankLabel,
-        ].filter(Boolean);
-        integratorLabelsFrozenByImaginary.forEach((label) => {
-          label.classList.add("is-frozen-imm");
-        });
       } else if (!nextImaginary && prevImaginary) {
         // Leaving imaginary-time evolution: restore the previously selected
         // real-time integrator and ψ rescaling mode, if we have them.
@@ -1746,30 +1831,16 @@ function initApp() {
           }
           prevPsiRescaleModeOnImaginaryToggle = null;
         }
-
-        if (
-          integratorEulerInput &&
-          prevIntegratorEulerDisabledForImaginary !== null
-        ) {
-          integratorEulerInput.disabled =
-            prevIntegratorEulerDisabledForImaginary;
-        }
-        if (
-          integratorCrankInput &&
-          prevIntegratorCrankDisabledForImaginary !== null
-        ) {
-          integratorCrankInput.disabled =
-            prevIntegratorCrankDisabledForImaginary;
-        }
-
-        integratorLabelsFrozenByImaginary.forEach((label) => {
-          label.classList.remove("is-frozen-imm");
-        });
-        integratorLabelsFrozenByImaginary = [];
       }
 
       if (typeof savePotentialHistory === "function") {
         savePotentialHistory();
+      }
+      if (typeof trackToolUsage === "function") {
+        trackToolUsage("general_properties", {
+          property: "imaginary_time",
+          value: nextImaginary,
+        });
       }
     });
   }
@@ -1777,6 +1848,12 @@ function initApp() {
   if (saveSetupButton && typeof exportCurrentSetup === "function") {
     saveSetupButton.addEventListener("click", () => {
       exportCurrentSetup();
+      if (typeof trackToolUsage === "function") {
+        trackToolUsage("experiment_setup_save_load", {
+          action: "save",
+          experiment_name: analyticsExperimentName,
+        });
+      }
     });
   }
 
@@ -1792,6 +1869,17 @@ function initApp() {
 
       const reader = new FileReader();
       const isPsi = /\.psi$/i.test(file.name);
+      const wasPlaying =
+        typeof isPlaying === "boolean" ? isPlaying : false;
+      const fileLabel = (file.name || "Custom setup").replace(
+        /\.(psi|json)$/i,
+        ""
+      );
+      const fileType = isPsi ? "psi" : "json";
+
+      if (typeof stopSimulationAnalytics === "function") {
+        stopSimulationAnalytics("experiment_change");
+      }
 
       reader.onload = async () => {
         try {
@@ -1808,6 +1896,23 @@ function initApp() {
               typeof reader.result === "string" ? reader.result : "";
             const obj = JSON.parse(String(jsonText || ""));
             applySetupObject(obj);
+          }
+
+          if (typeof setAnalyticsExperiment === "function") {
+            const source = isPsi ? "custom_psi" : "custom_json";
+            setAnalyticsExperiment(fileLabel, source);
+          }
+          const playingAfterLoad =
+            typeof isPlaying === "boolean" ? isPlaying : wasPlaying;
+          if (playingAfterLoad && typeof startSimulationAnalytics === "function") {
+            startSimulationAnalytics();
+          }
+          if (typeof trackToolUsage === "function") {
+            trackToolUsage("experiment_setup_save_load", {
+              action: "load_file",
+              file_type: fileType,
+              experiment_name: fileLabel,
+            });
           }
         } catch (err) {
           console.error("[Schrödinger] Failed to load setup:", err);
@@ -1858,6 +1963,99 @@ function initApp() {
       });
     };
 
+    const getPresetParamFromURL = () => {
+      if (typeof window === "undefined" || typeof window.location === "undefined") {
+        return "";
+      }
+      try {
+        const url = new URL(window.location.href);
+        return url.searchParams.get("preset") || "";
+      } catch (err) {
+        console.error("[Schrödinger] Failed to parse preset from URL:", err);
+        return "";
+      }
+    };
+
+    const updatePresetQueryParam = (presetId) => {
+      if (
+        typeof window === "undefined" ||
+        !window.history ||
+        typeof window.location === "undefined"
+      ) {
+        return;
+      }
+      try {
+        const url = new URL(window.location.href);
+        if (presetId) {
+          url.searchParams.set("preset", presetId);
+        } else {
+          url.searchParams.delete("preset");
+        }
+        window.history.replaceState(null, "", url.toString());
+      } catch (err) {
+        console.error("[Schrödinger] Failed to update preset URL:", err);
+      }
+    };
+
+    const loadPresetByPath = async (
+      url,
+      { fromURL = false, label = "" } = {}
+    ) => {
+      if (!url) return;
+      const experimentLabel = (() => {
+        if (label && label.trim()) {
+          return label.trim();
+        }
+        const filename = url.split("/").pop() || "";
+        const base = filename.replace(/\.psi$/i, "");
+        const cleaned = base.replace(/_/g, " ").trim();
+        return cleaned || DEFAULT_EXPERIMENT_NAME;
+      })();
+
+      if (typeof stopSimulationAnalytics === "function") {
+        stopSimulationAnalytics("experiment_change");
+      }
+
+      try {
+        setPresetLoadingVisible(true);
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} while fetching ${url}`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        await loadSetupFromPsiArrayBuffer(arrayBuffer);
+        const playingAfterLoad =
+          typeof isPlaying === "boolean" ? isPlaying : false;
+
+        if (typeof setAnalyticsExperiment === "function") {
+          setAnalyticsExperiment(experimentLabel, "preset");
+        }
+        if (typeof trackToolUsage === "function") {
+          trackToolUsage("experiment_setup_save_load", {
+            action: fromURL ? "load_preset_auto" : "load_preset",
+            experiment_name: experimentLabel,
+          });
+        }
+        if (playingAfterLoad && typeof startSimulationAnalytics === "function") {
+          startSimulationAnalytics();
+        }
+
+        // When loaded via user interaction, clear the selection so the
+        // label stays as "Preset Experiments" and nothing remains selected.
+        if (!fromURL) {
+          presetSelect.value = "";
+          const dropdownApi = enhancedDropdowns.get(presetSelect);
+          if (dropdownApi && typeof dropdownApi.updateDisplay === "function") {
+            dropdownApi.updateDisplay();
+          }
+        }
+      } catch (err) {
+        console.error("[Schrödinger] Failed to load preset setup:", err);
+      } finally {
+        setPresetLoadingVisible(false);
+      }
+    };
+
     const loadPresetList = async () => {
       try {
         const response = await fetch("setup_files/index.json", {
@@ -1886,10 +2084,29 @@ function initApp() {
           const opt = document.createElement("option");
           opt.value = preset.path;
           opt.textContent = preset.label;
+          opt.dataset.filename = preset.path.split("/").pop() || "";
           presetSelect.appendChild(opt);
         });
 
         renumberPresetOptions();
+
+        // If the URL encodes a preset choice (e.g. ?preset=Double-slit.psi
+        // or ?preset=Double-slit), automatically load the matching preset
+        // once the list is available.
+        const presetParam = getPresetParamFromURL();
+        if (presetParam) {
+          const match = presets.find((preset) => {
+            const filename = preset.path.split("/").pop() || "";
+            const base = filename.replace(/\.psi$/i, "");
+            return presetParam === filename || presetParam === base;
+          });
+          if (match) {
+            loadPresetByPath(match.path, {
+              fromURL: true,
+              label: match.label,
+            });
+          }
+        }
       } catch (err) {
         console.error("[Schrödinger] Failed to load preset list:", err);
       }
@@ -1900,28 +2117,47 @@ function initApp() {
     presetSelect.addEventListener("change", async () => {
       const url = presetSelect.value;
       if (!url) return;
-      try {
-        setPresetLoadingVisible(true);
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status} while fetching ${url}`);
-        }
-        const arrayBuffer = await response.arrayBuffer();
-        await loadSetupFromPsiArrayBuffer(arrayBuffer);
-        // Reset selection so the display label stays constant and nothing is preselected next time.
-        presetSelect.value = "";
-        const dropdownApi = enhancedDropdowns.get(presetSelect);
-        if (dropdownApi && typeof dropdownApi.updateDisplay === "function") {
-          dropdownApi.updateDisplay();
-        }
-      } catch (err) {
-        console.error("[Schrödinger] Failed to load preset setup:", err);
-      } finally {
-        setPresetLoadingVisible(false);
+
+      const selectedOption =
+        presetSelect.selectedOptions && presetSelect.selectedOptions[0];
+      const presetLabel = selectedOption
+        ? selectedOption.dataset.label || selectedOption.textContent || ""
+        : "";
+      const filename = url.split("/").pop() || "";
+      if (filename) {
+        updatePresetQueryParam(filename);
       }
+
+      await loadPresetByPath(url, { fromURL: false, label: presetLabel });
     });
 
     enhanceDropdown(presetSelect, { staticLabel: "Preset Experiments" });
+  }
+
+  const colormapSelect = document.getElementById("colormap-select");
+  if (colormapSelect) {
+    enhanceDropdown(colormapSelect, { align: "left" });
+
+    const applyColormapFromSelect = () => {
+      const schemeId = colormapSelect.value || "phase";
+      if (
+        typeof activeColorSchemeId !== "undefined" &&
+        typeof COMPLEX_COLOR_SCHEMES === "object" &&
+        COMPLEX_COLOR_SCHEMES !== null
+      ) {
+        if (COMPLEX_COLOR_SCHEMES[schemeId]) {
+          activeColorSchemeId = schemeId;
+        } else {
+          activeColorSchemeId = "phase";
+        }
+      }
+      if (typeof drawScene === "function") {
+        drawScene();
+      }
+    };
+
+    colormapSelect.addEventListener("change", applyColormapFromSelect);
+    applyColormapFromSelect();
   }
 
   const playPauseButton = document.getElementById("play-pause");
@@ -1930,9 +2166,10 @@ function initApp() {
       playPauseButton.querySelector(".transport-icon") || playPauseButton;
 
     playPauseButton.addEventListener("click", () => {
-      isPlaying = !isPlaying;
+      const nextPlaying = !isPlaying;
+      isPlaying = nextPlaying;
       playPauseIcon.textContent = isPlaying ? "⏸" : "▶";
-       updateEigenGoButtonDisabled();
+      updateEigenGoButtonDisabled();
       if (saveSetupButton) {
         saveSetupButton.disabled = isPlaying;
       }
@@ -1947,12 +2184,34 @@ function initApp() {
           creationToolsVisible = false;
         }
 
+        if (typeof startSimulationAnalytics === "function") {
+          startSimulationAnalytics();
+        }
+        if (
+          typeof isGaussianWavefunctionTabActive === "function" &&
+          isGaussianWavefunctionTabActive() &&
+          typeof getControlsState === "function" &&
+          typeof trackToolUsage === "function"
+        ) {
+          const state = getControlsState();
+          trackToolUsage("gaussian_packet", {
+            action: "play",
+            px: Number(((state && state.px) || 0).toFixed(3)),
+            py: Number(((state && state.py) || 0).toFixed(3)),
+            sigma_x: Number(((state && state.sigmaX) || 0).toFixed(3)),
+            sigma_p: Number(((state && state.sigmaP) || 0).toFixed(3)),
+          });
+        }
+
         // Resume recording if enabled.
         if (isRecording) {
           startCanvasRecorderIfNeeded();
           resumeCanvasRecorder();
         }
       } else {
+        if (typeof stopSimulationAnalytics === "function") {
+          stopSimulationAnalytics("pause");
+        }
         console.log("[Schrödinger] Simulation paused at t =", simTime.toFixed(3));
         // Pausing does not automatically bring back creation tools
         if (isRecording) {
@@ -1991,10 +2250,24 @@ function initApp() {
     });
   }
 
+  const phaseCircleToggle = document.getElementById("toggle-phase-circle");
+  if (phaseCircleToggle) {
+    phaseCircleToggle.checked = false;
+    phaseCircleToggle.addEventListener("change", () => {
+      if (typeof showPhaseCircle !== "undefined") {
+        showPhaseCircle = !!phaseCircleToggle.checked;
+      }
+      drawScene();
+    });
+  }
+
   const resetButton = document.getElementById("reset-packet");
   if (resetButton) {
     resetButton.addEventListener("click", () => {
       if (!canvas) return;
+      if (typeof stopSimulationAnalytics === "function") {
+        stopSimulationAnalytics("reset");
+      }
       // Reset wavefunction, pause simulation, and re-enable creation tools
       isPlaying = false;
       updateEigenGoButtonDisabled();
@@ -2032,6 +2305,12 @@ function initApp() {
          if (recordButton) {
            recordButton.classList.remove("recording");
            recordButton.setAttribute("aria-pressed", "false");
+         }
+         if (typeof trackToolUsage === "function") {
+           trackToolUsage("recording", {
+             action: "stop_auto",
+             reason: "reset",
+           });
          }
        }
 
@@ -2851,7 +3130,11 @@ function initApp() {
       }
     };
 
-    const applyToolSelection = (tool, sourceButton = null) => {
+    const applyToolSelection = (
+      tool,
+      sourceButton = null,
+      { trackEvent = true } = {}
+    ) => {
       if (!tool || tool === "clear") {
         return false;
       }
@@ -2874,15 +3157,27 @@ function initApp() {
         hideBrushPreview();
       }
 
+      if (trackEvent && typeof trackToolUsage === "function") {
+        const category =
+          tool === "upload"
+            ? "potential_image_upload"
+            : tool === "function"
+            ? "potential_equation_editor"
+            : "potential_editor_drawing";
+        trackToolUsage(category, { action: "select_tool", tool });
+      }
+
       return true;
     };
 
-    window.setActiveTool = (tool) => applyToolSelection(tool);
+    window.setActiveTool = (tool, options = {}) =>
+      applyToolSelection(tool, null, options);
 
     toolButtons.forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", (event) => {
         const tool = button.dataset.tool;
         if (!tool) return;
+        const trackEvent = !event || event.isTrusted !== false;
 
         // "Clear" acts immediately and does not change the active drawing tool
         if (tool === "clear") {
@@ -2893,10 +3188,15 @@ function initApp() {
           }
           console.log("[Schrödinger] Potential cleared");
           updateTopControlsVisibility();
+          if (trackEvent && typeof trackToolUsage === "function") {
+            trackToolUsage("potential_editor_drawing", {
+              action: "clear_potential",
+            });
+          }
           return;
         }
 
-        applyToolSelection(tool, button);
+        applyToolSelection(tool, button, { trackEvent });
       });
     });
 
@@ -2906,7 +3206,8 @@ function initApp() {
       (btn) => btn.dataset.tool === initialTool
     );
     const didSetInitialTool =
-      initialButton && applyToolSelection(initialTool, initialButton);
+      initialButton &&
+      applyToolSelection(initialTool, initialButton, { trackEvent: false });
 
     // Initialize visibility based on default tool
     if (!didSetInitialTool) {
@@ -2923,13 +3224,20 @@ function initApp() {
       const mode = checked && checked.value === "closed" ? "closed" : "open";
       boundaryMode = mode;
       console.log("[Schrödinger] Boundary mode set to", mode);
+      return mode;
     };
 
     boundaryRadios.forEach((input) => {
       input.addEventListener("change", (event) => {
-        applyBoundaryFromRadios();
+        const mode = applyBoundaryFromRadios();
         if (event.isTrusted && typeof savePotentialHistory === "function") {
           savePotentialHistory();
+        }
+        if (event.isTrusted && typeof trackToolUsage === "function") {
+          trackToolUsage("general_properties", {
+            property: "boundary_mode",
+            value: mode,
+          });
         }
       });
     });
@@ -3027,8 +3335,245 @@ function initApp() {
   });
 }
 
+function setupPanelResizer() {
+  if (typeof document === "undefined") return;
+
+  const resizer = document.getElementById("panel-resizer");
+  const toggleButton = document.getElementById("panel-toggle");
+  const panel = document.getElementById("particle-controls");
+  const canvasContainer = document.querySelector(".canvas-container");
+  const shell = document.querySelector(".canvas-shell");
+
+  if (!resizer || !panel || !canvasContainer || !shell) return;
+
+  const potentialEditor = document.querySelector(".potential-editor");
+
+  const isNarrowLayout = () =>
+    typeof window !== "undefined" && window.innerWidth <= 800;
+
+  const MIN_PANEL_WIDTH = 260;
+  const MAX_PANEL_WIDTH = 640;
+  const MIN_CANVAS_WIDTH = 320;
+
+  let isCollapsed = false;
+  let lastExpandedWidth = panel.getBoundingClientRect().width || MIN_PANEL_WIDTH;
+
+  const applyCollapsedState = () => {
+    const narrow = isNarrowLayout();
+
+    if (isCollapsed) {
+      panel.classList.add("particle-controls-collapsed");
+      panel.style.width = "0px";
+      panel.style.paddingLeft = "0";
+      panel.style.paddingRight = "0";
+      if (toggleButton) {
+        toggleButton.setAttribute(
+          "aria-label",
+          "Expand experiment setup panel"
+        );
+        toggleButton.setAttribute("aria-expanded", "false");
+        toggleButton.textContent = "◀";
+      }
+    } else {
+      panel.classList.remove("particle-controls-collapsed");
+      if (narrow) {
+        // On narrow layouts, let CSS control width (100% in stacked layout).
+        panel.style.width = "";
+      } else {
+        panel.style.width = `${lastExpandedWidth}px`;
+      }
+      panel.style.paddingLeft = "";
+      panel.style.paddingRight = "";
+      if (toggleButton) {
+        toggleButton.setAttribute(
+          "aria-label",
+          "Collapse experiment setup panel"
+        );
+        toggleButton.setAttribute("aria-expanded", "true");
+        toggleButton.textContent = "▶";
+      }
+    }
+
+    if (typeof resizeCanvas === "function") {
+      resizeCanvas();
+    }
+  };
+
+  applyCollapsedState();
+
+  const handleWindowResizeForPanel = () => {
+    applyCollapsedState();
+  };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("resize", handleWindowResizeForPanel);
+  }
+
+  if (toggleButton) {
+    toggleButton.addEventListener("click", () => {
+      isCollapsed = !isCollapsed;
+      applyCollapsedState();
+    });
+  }
+
+  let dragging = false;
+  let startX = 0;
+  let startWidth = 0;
+
+  const stopDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.classList.remove("is-resizing-panel");
+    window.removeEventListener("mousemove", handleMouseMove);
+    window.removeEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleMouseMove = (event) => {
+    if (!dragging || !shell) return;
+
+    // Disable interactive horizontal resizing on narrow stacked layouts.
+    if (isNarrowLayout()) return;
+
+    const shellRect = shell.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const potentialRect = potentialEditor
+      ? potentialEditor.getBoundingClientRect()
+      : { width: 0 };
+
+    const deltaX = startX - event.clientX;
+    let nextWidth = startWidth + deltaX;
+
+    nextWidth = Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, nextWidth));
+
+    const availableWidth =
+      shellRect.width - potentialRect.width - resizer.offsetWidth;
+    const maxPanelFromCanvas = availableWidth - MIN_CANVAS_WIDTH;
+    if (Number.isFinite(maxPanelFromCanvas) && maxPanelFromCanvas > 0) {
+      nextWidth = Math.min(nextWidth, maxPanelFromCanvas);
+    }
+
+    lastExpandedWidth = nextWidth;
+    isCollapsed = false;
+    panel.classList.remove("particle-controls-collapsed");
+    panel.style.width = `${nextWidth}px`;
+    panel.style.paddingLeft = "";
+    panel.style.paddingRight = "";
+
+    if (typeof resizeCanvas === "function") {
+      resizeCanvas();
+    }
+  };
+
+  const handleMouseUp = () => {
+    stopDrag();
+  };
+
+  resizer.addEventListener("mousedown", (event) => {
+    if (event.button !== 0) return;
+    if (isNarrowLayout()) return;
+    if (!panel) return;
+
+    dragging = true;
+    startX = event.clientX;
+    const rect = panel.getBoundingClientRect();
+    startWidth = rect.width || lastExpandedWidth || MIN_PANEL_WIDTH;
+    document.body.classList.add("is-resizing-panel");
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  });
+}
+
+function getFullscreenTargetElement() {
+  if (typeof document === "undefined") return null;
+  const shell = document.querySelector(".canvas-shell");
+  if (shell && typeof shell.requestFullscreen === "function") {
+    return shell;
+  }
+  const container = document.querySelector(".canvas-container");
+  if (container && typeof container.requestFullscreen === "function") {
+    return container;
+  }
+  return document.documentElement || null;
+}
+
+function isFullscreenActive() {
+  if (typeof document === "undefined") return false;
+  return !!document.fullscreenElement;
+}
+
+function updateFullscreenButtonVisualState() {
+  const button = document.getElementById("fullscreen-toggle");
+  if (!button) return;
+  const icon = button.querySelector(".fullscreen-icon");
+  const active = isFullscreenActive();
+
+  button.classList.toggle("fullscreen-button-active", active);
+  button.setAttribute("aria-pressed", active ? "true" : "false");
+  button.setAttribute(
+    "aria-label",
+    active ? "Exit fullscreen" : "Enter fullscreen"
+  );
+  button.setAttribute(
+    "data-tooltip",
+    active ? "Exit fullscreen" : "Enter fullscreen"
+  );
+
+  if (icon && icon.tagName === "IMG") {
+    icon.src = active
+      ? "icons/fullscreen-exit.png"
+      : "icons/fullscreen.png";
+  }
+}
+
+async function enterFullscreen() {
+  if (typeof document === "undefined") return;
+  const target = getFullscreenTargetElement();
+  if (!target || typeof target.requestFullscreen !== "function") return;
+
+  try {
+    if (
+      document.fullscreenElement &&
+      document.fullscreenElement !== target &&
+      typeof document.exitFullscreen === "function"
+    ) {
+      await document.exitFullscreen();
+    }
+    await target.requestFullscreen();
+  } catch (err) {
+    console.warn("[Schrödinger] Failed to enter fullscreen:", err);
+  }
+}
+
+async function exitFullscreen() {
+  if (typeof document === "undefined") return;
+  if (
+    !document.fullscreenElement ||
+    typeof document.exitFullscreen !== "function"
+  ) {
+    return;
+  }
+  try {
+    await document.exitFullscreen();
+  } catch (err) {
+    console.warn("[Schrödinger] Failed to exit fullscreen:", err);
+  }
+}
+
+async function toggleFullscreen() {
+  if (isFullscreenActive()) {
+    await exitFullscreen();
+  } else {
+    await enterFullscreen();
+  }
+  if (typeof updateFullscreenButtonVisualState === "function") {
+    updateFullscreenButtonVisualState();
+  }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   initApp();
+  setupPanelResizer();
   setupHoverTooltips();
   if (typeof syncCreationToolsVisibility === "function") {
     syncCreationToolsVisibility();
@@ -3059,4 +3604,36 @@ document.addEventListener("visibilitychange", () => {
     }
     updateRecordBlink();
   }
+});
+
+document.addEventListener("fullscreenchange", () => {
+  if (typeof updateFullscreenButtonVisualState === "function") {
+    updateFullscreenButtonVisualState();
+  }
+});
+
+// Global keyboard shortcuts.
+document.addEventListener("keydown", (event) => {
+  // Toggle play/pause with the spacebar when appropriate.
+  const isSpace =
+    event.code === "Space" || event.key === " " || event.key === "Spacebar";
+  if (!isSpace) return;
+
+  // Ignore if focus is inside an editable control.
+  const active = document.activeElement;
+  if (
+    active &&
+    (active.tagName === "INPUT" ||
+      active.tagName === "TEXTAREA" ||
+      active.tagName === "SELECT" ||
+      active.isContentEditable)
+  ) {
+    return;
+  }
+
+  const playPauseButton = document.getElementById("play-pause");
+  if (!playPauseButton || playPauseButton.disabled) return;
+
+  event.preventDefault();
+  playPauseButton.click();
 });

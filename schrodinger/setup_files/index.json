@@ -1,13 +1,19 @@
 [
-  "Double-slit.psi",
-  "Particle_diffraction.psi",
-  "2D_hydrogen.psi",
+  "Double-Slit_Experiment.psi",
+  "Particle_Diffraction.psi",
+  "Poisson_Spot.psi",
+  "2D_Hydrogen.psi",
+  "Harmonic_Oscillator.psi",
   "Tunneling.psi",
-  "Tunneling oscillation.psi",
+  "Resonant-Tunneling_Diode.psi",
+  "Double_Well_Oscillation.psi",
+  "Interferometer_(Mach–Zehnder).psi",
   "Reflection.psi",
   "Refraction.psi",
-  "Elliptic_well.psi",
+  "Breathing_High_Energy.psi",
+  "Breathing_Low_Energy.psi",
+  "Elliptic_Well.psi",
   "Orbit.psi",
-  "Focusing_lens_1.psi",
-  "Focusing_lens_2.psi"
+  "Convex_Lens.psi",
+  "Concave_Lens.psi"
 ]
