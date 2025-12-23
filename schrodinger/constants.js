@@ -83,7 +83,7 @@ const EIGENSTATE_GAUSSIAN_SIGMA_R = 1;
 // with exactly zero mean momentum (current behavior). If positive, the
 // mean momentum is a random 2D vector whose length is drawn from an
 // exponential distribution with this value as its mean.
-const EIGENSTATE_MEAN_MOMENTUM_STD = 0;
+const EIGENSTATE_MEAN_MOMENTUM_STD = 0.00;
 
 
 

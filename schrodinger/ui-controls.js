@@ -2222,7 +2222,7 @@ function initApp() {
     playPauseButton.addEventListener("click", () => {
       const nextPlaying = !isPlaying;
       isPlaying = nextPlaying;
-      playPauseIcon.textContent = isPlaying ? "⏸" : "▶";
+      playPauseIcon.textContent = isPlaying ? "❚❚" : "▶";
       updateEigenGoButtonDisabled();
       if (saveSetupButton) {
         saveSetupButton.disabled = isPlaying;
