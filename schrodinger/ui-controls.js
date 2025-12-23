@@ -2187,24 +2187,38 @@ function initApp() {
 
     loadPresetList();
 
-    // Handle selection changes from the enhanced dropdown directly instead of
-    // relying solely on synthetic "change" events on the native <select>.
-    presetSelect._enhancedOnChange = async () => {
-      const url = presetSelect.value;
-      if (!url) return;
-
-      const selectedOption =
-        presetSelect.selectedOptions && presetSelect.selectedOptions[0];
-      const presetLabel = selectedOption
-        ? selectedOption.dataset.label || selectedOption.textContent || ""
-        : "";
-      const filename = url.split("/").pop() || "";
-      if (filename) {
-        updatePresetQueryParam(filename);
+    // Navigate to a preset by updating the URL's ?preset=... parameter. This
+    // reuses the well-tested auto-load path (which already works on iPhone)
+    // instead of performing the fetch entirely via the dropdown handler.
+    const navigateToPresetFromSelect = () => {
+      if (typeof window === "undefined" || typeof window.location === "undefined") {
+        return;
       }
+      const urlValue = presetSelect.value;
+      if (!urlValue) return;
+      const filename = urlValue.split("/").pop() || "";
+      if (!filename) return;
 
-      await loadPresetByPath(url, { fromURL: false, label: presetLabel });
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set("preset", filename);
+        window.location.href = url.toString();
+      } catch (err) {
+        // Fallback for environments without URL constructor support.
+        const encoded = encodeURIComponent(filename);
+        if (window.location.search) {
+          const base = window.location.href.split("?")[0];
+          window.location.href = `${base}?preset=${encoded}`;
+        } else {
+          window.location.search = `?preset=${encoded}`;
+        }
+      }
     };
+
+    // Ensure selection via both the enhanced dropdown and the native <select>
+    // triggers navigation.
+    presetSelect._enhancedOnChange = navigateToPresetFromSelect;
+    presetSelect.addEventListener("change", navigateToPresetFromSelect);
 
     enhanceDropdown(presetSelect, { staticLabel: "Preset Experiments" });
   }
