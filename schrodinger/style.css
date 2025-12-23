@@ -713,6 +713,7 @@ body {
 
 .controls-section-title .section-reset {
   flex-shrink: 0;
+  font-size: 1rem;
 }
 
 .controls-section-title .section-toggle[aria-expanded="false"] {
