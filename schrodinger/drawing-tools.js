@@ -2117,6 +2117,9 @@ function applySetupObject(setup) {
 
   drawScene();
   updateParticleOverlay();
+  if (typeof captureGeneralPropertiesDefaults === "function") {
+    captureGeneralPropertiesDefaults();
+  }
   console.log(
     "[Schrödinger] Setup imported from JSON file",
     appliedWavefunction ? "(including explicit wavefunction)" : ""

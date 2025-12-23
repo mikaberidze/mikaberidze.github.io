@@ -75,7 +75,15 @@ const EIGENSTATE_DRAW_EVERY_N_STEPS = 25;
 
 // Width (in simulation units) of the broad Gaussian packet used as a
 // random initial condition when searching for eigenstates.
-const EIGENSTATE_GAUSSIAN_SIGMA_R = 2;
+const EIGENSTATE_GAUSSIAN_SIGMA_R = 1;
+
+// Standard deviation (in displayed momentum units) of the distribution
+// from which the mean momentum |p| of the initial random wave-packet
+// is sampled. If set to 0, the initial Gaussian packets are constructed
+// with exactly zero mean momentum (current behavior). If positive, the
+// mean momentum is a random 2D vector whose length is drawn from an
+// exponential distribution with this value as its mean.
+const EIGENSTATE_MEAN_MOMENTUM_STD = 0;
 
 
 

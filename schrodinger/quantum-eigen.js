@@ -86,9 +86,41 @@ function initializeRandomGaussianForEigensearch() {
   const mu_x = (Math.random() * 2 - 1) * halfWidthWorld * 0.8;
   const mu_y = (Math.random() * 2 - 1) * halfHeightWorld * 0.8;
 
-  // Start with exactly zero momentum.
-  const pxDisplay = 0;
-  const pyDisplay = 0;
+  // Mean momentum for the initial random packet.
+  // If EIGENSTATE_MEAN_MOMENTUM_STD is 0 (or not positive),
+  // use exactly zero momentum as before. Otherwise, sample
+  // a random 2D vector whose length is drawn from an
+  // exponential distribution with that mean.
+  let pxDisplay = 0;
+  let pyDisplay = 0;
+
+  const meanP =
+    typeof EIGENSTATE_MEAN_MOMENTUM_STD === "number" &&
+    Number.isFinite(EIGENSTATE_MEAN_MOMENTUM_STD) &&
+    EIGENSTATE_MEAN_MOMENTUM_STD > 0
+      ? EIGENSTATE_MEAN_MOMENTUM_STD
+      : 0;
+
+  if (meanP > 0) {
+    // Exponential distribution with mean = meanP:
+    // r = -meanP * ln(1 - U), where U ~ Uniform(0, 1).
+    const u = Math.random();
+    const r = -meanP * Math.log(1 - u);
+    const theta = 2 * Math.PI * Math.random();
+
+    let pxRand = r * Math.cos(theta);
+    let pyRand = r * Math.sin(theta);
+
+    // Respect the global momentum cap in display space if available.
+    if (typeof clampMomentumDisplayVector === "function") {
+      const clamped = clampMomentumDisplayVector(pxRand, pyRand);
+      pxRand = clamped.px;
+      pyRand = clamped.py;
+    }
+
+    pxDisplay = pxRand;
+    pyDisplay = pyRand;
+  }
 
   const mu_px =
     typeof displayMomentumToInternal === "function"

@@ -711,6 +711,10 @@ body {
   transition: transform 0.15s ease;
 }
 
+.controls-section-title .section-reset {
+  flex-shrink: 0;
+}
+
 .controls-section-title .section-toggle[aria-expanded="false"] {
   transform: rotate(-90deg);
 }

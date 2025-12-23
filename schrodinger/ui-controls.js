@@ -25,6 +25,8 @@ function formatBasicSliderValue(v) {
   return v.toFixed(2);
 }
 
+let generalPropertiesDefaults = null;
+
 // Parse simple mathematical expressions used in text inputs, such as
 // "10^5", "10^{-6}", or plain numeric/scientific-notation values.
 function parseEquationInput(text, options) {
@@ -916,10 +918,16 @@ function initApp() {
 
   sectionTitles.forEach((title) => {
     const toggle = title.querySelector("[data-section-toggle]");
+    const resetButton = title.querySelector("[data-section-reset]");
     const key = toggle ? toggle.getAttribute("data-section-toggle") : null;
     if (!toggle || !key) return;
     title.addEventListener("click", (event) => {
-      if (event.target === toggle || toggle.contains(event.target)) return;
+      const isToggleTarget =
+        event.target === toggle || toggle.contains(event.target);
+      const isResetTarget =
+        resetButton &&
+        (event.target === resetButton || resetButton.contains(event.target));
+      if (isToggleTarget || isResetTarget) return;
       const isExpanded = toggle.getAttribute("aria-expanded") === "true";
       const next = !isExpanded;
       const panel = document.querySelector(
@@ -933,40 +941,57 @@ function initApp() {
       setSectionVisibility(key, next);
     });
   });
-  const applyGridFromInputs = () => {
+
+  const updateLatticeResolution = (w, h) => {
     if (
       typeof currentResolutionWidth === "undefined" ||
       typeof currentResolutionHeight === "undefined"
     ) {
+      return false;
+    }
+
+    let nextW = Number.isFinite(w) ? Math.round(w) : currentResolutionWidth;
+    let nextH = Number.isFinite(h) ? Math.round(h) : currentResolutionHeight;
+
+    nextW = Math.max(50, Math.min(2000, nextW));
+    nextH = Math.max(50, Math.min(2000, nextH));
+
+    const changed =
+      nextW !== currentResolutionWidth || nextH !== currentResolutionHeight;
+
+    currentResolutionWidth = nextW;
+    currentResolutionHeight = nextH;
+
+    if (latticeWidthInput) {
+      latticeWidthInput.value = String(nextW);
+    }
+    if (latticeHeightInput) {
+      latticeHeightInput.value = String(nextH);
+    }
+
+    if (changed) {
+      if (typeof canvasInitialized !== "undefined") {
+        canvasInitialized = false;
+      }
+      if (typeof resizeCanvas === "function") {
+        resizeCanvas();
+      }
+    }
+
+    return changed;
+  };
+
+  const applyGridFromInputs = () => {
+    if (!latticeWidthInput || !latticeHeightInput) {
       return;
     }
 
-    let w = parseInt(latticeWidthInput.value, 10);
-    let h = parseInt(latticeHeightInput.value, 10);
+    const w = parseInt(latticeWidthInput.value, 10);
+    const h = parseInt(latticeHeightInput.value, 10);
 
-    if (!Number.isFinite(w)) w = currentResolutionWidth;
-    if (!Number.isFinite(h)) h = currentResolutionHeight;
+    const changed = updateLatticeResolution(w, h);
 
-    w = Math.max(50, Math.min(2000, w));
-    h = Math.max(50, Math.min(2000, h));
-
-    if (w === currentResolutionWidth && h === currentResolutionHeight) return;
-
-    currentResolutionWidth = w;
-    currentResolutionHeight = h;
-
-    latticeWidthInput.value = String(w);
-    latticeHeightInput.value = String(h);
-
-    // Reinitialize canvases and simulation grid at the new resolution.
-    if (typeof canvasInitialized !== "undefined") {
-      canvasInitialized = false;
-    }
-    if (typeof resizeCanvas === "function") {
-      resizeCanvas();
-    }
-
-    if (typeof savePotentialHistory === "function") {
+    if (changed && typeof savePotentialHistory === "function") {
       savePotentialHistory();
     }
   };
@@ -985,6 +1010,8 @@ function initApp() {
     latticeHeightInput.addEventListener("change", applyGridFromInputs);
   }
 
+  let setTimeStepValue = null;
+
   if (timeStepInput) {
     // Initialize from currentTimeStep (if available) or TIME_STEP.
     const baseDt =
@@ -993,10 +1020,12 @@ function initApp() {
         : typeof TIME_STEP !== "undefined"
         ? TIME_STEP
         : 0.1;
-    timeStepInput.value = String(baseDt);
 
-    timeStepInput.addEventListener("change", () => {
-      let dt = parseFloat(timeStepInput.value);
+    setTimeStepValue = (
+      dtRaw,
+      { recordHistory = true, track = true } = {}
+    ) => {
+      let dt = parseFloat(dtRaw);
       if (!Number.isFinite(dt)) {
         dt = baseDt;
       }
@@ -1004,15 +1033,25 @@ function initApp() {
       currentTimeStep = dt;
       timeStepInput.value = String(dt);
 
-      if (typeof savePotentialHistory === "function") {
+      if (recordHistory && typeof savePotentialHistory === "function") {
         savePotentialHistory();
       }
-      if (typeof trackToolUsage === "function") {
+      if (track && typeof trackToolUsage === "function") {
         trackToolUsage("general_properties", {
           property: "time_step",
           value: dt,
         });
       }
+      return dt;
+    };
+
+    setTimeStepValue(baseDt, { recordHistory: false, track: false });
+
+    timeStepInput.addEventListener("change", () => {
+      setTimeStepValue(timeStepInput.value, {
+        recordHistory: true,
+        track: true,
+      });
     });
   }
 
@@ -1775,21 +1814,21 @@ function initApp() {
     }
   }
 
+  let setImaginaryTimeEnabled = null;
   const imaginaryToggle = document.getElementById("imaginary-time-toggle");
   if (imaginaryToggle) {
-    // Initialize from global flag if available.
-    if (typeof isImaginaryTime !== "undefined") {
-      imaginaryToggle.checked = !!isImaginaryTime;
-    }
-
-    imaginaryToggle.addEventListener("change", () => {
-      const nextImaginary = !!imaginaryToggle.checked;
+    setImaginaryTimeEnabled = (
+      enabled,
+      { recordHistory = true, track = true } = {}
+    ) => {
+      const nextImaginary = !!enabled;
       const prevImaginary =
         typeof isImaginaryTime === "boolean" ? isImaginaryTime : false;
 
       if (typeof isImaginaryTime !== "undefined") {
         isImaginaryTime = nextImaginary;
       }
+      imaginaryToggle.checked = nextImaginary;
 
       if (nextImaginary && !prevImaginary) {
         // Switching into imaginary-time evolution: remember the current
@@ -1833,15 +1872,30 @@ function initApp() {
         }
       }
 
-      if (typeof savePotentialHistory === "function") {
+      if (recordHistory && typeof savePotentialHistory === "function") {
         savePotentialHistory();
       }
-      if (typeof trackToolUsage === "function") {
+      if (track && typeof trackToolUsage === "function") {
         trackToolUsage("general_properties", {
           property: "imaginary_time",
           value: nextImaginary,
         });
       }
+    };
+
+    // Initialize from global flag if available.
+    if (typeof isImaginaryTime !== "undefined") {
+      setImaginaryTimeEnabled(isImaginaryTime, {
+        recordHistory: false,
+        track: false,
+      });
+    }
+
+    imaginaryToggle.addEventListener("change", () => {
+      setImaginaryTimeEnabled(imaginaryToggle.checked, {
+        recordHistory: true,
+        track: true,
+      });
     });
   }
 
@@ -3244,6 +3298,215 @@ function initApp() {
 
     applyBoundaryFromRadios();
   }
+
+  const readGeneralPropertiesState = () => {
+    const boundarySelection =
+      boundaryRadios.find((input) => input.checked) || null;
+    const boundaryValue =
+      boundarySelection && boundarySelection.value === "closed"
+        ? "closed"
+        : "open";
+
+    const rescaleValue =
+      typeof psiRescaleMode === "string"
+        ? psiRescaleMode
+        : rescaleNormInput && rescaleNormInput.checked
+        ? "norm"
+        : rescaleMaxInput && rescaleMaxInput.checked
+        ? "max"
+        : "none";
+
+    const colormapValue =
+      (colormapSelect && colormapSelect.value) ||
+      (typeof activeColorSchemeId === "string"
+        ? activeColorSchemeId
+        : "phase");
+
+    return {
+      latticeWidth:
+        typeof currentResolutionWidth === "number"
+          ? currentResolutionWidth
+          : parseInt(
+              latticeWidthInput && latticeWidthInput.value,
+              10
+            ) || TARGET_RESOLUTION_WIDTH,
+      latticeHeight:
+        typeof currentResolutionHeight === "number"
+          ? currentResolutionHeight
+          : parseInt(
+              latticeHeightInput && latticeHeightInput.value,
+              10
+            ) || TARGET_RESOLUTION_HEIGHT,
+      timeStep:
+        typeof currentTimeStep === "number"
+          ? currentTimeStep
+          : parseFloat(timeStepInput && timeStepInput.value) || TIME_STEP,
+      imaginaryTime:
+        typeof isImaginaryTime === "boolean"
+          ? isImaginaryTime
+          : !!(imaginaryToggle && imaginaryToggle.checked),
+      integrator:
+        typeof integratorScheme === "string"
+          ? integratorScheme
+          : integratorEulerInput && integratorEulerInput.checked
+          ? "euler"
+          : "crank",
+      rescaleMode: rescaleValue,
+      boundaryMode: boundaryValue,
+      overlays: {
+        colorbar:
+          typeof showColorbar !== "undefined"
+            ? !!showColorbar
+            : !!(colorbarToggle && colorbarToggle.checked),
+        energy:
+          typeof showEnergy !== "undefined"
+            ? !!showEnergy
+            : !!(energyToggle && energyToggle.checked),
+        phaseCircle:
+          typeof showPhaseCircle !== "undefined"
+            ? !!showPhaseCircle
+            : !!(phaseCircleToggle && phaseCircleToggle.checked),
+      },
+      colormap: colormapValue,
+    };
+  };
+
+  const applyGeneralPropertiesDefaults = () => {
+    if (!generalPropertiesDefaults) return false;
+
+    const state = generalPropertiesDefaults;
+    const latticeChanged = updateLatticeResolution(
+      state.latticeWidth,
+      state.latticeHeight
+    );
+
+    if (typeof setTimeStepValue === "function") {
+      setTimeStepValue(state.timeStep, {
+        recordHistory: false,
+        track: false,
+      });
+    } else if (Number.isFinite(state.timeStep)) {
+      currentTimeStep = Math.max(0.001, Math.min(1, state.timeStep));
+      if (timeStepInput) {
+        timeStepInput.value = String(currentTimeStep);
+      }
+    }
+
+    if (typeof setImaginaryTimeEnabled === "function") {
+      setImaginaryTimeEnabled(state.imaginaryTime, {
+        recordHistory: false,
+        track: false,
+      });
+    } else if (typeof isImaginaryTime !== "undefined") {
+      isImaginaryTime = !!state.imaginaryTime;
+      if (imaginaryToggle) {
+        imaginaryToggle.checked = !!state.imaginaryTime;
+      }
+    }
+
+    if (typeof applyIntegratorSelection === "function") {
+      applyIntegratorSelection(state.integrator);
+    }
+
+    if (typeof applyPsiRescaleSelection === "function") {
+      applyPsiRescaleSelection(state.rescaleMode);
+    }
+
+    if (state.boundaryMode && boundaryRadios.length) {
+      boundaryRadios.forEach((input) => {
+        input.checked = input.value === state.boundaryMode;
+      });
+      if (typeof boundaryMode !== "undefined") {
+        boundaryMode =
+          state.boundaryMode === "closed" ? "closed" : "open";
+      }
+    }
+
+    let redrawNeeded = !latticeChanged;
+
+    if (state.overlays) {
+      if (
+        typeof showColorbar !== "undefined" &&
+        typeof state.overlays.colorbar === "boolean"
+      ) {
+        showColorbar = state.overlays.colorbar;
+      }
+      if (
+        typeof showEnergy !== "undefined" &&
+        typeof state.overlays.energy === "boolean"
+      ) {
+        showEnergy = state.overlays.energy;
+      }
+      if (
+        typeof showPhaseCircle !== "undefined" &&
+        typeof state.overlays.phaseCircle === "boolean"
+      ) {
+        showPhaseCircle = state.overlays.phaseCircle;
+      }
+
+      if (colorbarToggle) {
+        colorbarToggle.checked = !!state.overlays.colorbar;
+      }
+      if (energyToggle) {
+        energyToggle.checked = !!state.overlays.energy;
+      }
+      if (phaseCircleToggle) {
+        phaseCircleToggle.checked = !!state.overlays.phaseCircle;
+      }
+      redrawNeeded = true;
+    }
+
+    if (state.colormap) {
+      if (colormapSelect) {
+        colormapSelect.value = state.colormap;
+        colormapSelect.dispatchEvent(
+          new Event("change", { bubbles: true })
+        );
+        const dropdownApi = enhancedDropdowns.get(colormapSelect);
+        if (
+          dropdownApi &&
+          typeof dropdownApi.updateDisplay === "function"
+        ) {
+          dropdownApi.updateDisplay();
+        }
+      } else if (
+        typeof activeColorSchemeId !== "undefined" &&
+        typeof COMPLEX_COLOR_SCHEMES === "object" &&
+        COMPLEX_COLOR_SCHEMES !== null &&
+        COMPLEX_COLOR_SCHEMES[state.colormap]
+      ) {
+        activeColorSchemeId = state.colormap;
+        redrawNeeded = true;
+      }
+    }
+
+    if (redrawNeeded && typeof drawScene === "function") {
+      drawScene();
+    }
+    if (!latticeChanged && typeof updateParticleOverlay === "function") {
+      updateParticleOverlay();
+    }
+
+    return true;
+  };
+
+  const captureGeneralPropertiesDefaults = () => {
+    generalPropertiesDefaults = readGeneralPropertiesState();
+  };
+
+  const generalResetButton = document.getElementById("general-reset");
+  if (generalResetButton) {
+    generalResetButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const applied = applyGeneralPropertiesDefaults();
+      if (applied && typeof savePotentialHistory === "function") {
+        savePotentialHistory();
+      }
+    });
+  }
+
+  window.captureGeneralPropertiesDefaults = captureGeneralPropertiesDefaults;
+  captureGeneralPropertiesDefaults();
 
   setupBasicSliders();
   setupSigmaSliders();

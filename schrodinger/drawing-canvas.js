@@ -94,6 +94,65 @@ function hideBrushPreview() {
   }
 }
 
+function resamplePotentialField(targetWidth, targetHeight) {
+  const width = Math.max(1, Math.round(targetWidth));
+  const height = Math.max(1, Math.round(targetHeight));
+  const hasExisting =
+    potentialField && potentialWidth > 0 && potentialHeight > 0;
+
+  if (!hasExisting) {
+    initPotentialField(width, height);
+    return;
+  }
+
+  const sameSize =
+    potentialWidth === width && potentialHeight === height;
+  const newField = sameSize
+    ? new Float32Array(potentialField)
+    : new Float32Array(width * height);
+
+  if (!sameSize) {
+    const scaleX = potentialWidth / width;
+    const scaleY = potentialHeight / height;
+
+    for (let y = 0; y < height; y++) {
+      const srcY = (y + 0.5) * scaleY - 0.5;
+      const y0 = Math.max(0, Math.floor(srcY));
+      const y1 = Math.min(potentialHeight - 1, y0 + 1);
+      const ty = srcY - y0;
+
+      for (let x = 0; x < width; x++) {
+        const srcX = (x + 0.5) * scaleX - 0.5;
+        const x0 = Math.max(0, Math.floor(srcX));
+        const x1 = Math.min(potentialWidth - 1, x0 + 1);
+        const tx = srcX - x0;
+
+        const idx00 = y0 * potentialWidth + x0;
+        const idx10 = y0 * potentialWidth + x1;
+        const idx01 = y1 * potentialWidth + x0;
+        const idx11 = y1 * potentialWidth + x1;
+
+        const v00 = potentialField[idx00] || 0;
+        const v10 = potentialField[idx10] || 0;
+        const v01 = potentialField[idx01] || 0;
+        const v11 = potentialField[idx11] || 0;
+
+        const v0 = v00 + (v10 - v00) * tx;
+        const v1 = v01 + (v11 - v01) * tx;
+        const blended = v0 + (v1 - v0) * ty;
+
+        newField[y * width + x] = Number.isFinite(blended) ? blended : 0;
+      }
+    }
+  }
+
+  potentialWidth = width;
+  potentialHeight = height;
+  potentialField = newField;
+  // Potential changes invalidate eigenstates.
+  eigenstates = [];
+}
+
 function resizeCanvas() {
   // Internal simulation/drawing resolution (can be non-square) – set only once
   if (!canvasInitialized) {
@@ -111,8 +170,11 @@ function resizeCanvas() {
       if (potentialCtx) {
         potentialCtx.setTransform(1, 0, 0, 1, 0, 0);
       }
-      initPotentialField(currentResolutionWidth, currentResolutionHeight);
+      resamplePotentialField(currentResolutionWidth, currentResolutionHeight);
       redrawPotential();
+      if (typeof updateCurrentVMaxFromField === "function") {
+        updateCurrentVMaxFromField();
+      }
     }
 
     if (typeof overlayCanvas !== "undefined" && overlayCanvas) {
