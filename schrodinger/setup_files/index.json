@@ -15,6 +15,5 @@
   "Elliptic_Well.psi",
   "Orbit.psi",
   "Convex_Lens.psi",
-  "Concave_Lens.psi",
-  "Testing.psi"
+  "Concave_Lens.psi"
 ]
