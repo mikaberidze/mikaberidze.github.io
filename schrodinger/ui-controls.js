@@ -561,32 +561,14 @@ function enhanceDropdown(selectEl, { align = "center", staticLabel = "" } = {}) 
   }
 
   const setValue = (value, fireChange = true) => {
-    const changed = selectEl.value !== value;
-    if (changed) {
-      selectEl.value = value;
+    if (selectEl.value === value) {
+      updateDisplay();
+      return;
     }
+    selectEl.value = value;
     updateDisplay();
-
-    if (changed && typeof selectEl._enhancedOnChange === "function") {
-      try {
-        selectEl._enhancedOnChange(value);
-      } catch (err) {
-        console.error(
-          "[Schrödinger] Enhanced dropdown change handler failed:",
-          err
-        );
-      }
-    }
-
-    if (changed && fireChange) {
-      try {
-        selectEl.dispatchEvent(new Event("change", { bubbles: true }));
-      } catch (err) {
-        console.error(
-          "[Schrödinger] Failed to dispatch change event:",
-          err
-        );
-      }
+    if (fireChange) {
+      selectEl.dispatchEvent(new Event("change", { bubbles: true }));
     }
   };
 
@@ -696,7 +678,6 @@ function enhanceDropdown(selectEl, { align = "center", staticLabel = "" } = {}) 
   enhancedDropdowns.set(selectEl, {
     renderOptions,
     updateDisplay,
-    setValue,
     destroy() {
       observer.disconnect();
       document.removeEventListener("mousedown", onOutsidePointer);
@@ -2011,6 +1992,14 @@ function initApp() {
   const presetSelect = document.getElementById("preset-select");
   const presetLoading = document.getElementById("preset-loading");
 
+  const isTouchEnvironment = () => {
+    if (typeof window === "undefined") return false;
+    return (
+      "ontouchstart" in window ||
+      (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0)
+    );
+  };
+
   const setPresetLoadingVisible = (visible) => {
     if (!presetLoading) return;
     if (visible) {
@@ -2187,40 +2176,28 @@ function initApp() {
 
     loadPresetList();
 
-    // Navigate to a preset by updating the URL's ?preset=... parameter. This
-    // reuses the well-tested auto-load path (which already works on iPhone)
-    // instead of performing the fetch entirely via the dropdown handler.
-    const navigateToPresetFromSelect = () => {
-      if (typeof window === "undefined" || typeof window.location === "undefined") {
-        return;
+    presetSelect.addEventListener("change", async () => {
+      const url = presetSelect.value;
+      if (!url) return;
+
+      const selectedOption =
+        presetSelect.selectedOptions && presetSelect.selectedOptions[0];
+      const presetLabel = selectedOption
+        ? selectedOption.dataset.label || selectedOption.textContent || ""
+        : "";
+      const filename = url.split("/").pop() || "";
+      if (filename) {
+        updatePresetQueryParam(filename);
       }
-      const urlValue = presetSelect.value;
-      if (!urlValue) return;
-      const filename = urlValue.split("/").pop() || "";
-      if (!filename) return;
 
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.set("preset", filename);
-        window.location.href = url.toString();
-      } catch (err) {
-        // Fallback for environments without URL constructor support.
-        const encoded = encodeURIComponent(filename);
-        if (window.location.search) {
-          const base = window.location.href.split("?")[0];
-          window.location.href = `${base}?preset=${encoded}`;
-        } else {
-          window.location.search = `?preset=${encoded}`;
-        }
-      }
-    };
+      await loadPresetByPath(url, { fromURL: false, label: presetLabel });
+    });
 
-    // Ensure selection via both the enhanced dropdown and the native <select>
-    // triggers navigation.
-    presetSelect._enhancedOnChange = navigateToPresetFromSelect;
-    presetSelect.addEventListener("change", navigateToPresetFromSelect);
-
-    enhanceDropdown(presetSelect, { staticLabel: "Preset Experiments" });
+    // On touch devices (e.g., iPhone), keep the native <select> to avoid
+    // any custom-dropdown click quirks; otherwise use the enhanced version.
+    if (!isTouchEnvironment()) {
+      enhanceDropdown(presetSelect, { staticLabel: "Preset Experiments" });
+    }
   }
 
   const colormapSelect = document.getElementById("colormap-select");
@@ -2243,9 +2220,6 @@ function initApp() {
       }
     };
 
-    // Ensure changes from the enhanced dropdown propagate even if synthetic
-    // "change" events behave differently on some mobile browsers.
-    colormapSelect._enhancedOnChange = applyColormapFromSelect;
     colormapSelect.addEventListener("change", applyColormapFromSelect);
     enhanceDropdown(colormapSelect, { align: "left" });
     applyColormapFromSelect();
