@@ -137,7 +137,9 @@ body {
 .record-button.recording {
   border-color: #ff4b4b;
   box-shadow: 0 0 0 1px rgba(255, 75, 75, 0.7);
-  background: rgba(255, 75, 75, 0.12);
+  background:
+    linear-gradient(135deg, rgba(255, 75, 75, 0.24), rgba(255, 122, 122, 0.16)),
+    #1e2537;
 }
 
 .pip-icon,
@@ -150,13 +152,17 @@ body {
 .pip-button-active {
   border-color: var(--overlay-accent);
   box-shadow: 0 0 0 1px rgba(66, 202, 118, 0.7);
-  background: rgba(66, 202, 118, 0.12);
+  background:
+    linear-gradient(135deg, rgba(66, 202, 118, 0.22), rgba(66, 202, 118, 0.16)),
+    #1e2537;
 }
 
 .fullscreen-button-active {
   border-color: var(--overlay-accent);
   box-shadow: 0 0 0 1px rgba(66, 202, 118, 0.7);
-  background: rgba(66, 202, 118, 0.12);
+  background:
+    linear-gradient(135deg, rgba(66, 202, 118, 0.22), rgba(66, 202, 118, 0.16)),
+    #1e2537;
 }
 
 .stop-icon {
