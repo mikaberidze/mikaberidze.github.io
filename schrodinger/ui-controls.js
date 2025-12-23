@@ -561,14 +561,32 @@ function enhanceDropdown(selectEl, { align = "center", staticLabel = "" } = {}) 
   }
 
   const setValue = (value, fireChange = true) => {
-    if (selectEl.value === value) {
-      updateDisplay();
-      return;
+    const changed = selectEl.value !== value;
+    if (changed) {
+      selectEl.value = value;
     }
-    selectEl.value = value;
     updateDisplay();
-    if (fireChange) {
-      selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+
+    if (changed && typeof selectEl._enhancedOnChange === "function") {
+      try {
+        selectEl._enhancedOnChange(value);
+      } catch (err) {
+        console.error(
+          "[Schrödinger] Enhanced dropdown change handler failed:",
+          err
+        );
+      }
+    }
+
+    if (changed && fireChange) {
+      try {
+        selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+      } catch (err) {
+        console.error(
+          "[Schrödinger] Failed to dispatch change event:",
+          err
+        );
+      }
     }
   };
 
@@ -678,6 +696,7 @@ function enhanceDropdown(selectEl, { align = "center", staticLabel = "" } = {}) 
   enhancedDropdowns.set(selectEl, {
     renderOptions,
     updateDisplay,
+    setValue,
     destroy() {
       observer.disconnect();
       document.removeEventListener("mousedown", onOutsidePointer);
@@ -2168,7 +2187,9 @@ function initApp() {
 
     loadPresetList();
 
-    presetSelect.addEventListener("change", async () => {
+    // Handle selection changes from the enhanced dropdown directly instead of
+    // relying solely on synthetic "change" events on the native <select>.
+    presetSelect._enhancedOnChange = async () => {
       const url = presetSelect.value;
       if (!url) return;
 
@@ -2183,15 +2204,13 @@ function initApp() {
       }
 
       await loadPresetByPath(url, { fromURL: false, label: presetLabel });
-    });
+    };
 
     enhanceDropdown(presetSelect, { staticLabel: "Preset Experiments" });
   }
 
   const colormapSelect = document.getElementById("colormap-select");
   if (colormapSelect) {
-    enhanceDropdown(colormapSelect, { align: "left" });
-
     const applyColormapFromSelect = () => {
       const schemeId = colormapSelect.value || "phase";
       if (
@@ -2210,7 +2229,11 @@ function initApp() {
       }
     };
 
+    // Ensure changes from the enhanced dropdown propagate even if synthetic
+    // "change" events behave differently on some mobile browsers.
+    colormapSelect._enhancedOnChange = applyColormapFromSelect;
     colormapSelect.addEventListener("change", applyColormapFromSelect);
+    enhanceDropdown(colormapSelect, { align: "left" });
     applyColormapFromSelect();
   }
 
