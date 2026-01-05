@@ -1485,7 +1485,7 @@ body {
 }
 
 .select-enhancer .setup-select ~ .select-options {
-  min-width: 260px;
+  min-width: min(320px, calc(100vw - 2rem));
 }
 
 .select-enhancer.is-open .select-options {
