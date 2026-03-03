@@ -344,6 +344,43 @@
             height: auto;
         }
 
+        .teaching-comments-window {
+            margin-top: 1em;
+            background-color: #f8f8f8;
+            width: min(100%, 800px);
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            overflow: hidden;
+        }
+
+        .teaching-comments-frame {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            margin: 0;
+            height: min(90dvh, 900px);
+            border: 0;
+            background-color: #f8f8f8;
+        }
+
+        .teaching-comments-title {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 0.25em;
+            margin-top: 0.4em;
+            margin-bottom: 0.4em;
+            font-weight: 600;
+        }
+
+        .teaching-comments-note {
+            font-size: 0.95em;
+            font-weight: 400;
+        }
+
         cite {
             counter-increment: citation; /* Increment the counter */
             position: relative;
@@ -409,6 +446,10 @@
             }
             .side_content {
                 width: 100%;
+            }
+
+            .teaching-comments-frame {
+                height: min(78.4dvh, 627px);
             }
         }
     </style>
@@ -734,6 +775,16 @@
                 If you don't know about these tournaments, here is a <a href="https://www.youtube.com/watch?v=OitGIGcqwLM" target="_blank">brief overview</a> from Sweden. My teams have obtained a <b>bronze</b> medal in IYPT, and a <b>silver</b> and <b>two golds</b> in IYNT.
             </li>
         </ul>
+        <div class="teaching-comments-title">
+            <div>Sentiment Analysis of Student Feedback for UC Davis Courses using DeBERTa-v3</div>
+            <div class="teaching-comments-note">(hover the datapoints for more info)</div>
+            <iframe
+                class="teaching-comments-frame"
+                src="UCD_Student_Comments.html"
+                title="UC Davis Student Comments"
+                loading="lazy">
+            </iframe>
+        </div>
     </section>
 
     <section id="engagement">
@@ -774,6 +825,10 @@
                         <img src="booknet/favicon.png" alt="Character networks for books" class="sublist-icon">
                         <a href="booknet" target="_blank"><b>Character networks for books</b></a> – visualize and explore co-appearance networks of characters in novels.
                     </li>
+                    <!-- <li>
+                        <img src="mandelbrot_julia/favicon.svg" alt="Mandelbrot and Julia set explorer" class="sublist-icon">
+                        <a href="mandelbrot_julia" target="_blank"><b>Mandelbrot &amp; Julia explorer</b></a> – drag a point on the Mandelbrot set and inspect the corresponding Julia set in real time.
+                    </li> -->
                 </ul>
             </li>
 

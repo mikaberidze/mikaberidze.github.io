@@ -1,0 +1,1456 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Net Constructor — Interactive Build</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #ffffff;
+      --panel2: #f8fafc;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #1d4ed8;
+      --accent2: #1e40af;
+      --border: rgba(15,23,42,0.12);
+      --shadow: 0 12px 30px rgba(15,23,42,0.10);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      height: 100vh;
+    }
+
+    .panel {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      box-shadow: 8px 0 18px rgba(15,23,42,0.06);
+      padding: 16px 16px 12px;
+      overflow: auto;
+    }
+
+    .panel h1 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      letter-spacing: 0.4px;
+    }
+    .panel .sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 14px;
+      line-height: 1.35;
+    }
+
+    .group {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: var(--panel2);
+    }
+    .group h2 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 100px;
+      gap: 10px;
+      align-items: center;
+      margin: 10px 0;
+    }
+
+    .row3 {
+      display: grid;
+      grid-template-columns: 1fr 90px 24px;
+      gap: 10px;
+      align-items: center;
+      margin: 10px 0;
+    }
+
+    label {
+      font-size: 13px;
+      color: var(--text);
+      user-select: none;
+    }
+    .val {
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+      margin-top: 8px;
+    }
+
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    input[type="number"], select {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      padding: 8px 10px;
+      outline: none;
+    }
+    input[type="number"]:focus, select:focus, button:focus-visible {
+      border-color: rgba(29,78,216,0.35);
+      box-shadow: 0 0 0 3px rgba(29,78,216,0.12);
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: var(--accent);
+      color: #fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      transition: transform 0.05s ease, background 0.15s ease;
+    }
+    button:hover { background: var(--accent2); }
+    button:active { transform: translateY(1px); }
+    button.secondary {
+      background: #fff;
+      color: var(--text);
+    }
+    button.secondary:hover { background: rgba(15,23,42,0.04); }
+
+    .toggle {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin: 10px 0;
+    }
+    .toggle input[type="checkbox"] {
+      transform: scale(1.1);
+      accent-color: var(--accent);
+    }
+
+    .canvasWrap {
+      position: relative;
+      overflow: hidden;
+      background: #fff;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #fff;
+      touch-action: none;
+      cursor: grab;
+    }
+    canvas.dragging { cursor: grabbing; }
+
+    .hud {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      background: rgba(255,255,255,0.88);
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      box-shadow: var(--shadow);
+      max-width: 70%;
+      user-select: none;
+      pointer-events: none;
+      white-space: pre;
+    }
+
+    .kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      color: var(--text);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <aside class="panel">
+      <h1>Net Constructor</h1>
+      <div class="sub">
+        Interactive network construction + controllable rewiring, distance-based weights & colors, and a spring layout.
+        Click a node to add neighbors. Drag nodes to reposition; pause the layout to freeze.
+      </div>
+
+      <div class="group">
+        <h2>Build</h2>
+
+        <div class="row">
+          <label for="seed">Seed (integer)</label>
+          <div class="val" id="seedVal"></div>
+        </div>
+        <input id="seed" type="number" step="1" value="1" />
+
+        <div class="row">
+          <label for="nNodes">Max nodes (N)</label>
+          <div class="val" id="nNodesVal"></div>
+        </div>
+        <input id="nNodes" type="range" min="20" max="800" value="250" />
+
+        <div class="buttons">
+          <button id="resetGraph">Reset graph</button>
+          <button class="secondary" id="randomSeed">Random seed</button>
+        </div>
+
+        <div class="hint">
+          <span class="kbd">Click</span> a node and enter how many <b>new</b> neighbors to add.
+          “Distance” used for colors/weights is the <b>graph hop distance</b> from the center node (node <span class="kbd">0</span>).
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Rewire</h2>
+        <div class="row">
+          <label for="rewirePct">Full rewire edges (%)</label>
+          <div class="val" id="rewirePctVal"></div>
+        </div>
+        <input id="rewirePct" type="range" min="0" max="100" step="1" value="0" />
+        <div class="row">
+          <label for="partialRewirePct">Partial rewire edges (%)</label>
+          <div class="val" id="partialRewirePctVal"></div>
+        </div>
+        <input id="partialRewirePct" type="range" min="0" max="100" step="1" value="0" />
+        <div class="hint">
+          Full rewire moves whole edges. Partial rewire splits an edge weight into two random pieces and rewires one piece.
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Weights</h2>
+
+        <div class="row">
+          <label for="wBase">Base weight</label>
+          <div class="val" id="wBaseVal"></div>
+        </div>
+        <input id="wBase" type="range" min="1" max="200" step="1" value="80" />
+
+        <div class="row">
+          <label for="wDecay">Decay vs generation</label>
+          <div class="val" id="wDecayVal"></div>
+        </div>
+        <input id="wDecay" type="range" min="0.00" max="0.20" step="0.001" value="0.06" />
+        <div class="hint">
+          Weight function: <span class="kbd">w = w0 · (1 - decay)^g</span>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Rendering</h2>
+
+        <div class="row">
+          <label for="nodeSize">Node size</label>
+          <div class="val" id="nodeSizeVal"></div>
+        </div>
+        <input id="nodeSize" type="range" min="1" max="14" step="0.5" value="4.5" />
+
+        <div class="row">
+          <label for="edgeOpacity">Edge opacity</label>
+          <div class="val" id="edgeOpacityVal"></div>
+        </div>
+        <input id="edgeOpacity" type="range" min="0.02" max="1.0" step="0.01" value="0.32" />
+
+        <div class="row">
+          <label for="showLabels">Show labels</label>
+          <input id="showLabels" type="checkbox" />
+        </div>
+
+        <div class="toggle">
+          <label for="keepInCircle">Keep nodes in circle</label>
+          <input id="keepInCircle" type="checkbox" checked />
+        </div>
+
+        <div class="row">
+          <label for="radiusFrac">Circle radius</label>
+          <div class="val" id="radiusFracVal"></div>
+        </div>
+        <input id="radiusFrac" type="range" min="0.35" max="0.98" step="0.01" value="0.86" />
+
+        <div class="toggle">
+          <label for="showCircle">Show circle boundary</label>
+          <input id="showCircle" type="checkbox" checked />
+        </div>
+
+        <div class="row">
+          <label for="edgeColorMode">Edge color mode</label>
+          <div class="val"></div>
+        </div>
+        <select id="edgeColorMode">
+          <option value="weight">By weight</option>
+          <option value="generation">By distance</option>
+          <option value="mono">Monochrome</option>
+        </select>
+
+        <div class="row">
+          <label for="genGamma">Distance gamma</label>
+          <div class="val" id="genGammaVal"></div>
+        </div>
+        <input id="genGamma" type="range" min="0.25" max="3.00" step="0.01" value="1.00" />
+
+        <div class="buttons">
+          <button id="exportPng">Export PNG</button>
+          <button class="secondary" id="centerView">Center view</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Layout</h2>
+
+        <div class="toggle">
+          <label for="runLayout">Run layout</label>
+          <input id="runLayout" type="checkbox" checked />
+        </div>
+
+        <div class="row">
+          <label for="layoutSpeed">Layout speed</label>
+          <div class="val" id="layoutSpeedVal"></div>
+        </div>
+        <input id="layoutSpeed" type="range" min="0.2" max="2.5" step="0.05" value="1.0" />
+
+        <div class="row">
+          <label for="springK">Spring strength</label>
+          <div class="val" id="springKVal"></div>
+        </div>
+        <input id="springK" type="range" min="0.01" max="1.50" step="0.01" value="0.25" />
+
+        <div class="row">
+          <label for="repelK">Repulsion</label>
+          <div class="val" id="repelKVal"></div>
+        </div>
+        <input id="repelK" type="range" min="0" max="3500" step="25" value="1400" />
+
+        <div class="row">
+          <label for="restLen">Rest length</label>
+          <div class="val" id="restLenVal"></div>
+        </div>
+        <input id="restLen" type="range" min="10" max="120" step="1" value="36" />
+
+        <div class="toggle">
+          <label for="pinOnRelease">Pin dragged nodes</label>
+          <input id="pinOnRelease" type="checkbox" />
+        </div>
+
+        <div class="buttons">
+          <button id="stepLayout">Step</button>
+          <button class="secondary" id="unpinAll">Unpin all</button>
+        </div>
+
+        <div class="hint">
+          <span class="kbd">Drag</span> nodes to move them. <span class="kbd">Shift+drag</span> pans the view. <span class="kbd">Wheel</span> zooms.
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Save / Load</h2>
+        <div class="buttons">
+          <button id="saveNet">Save JSON</button>
+          <button class="secondary" id="loadNet">Load JSON</button>
+        </div>
+        <input id="loadNetFile" type="file" accept="application/json" style="display:none" />
+        <div class="hint">
+          Saves/loads the <b>non-rewired</b> structure (nodes + base edges). Rewiring is applied after load using the current sliders.
+        </div>
+      </div>
+    </aside>
+
+    <main class="canvasWrap">
+      <canvas id="c"></canvas>
+      <div class="hud" id="hud"></div>
+    </main>
+  </div>
+
+<script>
+/** ---------- RNG (Mulberry32) ---------- **/
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function() {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** ---------- Helpers ---------- **/
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const hypot = Math.hypot;
+
+function fmt(x, digits = 2) {
+  return Number.isFinite(x) ? x.toFixed(digits) : String(x);
+}
+
+function rampGen(t) {
+  // generation ramp: slate -> blue -> teal (readable on white)
+  t = clamp(t, 0, 1);
+  let r, g, b;
+  if (t < 0.55) {
+    const u = t / 0.55;
+    r = lerp(100, 37, u);
+    g = lerp(116, 99, u);
+    b = lerp(139, 235, u);
+  } else {
+    const u = (t - 0.55) / 0.45;
+    r = lerp(37, 13, u);
+    g = lerp(99, 148, u);
+    b = lerp(235, 136, u);
+  }
+  return `rgb(${r|0},${g|0},${b|0})`;
+}
+
+function rgbaFromRgb(rgb, a) {
+  return rgb.replace("rgb(", "rgba(").replace(")", `,${a})`);
+}
+
+function hashEdgeKey(i, j) {
+  return (i < j) ? `${i},${j}` : `${j},${i}`;
+}
+
+const PASTEL = [
+  "#fdba74", // orange
+  "#fde68a", // yellow
+  "#86efac", // green
+  "#93c5fd", // blue
+  "#fca5a5", // red
+  "#c4b5fd", // purple
+  "#f9a8d4", // pink
+];
+
+function pastelByDistance(d) {
+  return PASTEL[d % PASTEL.length];
+}
+
+/** ---------- UI ---------- **/
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+const ui = {
+  seed: document.getElementById("seed"),
+  nNodes: document.getElementById("nNodes"),
+  rewirePct: document.getElementById("rewirePct"),
+  partialRewirePct: document.getElementById("partialRewirePct"),
+  wBase: document.getElementById("wBase"),
+  wDecay: document.getElementById("wDecay"),
+  genGamma: document.getElementById("genGamma"),
+
+  nodeSize: document.getElementById("nodeSize"),
+  edgeOpacity: document.getElementById("edgeOpacity"),
+  showLabels: document.getElementById("showLabels"),
+  keepInCircle: document.getElementById("keepInCircle"),
+  radiusFrac: document.getElementById("radiusFrac"),
+  showCircle: document.getElementById("showCircle"),
+  edgeColorMode: document.getElementById("edgeColorMode"),
+
+  runLayout: document.getElementById("runLayout"),
+  layoutSpeed: document.getElementById("layoutSpeed"),
+  springK: document.getElementById("springK"),
+  repelK: document.getElementById("repelK"),
+  restLen: document.getElementById("restLen"),
+  pinOnRelease: document.getElementById("pinOnRelease"),
+
+  resetGraph: document.getElementById("resetGraph"),
+  randomSeed: document.getElementById("randomSeed"),
+  exportPng: document.getElementById("exportPng"),
+  centerView: document.getElementById("centerView"),
+  stepLayout: document.getElementById("stepLayout"),
+  unpinAll: document.getElementById("unpinAll"),
+
+  saveNet: document.getElementById("saveNet"),
+  loadNet: document.getElementById("loadNet"),
+  loadNetFile: document.getElementById("loadNetFile"),
+
+  hud: document.getElementById("hud"),
+};
+
+const valEls = {
+  seedVal: document.getElementById("seedVal"),
+  nNodesVal: document.getElementById("nNodesVal"),
+  rewirePctVal: document.getElementById("rewirePctVal"),
+  partialRewirePctVal: document.getElementById("partialRewirePctVal"),
+  wBaseVal: document.getElementById("wBaseVal"),
+  wDecayVal: document.getElementById("wDecayVal"),
+  genGammaVal: document.getElementById("genGammaVal"),
+  nodeSizeVal: document.getElementById("nodeSizeVal"),
+  edgeOpacityVal: document.getElementById("edgeOpacityVal"),
+  radiusFracVal: document.getElementById("radiusFracVal"),
+  layoutSpeedVal: document.getElementById("layoutSpeedVal"),
+  springKVal: document.getElementById("springKVal"),
+  repelKVal: document.getElementById("repelKVal"),
+  restLenVal: document.getElementById("restLenVal"),
+};
+
+function readParams() {
+  const seed = parseInt(ui.seed.value || "1", 10) || 1;
+  const N = parseInt(ui.nNodes.value, 10);
+
+  const rewirePct = parseInt(ui.rewirePct.value, 10);
+  const partialRewirePct = parseInt(ui.partialRewirePct.value, 10);
+  const wBase = parseFloat(ui.wBase.value);
+  const wDecay = parseFloat(ui.wDecay.value);
+  const genGamma = parseFloat(ui.genGamma.value);
+
+  const nodeSize = parseFloat(ui.nodeSize.value);
+  const edgeOpacity = parseFloat(ui.edgeOpacity.value);
+  const keepInCircle = ui.keepInCircle.checked;
+  const radiusFrac = parseFloat(ui.radiusFrac.value);
+  const showCircle = ui.showCircle.checked;
+  const showLabels = ui.showLabels.checked;
+  const edgeColorMode = ui.edgeColorMode.value;
+
+  const runLayout = ui.runLayout.checked;
+  const layoutSpeed = parseFloat(ui.layoutSpeed.value);
+  const springK = parseFloat(ui.springK.value);
+  const repelK = parseFloat(ui.repelK.value);
+  const restLen = parseFloat(ui.restLen.value);
+  const pinOnRelease = ui.pinOnRelease.checked;
+
+  return {
+    seed, N,
+    rewirePct, partialRewirePct, wBase, wDecay,
+    genGamma,
+    nodeSize, edgeOpacity,
+    keepInCircle, radiusFrac, showCircle, showLabels, edgeColorMode,
+    runLayout, layoutSpeed, springK, repelK, restLen, pinOnRelease
+  };
+}
+
+function updateValueLabels() {
+  const p = readParams();
+  valEls.seedVal.textContent = `${p.seed}`;
+  valEls.nNodesVal.textContent = `${p.N}`;
+  valEls.rewirePctVal.textContent = `${p.rewirePct}%`;
+  valEls.partialRewirePctVal.textContent = `${p.partialRewirePct}%`;
+  valEls.wBaseVal.textContent = `${fmt(p.wBase, 0)}`;
+  valEls.wDecayVal.textContent = fmt(p.wDecay, 2);
+  valEls.genGammaVal.textContent = fmt(p.genGamma, 2);
+  valEls.nodeSizeVal.textContent = fmt(p.nodeSize, 1);
+  valEls.edgeOpacityVal.textContent = fmt(p.edgeOpacity, 2);
+  valEls.radiusFracVal.textContent = fmt(p.radiusFrac, 2);
+  valEls.layoutSpeedVal.textContent = fmt(p.layoutSpeed, 2);
+  valEls.springKVal.textContent = fmt(p.springK, 2);
+  valEls.repelKVal.textContent = `${p.repelK|0}`;
+  valEls.restLenVal.textContent = `${p.restLen|0}`;
+}
+
+/** ---------- State ---------- **/
+let W = 800, H = 600, DPR = 1;
+let rngAdd = mulberry32(1);
+
+// Graph
+let nodes = []; // {id, gen, comp, x,y,vx,vy, fx,fy}
+let baseEdges = []; // user-constructed edges: {i,j}
+let edges = []; // displayed edges after rewiring/weighting: {i,j,w, genEdge,mass}
+let maxGen = 1; // now: max hop-distance from center
+
+// View transform
+let view = { x: 0, y: 0, s: 1 };
+
+// Interaction
+let pointer = { x: 0, y: 0, down: false, shift: false };
+let drag = { mode: "none", nodeId: -1, lastX: 0, lastY: 0 };
+let pointerStart = { x: 0, y: 0 };
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  DPR = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  W = Math.floor(rect.width);
+  H = Math.floor(rect.height);
+  canvas.width = Math.floor(W * DPR);
+  canvas.height = Math.floor(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+
+function screenToWorld(sx, sy) {
+  const x = (sx - W * 0.5) / view.s + view.x;
+  const y = (sy - H * 0.5) / view.s + view.y;
+  return { x, y };
+}
+
+function worldToScreen(wx, wy) {
+  const x = (wx - view.x) * view.s + W * 0.5;
+  const y = (wy - view.y) * view.s + H * 0.5;
+  return { x, y };
+}
+
+function centerViewOnGraph() {
+  if (!nodes.length) { view.x = 0; view.y = 0; view.s = 1; return; }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of nodes) {
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x);
+    maxY = Math.max(maxY, n.y);
+  }
+  const cx = 0.5 * (minX + maxX);
+  const cy = 0.5 * (minY + maxY);
+  const dx = Math.max(10, maxX - minX);
+  const dy = Math.max(10, maxY - minY);
+  const margin = 0.78;
+  view.x = cx;
+  view.y = cy;
+  view.s = Math.min((W * margin) / dx, (H * margin) / dy, 1.6);
+}
+
+/** ---------- Generator ---------- **/
+function weightFromGen(p, g) {
+  const decay = clamp(p.wDecay, 0, 0.999999);
+  return p.wBase * Math.pow(1 - decay, g);
+}
+
+function resetGraph() {
+  const p = readParams();
+  rngAdd = mulberry32(p.seed ^ 0x85ebca6b);
+
+  nodes = [{
+    id: 0, gen: 0, dist: 0, unreachable: false, comp: 0,
+    x: 0, y: 0, vx: 0, vy: 0,
+    fx: null, fy: null
+  }];
+  baseEdges = [];
+  edges = [];
+  maxGen = 0;
+
+  centerViewOnGraph();
+  rebuildAfterBaseEdit();
+}
+
+function addNeighborsInteractive(nodeId) {
+  const p = readParams();
+  const remaining = Math.max(0, p.N - nodes.length);
+  if (remaining <= 0) return;
+
+  const ans = prompt(`Node ${nodeId}: add how many NEW neighbors? (0..${remaining})`, "2");
+  if (ans == null) return;
+  let k = parseInt(ans.trim(), 10);
+  if (!Number.isFinite(k)) return;
+  k = clamp(k, 0, remaining) | 0;
+  if (k <= 0) return;
+
+  const parent = nodes[nodeId];
+  const newIds = [];
+  for (let t = 0; t < k; t++) {
+    const id = nodes.length;
+    const ang = rngAdd() * Math.PI * 2;
+    const rest = readParams().restLen;
+    const r = 0.7 * rest + 0.6 * rest * rngAdd();
+    const x = parent.x + r * Math.cos(ang);
+    const y = parent.y + r * Math.sin(ang);
+    nodes.push({ id, gen: 0, dist: -1, unreachable: false, comp: 0, x, y, vx: 0, vy: 0, fx: null, fy: null });
+    newIds.push(id);
+    baseEdges.push({ i: Math.min(nodeId, id), j: Math.max(nodeId, id) });
+  }
+
+  // Small layout "kick" to separate new nodes
+  for (const id of newIds) {
+    nodes[id].vx += (rngAdd() - 0.5) * 20;
+    nodes[id].vy += (rngAdd() - 0.5) * 20;
+  }
+
+  rebuildAfterBaseEdit();
+}
+
+function rebuildAfterBaseEdit() {
+  computeBaseDistancesFromCenter();
+  rebuildAfterRewireOrSeedChange();
+}
+
+function rebuildAfterRewireOrSeedChange() {
+  rebuildEdgesWithRewire();
+  computeComponentsDisplayed();
+  applyWeightsFromDistance();
+  updateHud();
+}
+
+function rebuildEdgesWithRewire() {
+  const p = readParams();
+  const rng = mulberry32(p.seed ^ 0x9e3779b9);
+
+  const edgeMap = new Map();
+  edges = [];
+
+  function addEdgeMass(i, j, mass) {
+    if (!(mass > 0)) return;
+    const a = Math.min(i, j);
+    const b = Math.max(i, j);
+    if (a === b) return;
+    const key = hashEdgeKey(a, b);
+    const ex = edgeMap.get(key);
+    if (ex) {
+      ex.mass += mass;
+      return;
+    }
+    const edge = { i: a, j: b, w: 1, genEdge: 0, mass };
+    edgeMap.set(key, edge);
+    edges.push(edge);
+  }
+
+  for (const e of baseEdges) {
+    const key = hashEdgeKey(e.i, e.j);
+    if (edgeMap.has(key)) continue;
+    addEdgeMass(e.i, e.j, 1);
+  }
+
+  const m = edges.length;
+  const mRewire = Math.round((p.rewirePct / 100) * m);
+  if (nodes.length >= 3 && m > 0 && mRewire > 0) {
+    const idx = new Array(m);
+    for (let i = 0; i < m; i++) idx[i] = i;
+    for (let i = m - 1; i > 0; i--) {
+      const j = (rng() * (i + 1)) | 0;
+      const tmp = idx[i]; idx[i] = idx[j]; idx[j] = tmp;
+    }
+
+    for (let t = 0; t < Math.min(mRewire, m); t++) {
+      const e = edges[idx[t]];
+      const keepI = (rng() < 0.5);
+      const a = keepI ? e.i : e.j;
+      let b = (rng() * nodes.length) | 0;
+      let tries = 0;
+      while (tries++ < 80 && (b === a || edgeMap.has(hashEdgeKey(a, b)))) {
+        b = (rng() * nodes.length) | 0;
+      }
+      if (b === a || edgeMap.has(hashEdgeKey(a, b))) continue;
+
+      edgeMap.delete(hashEdgeKey(e.i, e.j));
+      e.i = Math.min(a, b);
+      e.j = Math.max(a, b);
+      edgeMap.set(hashEdgeKey(e.i, e.j), e);
+    }
+  }
+
+  const mPartialBase = edges.length;
+  const mPartial = Math.round((p.partialRewirePct / 100) * mPartialBase);
+  if (nodes.length >= 3 && mPartialBase > 0 && mPartial > 0) {
+    const idx = new Array(mPartialBase);
+    for (let i = 0; i < mPartialBase; i++) idx[i] = i;
+    for (let i = mPartialBase - 1; i > 0; i--) {
+      const j = (rng() * (i + 1)) | 0;
+      const tmp = idx[i]; idx[i] = idx[j]; idx[j] = tmp;
+    }
+
+    for (let t = 0; t < Math.min(mPartial, mPartialBase); t++) {
+      const e = edges[idx[t]];
+      if (!e || !(e.mass > 0)) continue;
+
+      const movedMass = e.mass * rng();
+      if (!(movedMass > 0) || !(movedMass < e.mass)) continue;
+      const keptMass = e.mass - movedMass;
+
+      const keepI = (rng() < 0.5);
+      const a = keepI ? e.i : e.j;
+      let b = (rng() * nodes.length) | 0;
+      let tries = 0;
+      const sameKey = hashEdgeKey(e.i, e.j);
+      while (tries++ < 80 && (b === a || hashEdgeKey(a, b) === sameKey)) {
+        b = (rng() * nodes.length) | 0;
+      }
+      if (b === a || hashEdgeKey(a, b) === sameKey) continue;
+
+      e.mass = keptMass;
+      addEdgeMass(a, b, movedMass);
+    }
+  }
+}
+
+function computeBaseDistancesFromCenter() {
+  const N = nodes.length;
+  const dist = new Int32Array(N);
+  for (let i = 0; i < N; i++) dist[i] = -1;
+  if (!N) { maxGen = 0; return; }
+
+  const adj = Array.from({ length: N }, () => []);
+  for (const e of baseEdges) {
+    adj[e.i].push(e.j);
+    adj[e.j].push(e.i);
+  }
+
+  const q = [0];
+  dist[0] = 0;
+  for (let qi = 0; qi < q.length; qi++) {
+    const v = q[qi];
+    const dv = dist[v];
+    for (const u of adj[v]) {
+      if (dist[u] !== -1) continue;
+      dist[u] = dv + 1;
+      q.push(u);
+    }
+  }
+
+  let maxD = 0;
+  for (let i = 0; i < N; i++) if (dist[i] !== -1) maxD = Math.max(maxD, dist[i]);
+  maxGen = maxD;
+  for (let i = 0; i < N; i++) {
+    nodes[i].dist = dist[i];
+    nodes[i].unreachable = (dist[i] === -1);
+    nodes[i].gen = nodes[i].unreachable ? (maxGen + 1) : dist[i];
+  }
+}
+
+function computeComponentsDisplayed() {
+  const N = nodes.length;
+  if (!N) { nComps = 0; return; }
+  const adj = Array.from({ length: N }, () => []);
+  for (const e of edges) {
+    adj[e.i].push(e.j);
+    adj[e.j].push(e.i);
+  }
+
+  let comps = 0;
+  const seen = new Uint8Array(N);
+  for (let s = 0; s < N; s++) {
+    if (seen[s]) continue;
+    comps++;
+    const q = [s];
+    seen[s] = 1;
+    for (let qi = 0; qi < q.length; qi++) {
+      const v = q[qi];
+      nodes[v].comp = comps - 1;
+      for (const u of adj[v]) {
+        if (seen[u]) continue;
+        seen[u] = 1;
+        q.push(u);
+      }
+    }
+  }
+  nComps = comps;
+}
+
+function applyWeightsFromDistance() {
+  const p = readParams();
+  for (const e of edges) {
+    const gi = nodes[e.i]?.gen ?? 0;
+    const gj = nodes[e.j]?.gen ?? 0;
+    const d = Math.max(gi, gj);
+    e.genEdge = d;
+    const mass = (e.mass > 0) ? e.mass : 1;
+    e.w = weightFromGen(p, d) * mass;
+  }
+}
+
+function serializeNetwork() {
+  return {
+    version: 1,
+    seed: readParams().seed,
+    view: { ...view },
+    nodes: nodes.map(n => ({
+      id: n.id,
+      x: n.x, y: n.y,
+      fx: n.fx, fy: n.fy
+    })),
+    baseEdges: baseEdges.map(e => ({ i: e.i, j: e.j })),
+  };
+}
+
+function loadNetwork(data) {
+  if (!data || typeof data !== "object") throw new Error("Invalid JSON");
+  if (data.version !== 1) throw new Error(`Unsupported version: ${data.version}`);
+  if (!Array.isArray(data.nodes) || !Array.isArray(data.baseEdges)) throw new Error("Missing nodes/baseEdges");
+
+  const p = readParams();
+  const maxN = p.N;
+
+  const loadedNodes = data.nodes
+    .filter(n => n && Number.isInteger(n.id))
+    .sort((a, b) => a.id - b.id)
+    .slice(0, maxN);
+
+  if (!loadedNodes.length || loadedNodes[0].id !== 0) throw new Error("Expected node 0");
+
+  nodes = [];
+  for (let k = 0; k < loadedNodes.length; k++) {
+    const ln = loadedNodes[k];
+    const id = ln.id;
+    if (id !== k) throw new Error("Node ids must be 0..N-1 without gaps");
+    const x = Number(ln.x);
+    const y = Number(ln.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Invalid node position");
+    const fx = (ln.fx == null) ? null : Number(ln.fx);
+    const fy = (ln.fy == null) ? null : Number(ln.fy);
+    nodes.push({
+      id,
+      gen: 0,
+      dist: -1,
+      unreachable: false,
+      comp: 0,
+      x, y,
+      vx: 0, vy: 0,
+      fx: (Number.isFinite(fx) ? fx : null),
+      fy: (Number.isFinite(fy) ? fy : null),
+    });
+  }
+
+  baseEdges = [];
+  const seen = new Set();
+  for (const e of data.baseEdges) {
+    if (!e) continue;
+    let i = e.i, j = e.j;
+    if (!Number.isInteger(i) || !Number.isInteger(j)) continue;
+    if (i === j) continue;
+    if (i < 0 || j < 0 || i >= nodes.length || j >= nodes.length) continue;
+    const a = Math.min(i, j);
+    const b = Math.max(i, j);
+    i = a;
+    j = b;
+    const key = hashEdgeKey(i, j);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    baseEdges.push({ i, j });
+  }
+
+  const seed = Number.isInteger(data.seed) ? data.seed : p.seed;
+  ui.seed.value = String(seed);
+  rngAdd = mulberry32(seed ^ 0x85ebca6b);
+  updateValueLabels();
+
+  if (data.view && Number.isFinite(data.view.x) && Number.isFinite(data.view.y) && Number.isFinite(data.view.s)) {
+    view.x = data.view.x;
+    view.y = data.view.y;
+    view.s = clamp(data.view.s, 0.2, 5.0);
+  } else {
+    centerViewOnGraph();
+  }
+
+  rebuildAfterBaseEdit();
+}
+
+/** ---------- Layout (spring + quadtree repulsion) ---------- **/
+function makeQuad(nodesList, x0, y0, x1, y1) {
+  const quad = { x0, y0, x1, y1, cx: 0, cy: 0, mass: 0, node: null, nw: null, ne: null, sw: null, se: null };
+
+  function insert(q, n) {
+    if (!q.node && !q.nw) {
+      q.node = n;
+      q.mass = 1;
+      q.cx = n.x;
+      q.cy = n.y;
+      return;
+    }
+
+    if (q.nw) {
+      insertChild(q, n);
+      q.mass += 1;
+      q.cx += (n.x - q.cx) / q.mass;
+      q.cy += (n.y - q.cy) / q.mass;
+      return;
+    }
+
+    // Subdivide and re-insert existing point
+    const existing = q.node;
+    q.node = null;
+    subdivide(q);
+    insertChild(q, existing);
+    insertChild(q, n);
+    q.mass = 2;
+    q.cx = (existing.x + n.x) * 0.5;
+    q.cy = (existing.y + n.y) * 0.5;
+  }
+
+  function subdivide(q) {
+    const mx = 0.5 * (q.x0 + q.x1);
+    const my = 0.5 * (q.y0 + q.y1);
+    q.nw = { x0: q.x0, y0: q.y0, x1: mx, y1: my, cx: 0, cy: 0, mass: 0, node: null, nw: null, ne: null, sw: null, se: null };
+    q.ne = { x0: mx, y0: q.y0, x1: q.x1, y1: my, cx: 0, cy: 0, mass: 0, node: null, nw: null, ne: null, sw: null, se: null };
+    q.sw = { x0: q.x0, y0: my, x1: mx, y1: q.y1, cx: 0, cy: 0, mass: 0, node: null, nw: null, ne: null, sw: null, se: null };
+    q.se = { x0: mx, y0: my, x1: q.x1, y1: q.y1, cx: 0, cy: 0, mass: 0, node: null, nw: null, ne: null, sw: null, se: null };
+  }
+
+  function insertChild(q, n) {
+    const mx = 0.5 * (q.x0 + q.x1);
+    const my = 0.5 * (q.y0 + q.y1);
+    if (n.x < mx) {
+      if (n.y < my) insert(q.nw, n);
+      else insert(q.sw, n);
+    } else {
+      if (n.y < my) insert(q.ne, n);
+      else insert(q.se, n);
+    }
+  }
+
+  for (const n of nodesList) insert(quad, n);
+  return quad;
+}
+
+function applyRepulsionFromQuad(q, n, p, out) {
+  if (!q || q.mass === 0) return;
+  if (q.node === n && !q.nw) return;
+
+  const dx = n.x - q.cx;
+  const dy = n.y - q.cy;
+  const d2 = dx*dx + dy*dy + 1e-6;
+  const d = Math.sqrt(d2);
+
+  const w = q.x1 - q.x0;
+  const theta = 0.85;
+  if (!q.nw || (w / d) < theta) {
+    const f = (p.repelK * q.mass) / d2;
+    out.fx += f * (dx / d);
+    out.fy += f * (dy / d);
+    return;
+  }
+
+  applyRepulsionFromQuad(q.nw, n, p, out);
+  applyRepulsionFromQuad(q.ne, n, p, out);
+  applyRepulsionFromQuad(q.sw, n, p, out);
+  applyRepulsionFromQuad(q.se, n, p, out);
+}
+
+function stepPhysics(steps = 1) {
+  const p = readParams();
+  if (!nodes.length) return;
+
+  const dt = 0.016 * p.layoutSpeed;
+  const damp = 0.88;
+
+  // Bounds for quadtree
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of nodes) {
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x);
+    maxY = Math.max(maxY, n.y);
+  }
+  const pad = 200;
+  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+  const side = Math.max(maxX - minX, maxY - minY, 500);
+  const cx = 0.5 * (minX + maxX);
+  const cy = 0.5 * (minY + maxY);
+  const x0 = cx - side * 0.5;
+  const y0 = cy - side * 0.5;
+  const x1 = cx + side * 0.5;
+  const y1 = cy + side * 0.5;
+
+  for (let s = 0; s < steps; s++) {
+    const quad = (p.repelK > 0) ? makeQuad(nodes, x0, y0, x1, y1) : null;
+
+    const fxs = new Float32Array(nodes.length);
+    const fys = new Float32Array(nodes.length);
+
+    // Repulsion
+    if (quad && p.repelK > 0) {
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        const out = { fx: 0, fy: 0 };
+        applyRepulsionFromQuad(quad, n, p, out);
+        fxs[i] += out.fx;
+        fys[i] += out.fy;
+      }
+    }
+
+    // Springs
+    const rest = p.restLen;
+    for (const e of edges) {
+      const a = nodes[e.i], b = nodes[e.j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.max(1e-6, hypot(dx, dy));
+      const ext = d - rest;
+      const f = p.springK * ext;
+      const fx = f * (dx / d);
+      const fy = f * (dy / d);
+      fxs[e.i] += fx;
+      fys[e.i] += fy;
+      fxs[e.j] -= fx;
+      fys[e.j] -= fy;
+    }
+
+    // Gentle centering
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      fxs[i] += -0.0025 * n.x;
+      fys[i] += -0.0025 * n.y;
+    }
+
+    // Circle containment
+  if (p.keepInCircle) {
+      const R = Math.min(W, H) * 0.5 * p.radiusFrac / view.s;
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        const d = hypot(n.x, n.y);
+        if (d > R) {
+          const k = 0.12;
+          const push = k * (d - R);
+          fxs[i] += -push * (n.x / d);
+          fys[i] += -push * (n.y / d);
+        }
+      }
+    }
+
+    // Integrate
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      if (n.fx != null && n.fy != null) {
+        n.x = n.fx;
+        n.y = n.fy;
+        n.vx = 0;
+        n.vy = 0;
+        continue;
+      }
+      n.vx = (n.vx + fxs[i] * dt) * damp;
+      n.vy = (n.vy + fys[i] * dt) * damp;
+      n.x += n.vx * dt * 60;
+      n.y += n.vy * dt * 60;
+    }
+  }
+}
+
+/** ---------- Rendering ---------- **/
+function updateHud() {
+  const p = readParams();
+  const m = edges.length;
+  const N = nodes.length;
+  const pinned = nodes.reduce((acc, n) => acc + ((n.fx != null) ? 1 : 0), 0);
+  ui.hud.textContent =
+    `Nodes: ${N}/${p.N}  |  Edges: ${m}  |  Components: ${nComps}\n` +
+    `Max distance: ${maxGen}  |  Pinned: ${pinned}\n` +
+    `Click node to add neighbors • Drag nodes • Shift+drag pan • Wheel zoom • Layout: ${p.runLayout ? "running" : "paused"}`;
+}
+
+function draw() {
+  const p = readParams();
+  ctx.clearRect(0, 0, W, H);
+
+  // Solid white background (export-friendly)
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+
+  // View transform
+  ctx.save();
+  ctx.translate(W * 0.5, H * 0.5);
+  ctx.scale(view.s, view.s);
+  ctx.translate(-view.x, -view.y);
+
+  // Optional boundary circle
+  if (p.showCircle) {
+    const R = Math.min(W, H) * 0.5 * p.radiusFrac / view.s;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(15,23,42,0.18)";
+    ctx.lineWidth = 1 / view.s;
+    ctx.stroke();
+  }
+
+  // Weight normalization
+  let wMin = Infinity, wMax_ = -Infinity;
+  for (const e of edges) { wMin = Math.min(wMin, e.w); wMax_ = Math.max(wMax_, e.w); }
+  if (!Number.isFinite(wMin)) { wMin = 0; wMax_ = 1; }
+
+  // Draw edges
+  const a0 = p.edgeOpacity;
+  for (const e of edges) {
+    const a = nodes[e.i], b = nodes[e.j];
+    const tW = (wMax_ === wMin) ? 0.5 : (e.w - wMin) / (wMax_ - wMin);
+    const tG = (maxGen <= 0) ? 0 : Math.pow(e.genEdge / maxGen, p.genGamma);
+
+    let col;
+    if (p.edgeColorMode === "weight") col = rampGen(tW);
+    else if (p.edgeColorMode === "generation") col = rampGen(tG);
+    else col = "rgb(37,99,235)";
+
+    // Thickness = raw edge weight (no scaling/shifting).
+    // Because we're in world-space (scaled by `view.s`), divide by `view.s` to keep
+    // the numeric weight roughly in screen pixels.
+    const thicknessPx = e.w;
+
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.lineWidth = thicknessPx / view.s;
+    ctx.strokeStyle = rgbaFromRgb(col, a0);
+    ctx.stroke();
+  }
+
+  // Draw nodes (colored by generation)
+  for (const n of nodes) {
+    const t = (maxGen <= 0) ? 0 : Math.pow(n.gen / maxGen, p.genGamma);
+    const fill = n.unreachable ? "rgb(100,116,139)" : pastelByDistance(n.gen);
+
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, p.nodeSize / view.s, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+
+    ctx.lineWidth = 1.25 / view.s;
+    ctx.strokeStyle = "rgba(15,23,42,0.55)";
+    ctx.stroke();
+
+    if (n.fx != null) {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, (p.nodeSize + 3) / view.s, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(29,78,216,0.55)";
+      ctx.lineWidth = 1.5 / view.s;
+      ctx.stroke();
+    }
+  }
+
+  if (p.showLabels) {
+    ctx.font = `${12 / view.s}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`;
+    ctx.fillStyle = "rgba(15,23,42,0.70)";
+    for (const n of nodes) {
+      ctx.fillText(String(n.id), n.x + (p.nodeSize + 4) / view.s, n.y - (p.nodeSize + 3) / view.s);
+    }
+  }
+
+  ctx.restore();
+
+  // Layout integration
+  if (p.runLayout) stepPhysics(1);
+  updateHud();
+  requestAnimationFrame(draw);
+}
+
+/** ---------- Interaction ---------- **/
+function findNodeAtWorld(wx, wy, radiusWorld) {
+  let best = -1;
+  let bestD2 = radiusWorld * radiusWorld;
+  for (const n of nodes) {
+    const dx = n.x - wx, dy = n.y - wy;
+    const d2 = dx*dx + dy*dy;
+    if (d2 <= bestD2) { bestD2 = d2; best = n.id; }
+  }
+  return best;
+}
+
+canvas.addEventListener("pointerdown", (ev) => {
+  canvas.setPointerCapture(ev.pointerId);
+  pointer.down = true;
+  pointer.shift = !!ev.shiftKey;
+  const rect = canvas.getBoundingClientRect();
+  const sx = ev.clientX - rect.left;
+  const sy = ev.clientY - rect.top;
+  const w = screenToWorld(sx, sy);
+
+  pointerStart.x = sx;
+  pointerStart.y = sy;
+  drag.lastX = sx;
+  drag.lastY = sy;
+
+  if (pointer.shift) {
+    drag.mode = "pan";
+    drag.nodeId = -1;
+    return;
+  }
+
+  const p = readParams();
+  const radiusWorld = (p.nodeSize + 6) / Math.max(0.2, view.s);
+  const id = findNodeAtWorld(w.x, w.y, radiusWorld);
+  if (id >= 0) {
+    // If layout is paused: clicking a node should add neighbors unless user starts a drag.
+    // We implement "click to add" on pointerup with a small movement threshold.
+    drag.mode = "node";
+    drag.nodeId = id;
+    nodes[id].fx = w.x;
+    nodes[id].fy = w.y;
+    nodes[id].x = w.x;
+    nodes[id].y = w.y;
+    canvas.classList.add("dragging");
+  } else {
+    drag.mode = "pan";
+    drag.nodeId = -1;
+  }
+});
+
+canvas.addEventListener("pointermove", (ev) => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = ev.clientX - rect.left;
+  const sy = ev.clientY - rect.top;
+
+  if (!pointer.down) return;
+
+  const dx = sx - drag.lastX;
+  const dy = sy - drag.lastY;
+  drag.lastX = sx;
+  drag.lastY = sy;
+
+  if (drag.mode === "pan") {
+    view.x -= dx / view.s;
+    view.y -= dy / view.s;
+    return;
+  }
+
+  if (drag.mode === "node" && drag.nodeId >= 0) {
+    const w = screenToWorld(sx, sy);
+    const n = nodes[drag.nodeId];
+    n.fx = w.x;
+    n.fy = w.y;
+    n.x = w.x;
+    n.y = w.y;
+  }
+});
+
+function releasePointer() {
+  pointer.down = false;
+  const wasNode = (drag.mode === "node" && drag.nodeId >= 0);
+  const nodeId = drag.nodeId;
+
+  if (drag.mode === "node" && drag.nodeId >= 0) {
+    const p = readParams();
+    if (!p.pinOnRelease) {
+      nodes[drag.nodeId].fx = null;
+      nodes[drag.nodeId].fy = null;
+    }
+    nodes[drag.nodeId].vx = 0;
+    nodes[drag.nodeId].vy = 0;
+  }
+  drag.mode = "none";
+  drag.nodeId = -1;
+  canvas.classList.remove("dragging");
+
+  if (wasNode) {
+    // Treat as "click" if pointer didn't move much.
+    const moved = hypot(drag.lastX - pointerStart.x, drag.lastY - pointerStart.y);
+    if (moved < 4) addNeighborsInteractive(nodeId);
+  }
+}
+
+canvas.addEventListener("pointerup", releasePointer);
+canvas.addEventListener("pointercancel", releasePointer);
+
+canvas.addEventListener("wheel", (ev) => {
+  ev.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const sx = ev.clientX - rect.left;
+  const sy = ev.clientY - rect.top;
+  const before = screenToWorld(sx, sy);
+  const scale = Math.exp(-ev.deltaY * 0.0012);
+  view.s = clamp(view.s * scale, 0.2, 5.0);
+  const after = screenToWorld(sx, sy);
+  view.x += (before.x - after.x);
+  view.y += (before.y - after.y);
+}, { passive: false });
+
+/** ---------- Wiring ---------- **/
+function setupUI() {
+  const stylingLive = [
+    ui.genGamma,
+    ui.nodeSize, ui.edgeOpacity,
+    ui.showLabels, ui.keepInCircle, ui.radiusFrac, ui.showCircle, ui.edgeColorMode,
+    ui.runLayout, ui.layoutSpeed, ui.springK, ui.repelK, ui.restLen, ui.pinOnRelease,
+    ui.nNodes
+  ];
+  for (const el of stylingLive) el.addEventListener("input", updateValueLabels);
+
+  const recomputeLive = [ui.wBase, ui.wDecay];
+  for (const el of recomputeLive) {
+    el.addEventListener("input", () => {
+      updateValueLabels();
+      applyWeightsFromDistance();
+    });
+  }
+
+  const rewireLive = [ui.seed, ui.rewirePct, ui.partialRewirePct];
+  for (const el of rewireLive) {
+    el.addEventListener("input", () => {
+      updateValueLabels();
+      if (el === ui.seed) rngAdd = mulberry32(readParams().seed ^ 0x85ebca6b);
+      rebuildAfterRewireOrSeedChange();
+    });
+  }
+
+  ui.resetGraph.addEventListener("click", () => {
+    updateValueLabels();
+    resetGraph();
+  });
+
+  ui.randomSeed.addEventListener("click", () => {
+    ui.seed.value = String((Math.random() * 1e9) | 0);
+    updateValueLabels();
+    rngAdd = mulberry32(readParams().seed ^ 0x85ebca6b);
+    rebuildAfterRewireOrSeedChange();
+  });
+
+  ui.exportPng.addEventListener("click", () => {
+    const link = document.createElement("a");
+    link.download = "network.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  });
+
+  ui.centerView.addEventListener("click", () => {
+    centerViewOnGraph();
+  });
+
+  ui.stepLayout.addEventListener("click", () => {
+    stepPhysics(10);
+  });
+
+  ui.unpinAll.addEventListener("click", () => {
+    for (const n of nodes) { n.fx = null; n.fy = null; }
+  });
+
+  ui.saveNet.addEventListener("click", () => {
+    const data = serializeNetwork();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.download = "network.json";
+    a.href = url;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  });
+
+  ui.loadNet.addEventListener("click", () => {
+    ui.loadNetFile.value = "";
+    ui.loadNetFile.click();
+  });
+
+  ui.loadNetFile.addEventListener("change", async () => {
+    const file = ui.loadNetFile.files && ui.loadNetFile.files[0];
+    if (!file) return;
+    try {
+      const txt = await file.text();
+      const data = JSON.parse(txt);
+      loadNetwork(data);
+    } catch (err) {
+      alert(`Failed to load network: ${err?.message || err}`);
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    resize();
+  });
+}
+
+/** ---------- Boot ---------- **/
+function fitCanvas() {
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+  resize();
+}
+
+setupUI();
+updateValueLabels();
+fitCanvas();
+resetGraph();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

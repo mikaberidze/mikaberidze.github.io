@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-TCWC726HHB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-TCWC726HHB');
+  </script>
+  <!-- Google tag end (gtag.js) -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Interactive Mandelbrot and Julia set explorer with a draggable parameter point, pan/zoom controls, and live side-by-side rendering." />
+  <meta name="author" content="Guram Mikaberidze" />
+  <link rel="canonical" href="https://mikaberidze.github.io/mandelbrot_julia/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Guram Mikaberidze" />
+  <meta property="og:title" content="Mandelbrot & Julia Explorer" />
+  <meta property="og:description" content="Drag a point on the Mandelbrot set and instantly explore the corresponding Julia set." />
+  <meta property="og:url" content="https://mikaberidze.github.io/mandelbrot_julia/" />
+  <meta property="og:image" content="https://mikaberidze.github.io/mandelbrot_julia/favicon.svg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Mandelbrot & Julia Explorer" />
+  <meta name="twitter:description" content="Side-by-side Mandelbrot and Julia set explorer with draggable parameter selection." />
+  <meta name="twitter:image" content="https://mikaberidze.github.io/mandelbrot_julia/favicon.svg" />
+  <title>Mandelbrot & Julia Explorer</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <style>
+    :root {
+      --bg0: #f3f4ee;
+      --bg1: #eef0e8;
+      --panel: rgba(255, 255, 255, 0.74);
+      --panel-strong: rgba(255, 255, 255, 0.88);
+      --border: rgba(20, 27, 18, 0.08);
+      --text: #11160f;
+      --muted: #5f695d;
+      --accent: #2c6a4e;
+      --accent2: #3f7d60;
+      --warn: #8f5f1f;
+      --shadow: 0 10px 28px rgba(17, 22, 15, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 15% 10%, rgba(58, 108, 79, 0.09), transparent 55%),
+        radial-gradient(1000px 700px at 85% 0%, rgba(168, 190, 130, 0.07), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+      font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    .app {
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) minmax(460px, 1.2fr);
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.45));
+      background-color: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .intro {
+      padding: 13px 14px 12px;
+      display: grid;
+      align-content: space-between;
+      gap: 10px;
+    }
+    .intro h1 {
+      margin: 0;
+      font-size: clamp(17px, 1.8vw, 24px);
+      letter-spacing: 0.01em;
+      font-weight: 600;
+    }
+    .intro p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.42;
+      max-width: 62ch;
+    }
+    .intro code {
+      color: var(--text);
+      background: rgba(17, 22, 15, 0.04);
+      border: 1px solid rgba(17, 22, 15, 0.05);
+      padding: 0 4px;
+      border-radius: 6px;
+    }
+
+    .controls {
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px 12px;
+      align-content: start;
+    }
+
+    .control {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .control.full {
+      grid-column: 1 / -1;
+    }
+
+    .control label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .value {
+      font-size: 11.5px;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    input[type="range"] {
+      grid-column: 1 / -1;
+      width: 100%;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .value input[type="number"] {
+      width: 92px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.65);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font: inherit;
+      font-variant-numeric: tabular-nums;
+    }
+    .value input[type="number"]:focus {
+      outline: none;
+      border-color: rgba(44,106,78,0.28);
+      box-shadow: 0 0 0 3px rgba(44,106,78,0.10);
+    }
+
+    .miniNote {
+      grid-column: 1 / -1;
+      margin-top: -2px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.55);
+      color: var(--text);
+      border-radius: 9px;
+      padding: 7px 10px;
+      cursor: pointer;
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
+    }
+    button:hover {
+      background: rgba(44, 106, 78, 0.08);
+      border-color: rgba(44, 106, 78, 0.22);
+    }
+    button:active { transform: translateY(1px); }
+
+    .main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .pane {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+    }
+
+    .paneHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 11px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.40);
+    }
+
+    .paneTitle {
+      margin: 0;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .paneMeta {
+      color: var(--muted);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .canvasWrap {
+      position: relative;
+      min-height: 0;
+      background:
+        radial-gradient(circle at 30% 15%, rgba(81, 194, 255, 0.04), transparent 45%),
+        radial-gradient(circle at 70% 85%, rgba(118, 255, 207, 0.03), transparent 50%),
+        #000;
+      touch-action: none;
+    }
+
+    .canvasWrap canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .canvasWrap canvas.overlay {
+      z-index: 1;
+      cursor: grab;
+    }
+
+    .canvasWrap canvas.overlay.dragging {
+      cursor: grabbing;
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 10px;
+      padding: 9px 11px 10px;
+      border-top: 1px solid var(--border);
+      background: rgba(255,255,255,0.34);
+      font-size: 11.5px;
+      line-height: 1.25;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hud div {
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hud div.wide {
+      grid-column: 1 / -1;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      word-break: break-word;
+    }
+
+    .label {
+      color: var(--muted);
+      margin-right: 6px;
+    }
+
+    .footerHint {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      padding: 7px 10px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--panel-strong);
+      box-shadow: var(--shadow);
+      color: var(--muted);
+      font-size: 11.5px;
+      pointer-events: none;
+      user-select: none;
+      max-width: min(92vw, 520px);
+    }
+
+    .footerHint b {
+      color: var(--warn);
+      font-weight: 600;
+    }
+
+    @media (max-width: 1024px) {
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+      .controls {
+        grid-template-columns: 1fr;
+      }
+      .main {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(260px, 1fr) minmax(260px, 1fr);
+      }
+      .footerHint {
+        left: 16px;
+        right: 16px;
+        bottom: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <section class="card intro" aria-label="App introduction">
+        <h1>Mandelbrot & Julia Explorer</h1>
+        <p>
+          Explore the parameter-space / phase-space connection in complex dynamics.
+          Drag the highlighted point on the Mandelbrot set (left) to choose
+          <code>c</code> in <code>z<sub>n+1</sub> = z<sub>n</sub><sup>2</sup> + c</code>,
+          then inspect the corresponding Julia set (right). Both panes support pan and zoom.
+        </p>
+      </section>
+
+      <section class="card controls" aria-label="Rendering controls">
+        <div class="control full">
+          <label for="iterSlider">Iterations</label>
+          <div class="value">
+            <span id="iterValue">350</span>
+            <input id="iterInput" type="number" min="50" max="4096" step="1" value="350" />
+          </div>
+          <input id="iterSlider" type="range" min="50" max="4096" step="1" value="350" />
+          <div class="miniNote">Higher iteration counts are GPU-limited by your browser/device.</div>
+        </div>
+
+        <div class="control full">
+          <label for="paletteSlider">Palette Speed</label>
+          <div class="value" id="paletteValue">8.0</div>
+          <input id="paletteSlider" type="range" min="1" max="20" step="0.1" value="8" />
+        </div>
+
+        <div class="control">
+          <label for="smoothToggle">Smooth coloring</label>
+          <div class="value"><input id="smoothToggle" type="checkbox" checked /></div>
+        </div>
+
+        <div class="control">
+          <label for="axesToggle">Crosshair</label>
+          <div class="value"><input id="axesToggle" type="checkbox" checked /></div>
+        </div>
+
+        <div class="control full">
+          <label>View Presets</label>
+          <div class="buttons">
+            <button id="resetAllBtn" type="button">Reset All</button>
+            <button id="resetMandelBtn" type="button">Reset Left</button>
+            <button id="resetJuliaBtn" type="button">Reset Right</button>
+            <button id="juliaFitBtn" type="button">Fit Julia</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <main class="main">
+      <section class="card pane" aria-labelledby="mandelbrotTitle">
+        <div class="paneHeader">
+          <h2 class="paneTitle" id="mandelbrotTitle">Mandelbrot Set</h2>
+          <div class="paneMeta" id="mandelbrotMeta"></div>
+        </div>
+        <div class="canvasWrap" id="mandelbrotWrap">
+          <canvas id="mandelbrotCanvas"></canvas>
+          <canvas id="mandelbrotOverlay" class="overlay"></canvas>
+        </div>
+        <div class="hud">
+          <div><span class="label">Center</span><span id="mandelbrotCenter"></span></div>
+          <div><span class="label">Width</span><span id="mandelbrotScale"></span></div>
+          <div class="wide"><span class="label">Selected c</span><span id="cValue"></span></div>
+          <div><span class="label">Membership</span><span id="cMembership"></span></div>
+        </div>
+      </section>
+
+      <section class="card pane" aria-labelledby="juliaTitle">
+        <div class="paneHeader">
+          <h2 class="paneTitle" id="juliaTitle">Julia Set for c</h2>
+          <div class="paneMeta" id="juliaMeta"></div>
+        </div>
+        <div class="canvasWrap" id="juliaWrap">
+          <canvas id="juliaCanvas"></canvas>
+          <canvas id="juliaOverlay" class="overlay"></canvas>
+        </div>
+        <div class="hud">
+          <div><span class="label">Center</span><span id="juliaCenter"></span></div>
+          <div><span class="label">Width</span><span id="juliaScale"></span></div>
+          <div class="wide"><span class="label">Equation</span><span id="juliaEq"></span></div>
+          <div><span class="label">Status</span><span id="renderStatus"></span></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="footerHint">
+        <b>Controls:</b> wheel = zoom, drag = pan, drag cyan point = update <code>c</code>, double-click = zoom in.
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
