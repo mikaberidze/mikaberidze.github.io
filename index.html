@@ -344,6 +344,10 @@
             height: auto;
         }
 
+        .side_content--wide {
+            width: calc(min(max(39%, 390px), 90vw - var(--panelWidth)*1.5));
+        }
+
         .teaching-comments-window {
             margin-top: 1em;
             background-color: #f8f8f8;
@@ -574,6 +578,32 @@
     <section id="research">
 
         <h2>Ongoing research projects</h2>
+
+        <h3>AI-enabled Network Optimization Framework</h3>
+        <img src="gradnet.png" alt="Gradient based optimization of network structures" class="side_content side_content--wide"> 
+        <ul>
+            <li>
+                GradNet is a python package that allows to study
+                how networks should be structured to perform a task as well as possible. 
+                Instead of analyzing dynamics on fixed networks, we treat the network itself as something 
+                that can be optimized under real-world constraints like cost, geometry, or physical 
+                feasibility. Using tools from modern machine learning, such as automatic differentiation 
+                and gradient-based optimization, we allow network connections to adapt while simulating 
+                the dynamics that run on them. This approach helps automatically design efficient 
+                networks and reveals how structural patterns like sparsity or modularity can 
+                emerge naturally from functional demands. 
+                <br>
+                It is available through PyPI: <code>pip install gradnet</code>
+            </li>
+            <li>
+                <cite>
+                    <b>Mikaberidze, G.</b>, Mikaberidze, B., and Taylor, D.,
+                    <a href="https://github.com/mikaberidze/gradnet" target="_blank">
+                    open-source project</a> is available on GitLab, and documentation and tutorials are published on <a href="https://gradnet.readthedocs.io/" target="_blank">Read the Docs</a>.
+                </cite>
+            </li>
+        </ul>
+
         <!-- (*) NOTE THAT THIS IS IN A WEIRD LOCATION, WHEN ADDING NEW RESEARCH, NEED TO REMEMBER -->
         <video autoplay muted loop class="side_content">
             <source src="research-s-shaped.mp4" type="video/mp4">
@@ -583,7 +613,7 @@
         <!-- (*) REALLY BELONGS HERE -->
         <ul>
             <li>
-                In this project, we use AI-enabled optimization to design networks that maximize synchrony 
+                In this project, we use GradNet to design networks that maximize synchrony 
                 under a constrained coupling budget. The animation shows a network evolving from a dense, 
                 unstructured web into a sparse, highly organized architecture through gradient descent. 
                 Each edge is adjusted to improve global phase coherence, with no design rules imposed—just 
@@ -593,7 +623,7 @@
             </li>
             <li>
                 <cite>
-                    <b>Mikaberidze, G.</b> and Taylor, D., 2025. Emergent topology of optimal networks for synchrony. <em>arXiv preprint arXiv:2509.18279</em>.
+                    <b>Mikaberidze, G.</b> and Taylor, D., 2025. Emergent topology of optimal networks for synchrony. Under review at <em>Nature Communications</em>.
                     <a href="https://gitlab.com/mikaberidze/network-optimization-for-synchrony" target="_blank">
                     Project code</a> is available on GitLab, <a href="https://arxiv.org/abs/2509.18279" target="_blank">preprint</a> on arXiv.
                 </cite>
