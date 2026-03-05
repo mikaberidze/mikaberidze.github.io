@@ -841,7 +841,7 @@
                 <a href="https://commons.wikimedia.org/wiki/File:Kintsugi.jpg" target="_blank">Kintsugi technique</a>, all used on various Wikipedia pages.
             </li>
             <li>
-                I also maintain a couple of interactive network visualizations:
+                I also maintain a couple of interactive teaching tools visualizations:
                 <ul class="sublist">
                     <li>
                         <img src="schrodinger/favicon.png" alt="2d Schrödinger equation playground" class="sublist-icon">
@@ -1286,13 +1286,38 @@
                 });
             });
 
+            const updateMenuHighlight = () => {
+                const sections = document.querySelectorAll('section');
+                const scrollPosition = window.scrollY + window.innerHeight / 4;
+                let closestYet = scrollPosition;
+                let currentSection = null;
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (Math.abs(scrollPosition - sectionTop) < closestYet && scrollPosition > sectionTop && section.id != 'intro') {
+                        currentSection = section;
+                        closestYet = Math.abs(scrollPosition - sectionTop);
+                    }
+                });
+                document.querySelector('.menu-item.bold')?.classList.remove('bold');
+                if (currentSection != null) {
+                    document.querySelector(`.menu-item[href="#${currentSection.id}"]`)?.classList.add('bold');
+                }
+            };
+
             // add click listeners to menu items
             document.querySelectorAll('.menu-item').forEach(item => {
                 item.addEventListener('click', function (e) {
+                    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+                        return;
+                    }
                     e.preventDefault();
                     const targetId = this.getAttribute('href').substring(1);
                     const targetElement = document.getElementById(targetId);
+                    if (!targetElement) {
+                        return;
+                    }
                     targetElement.scrollIntoView({ behavior: 'smooth' });
+                    history.pushState(null, '', `#${targetId}`);
                 });
             });
             // add click listener to the profile pic
@@ -1302,25 +1327,10 @@
             });
 
 
-            const menuItems = document.querySelectorAll('.menu-item');
             window.addEventListener('scroll', () => {
-                const sections = document.querySelectorAll('section');
-                const scrollPosition = window.scrollY + window.innerHeight/4;
-                let closestYet = scrollPosition;
-                current_section = null;
-                sections.forEach(section => {
-                    const sectionTop = section.offsetTop;
-                    const sectionHeight = section.offsetHeight;
-                    if (Math.abs(scrollPosition-sectionTop)<closestYet && scrollPosition>sectionTop && section.id!='intro') {
-                        current_section = section;
-                        closestYet = Math.abs(scrollPosition-sectionTop);
-                    }
-                });
-                document.querySelector('.menu-item.bold')?.classList.remove('bold');
-                if (current_section != null){
-                    document.querySelector(`.menu-item[href="#${current_section.id}"]`).classList.add('bold');
-                }
+                updateMenuHighlight();
             });
+            requestAnimationFrame(updateMenuHighlight);
         });
 
         // ----------------------------------------------------------------------------------------- Profile setup with triangulation when hovered
