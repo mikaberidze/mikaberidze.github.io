@@ -6,7 +6,7 @@
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-TCWC726HHB"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
+        function gtag() { dataLayer.push(arguments); }
         gtag('js', new Date());
 
         gtag('config', 'G-TCWC726HHB');
@@ -14,18 +14,21 @@
     <!-- Google tag end (gtag.js) -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Personal website of Guram Mikaberidze, postdoctoral researcher in complex systems and machine learning, featuring research, publications, teaching, and interactive visualizations.">
+    <meta name="description"
+        content="Personal website of Guram Mikaberidze, postdoctoral researcher in complex systems and machine learning, featuring research, publications, teaching, and interactive visualizations.">
     <meta name="author" content="Guram Mikaberidze">
     <link rel="canonical" href="https://mikaberidze.github.io/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Guram Mikaberidze">
     <meta property="og:title" content="Guram Mikaberidze – Complex Systems & Machine Learning">
-    <meta property="og:description" content="Research, publications, teaching, and interactive visualizations on complex systems and machine learning by Guram Mikaberidze.">
+    <meta property="og:description"
+        content="Research, publications, teaching, and interactive visualizations on complex systems and machine learning by Guram Mikaberidze.">
     <meta property="og:url" content="https://mikaberidze.github.io/">
     <meta property="og:image" content="https://mikaberidze.github.io/guga.jpg">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Guram Mikaberidze – Complex Systems & Machine Learning">
-    <meta name="twitter:description" content="Postdoctoral researcher in complex systems and machine learning at the University of Wyoming.">
+    <meta name="twitter:description"
+        content="Postdoctoral researcher in complex systems and machine learning at the University of Wyoming.">
     <meta name="twitter:image" content="https://mikaberidze.github.io/guga.jpg">
     <title>Guram Mikaberidze – Complex Systems &amp; Machine Learning</title>
     <link rel="icon" type="image/x-icon" href="favicon.png">
@@ -34,6 +37,7 @@
         :root {
             --panelWidth: calc(max(11vw, 80px));
         }
+
         .profile-panel {
             position: fixed;
             top: calc(var(--panelWidth)/4);
@@ -67,16 +71,19 @@
             z-index: -1;
         }
 
-        #triangulationCanvas, #overlayCanvas, #backgroundCanvas {
+        #triangulationCanvas,
+        #overlayCanvas,
+        #backgroundCanvas {
             position: absolute;
             top: 0;
             left: 0;
             width: var(--panelWidth);
             height: var(--panelWidth);
             border-radius: 50%;
-            z-index: 2; /* Ensure the main photo stays above the connecting lines */
+            z-index: 2;
+            /* Ensure the main photo stays above the connecting lines */
         }
-        
+
         #profile-pic {
             position: absolute;
             top: 0;
@@ -116,7 +123,7 @@
             pointer-events: auto;
         }
 
-        .image-links > * {
+        .image-links>* {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -129,7 +136,7 @@
             border-radius: 50%;
         }
 
-        .image-links > a {
+        .image-links>a {
             overflow: hidden;
         }
 
@@ -143,23 +150,27 @@
         }
 
         /* circular layout */
-        .image-links > *:nth-child(1) {
+        .image-links>*:nth-child(1) {
             --angle: 50deg;
         }
-        .image-links > *:nth-child(2) {
+
+        .image-links>*:nth-child(2) {
             --angle: 25deg;
         }
-        .image-links > *:nth-child(3) {
+
+        .image-links>*:nth-child(3) {
             --angle: -25deg;
         }
-        .image-links > *:nth-child(4) {
+
+        .image-links>*:nth-child(4) {
             --angle: -50deg;
         }
+
         /* .image-links > *:nth-child(5) {
             --angle: -50deg;
         } */
 
-        .image-links > a:hover img{
+        .image-links>a:hover img {
             transform: translateX(calc(-1*var(--iconShift)*sin(var(--angle)))) translateY(calc(var(--iconShift)*cos(var(--angle))));
         }
 
@@ -172,9 +183,9 @@
 
         /* Expand the interactive hitbox only while active/hovered so the
            pointer can travel to the expanded GitLab icon without dropping hover */
-        .image-links > .icon-bundle:hover,
-        .image-links > .icon-bundle.bundle-active,
-        .image-links > .icon-bundle:focus-within {
+        .image-links>.icon-bundle:hover,
+        .image-links>.icon-bundle.bundle-active,
+        .image-links>.icon-bundle:focus-within {
             width: calc(var(--gitlabShift) + var(--gitlabShift) + var(--iconSize));
             height: calc(var(--gitlabShift) + var(--gitlabShift) + var(--iconSize));
         }
@@ -236,17 +247,21 @@
         }
 
         .menu-item {
-            margin-bottom: 4vh; /* Increase distance between menu items */
+            margin-bottom: 4vh;
+            /* Increase distance between menu items */
             text-align: center;
             color: #333;
-            transition: font-weight 0.3s; /* Smooth transition for font-weight */
+            transition: font-weight 0.3s;
+            /* Smooth transition for font-weight */
             /* padding-top: 5px; */
-            cursor: pointer; /* Optional: Change cursor to pointer to indicate clickability */
+            cursor: pointer;
+            /* Optional: Change cursor to pointer to indicate clickability */
             z-index: 1;
             text-decoration: none;
         }
 
-        .menu-item:hover, .menu-item.bold {
+        .menu-item:hover,
+        .menu-item.bold {
             font-weight: bold;
         }
 
@@ -254,8 +269,10 @@
         body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
-            margin: 0; /* Removes default margin */
-            padding: 0; /* Removes default padding */
+            margin: 0;
+            /* Removes default margin */
+            padding: 0;
+            /* Removes default padding */
             background-color: #f8f8f8;
             color: #333;
             counter-reset: citation;
@@ -272,7 +289,7 @@
             padding: 2em 0;
             margin-top: calc(var(--panelWidth)*0.75 - 4em);
             pointer-events: none;
-            margin-right: 10%; 
+            margin-right: 10%;
             margin-left: calc(var(--panelWidth)*1.5);
         }
 
@@ -332,6 +349,7 @@
         li {
             padding: 1% 0;
         }
+
         .projectWrapper {
             display: flex;
             width: 100%;
@@ -386,14 +404,16 @@
         }
 
         cite {
-            counter-increment: citation; /* Increment the counter */
+            counter-increment: citation;
+            /* Increment the counter */
             position: relative;
             font-size: 0.9em;
             font-style: normal;
         }
 
         cite::before {
-            content: "[" counter(citation) "] "; /* Display the counter */
+            content: "[" counter(citation) "] ";
+            /* Display the counter */
         }
 
 
@@ -402,7 +422,8 @@
         #footerCanvas {
             display: block;
             background-color: #f8f8f8;
-            width: 100%; /* Ensures canvas takes up full width */
+            width: 100%;
+            /* Ensures canvas takes up full width */
             height: 100px;
             z-index: 3;
         }
@@ -413,7 +434,7 @@
             padding: 2em 0;
             font-size: 0.9em;
             border-top: 1px solid #ccc;
-            padding-right: 10%; 
+            padding-right: 10%;
             margin-left: calc(var(--panelWidth)*1.5);
         }
 
@@ -422,16 +443,20 @@
             max-height: 100px;
             height: auto;
         }
+
         .gallery a {
             text-decoration: none;
         }
+
         @media (max-width: 600px) {
             :root {
                 --panelWidth: min(80vw, 200px);
             }
+
             .profile-panel {
                 display: none;
             }
+
             .mobile-profile {
                 display: block;
                 position: relative;
@@ -439,15 +464,31 @@
                 height: var(--panelWidth);
                 margin: 1em auto;
             }
+
             /* Mobile-specific angle distribution for icon links */
-            .mobile-profile .image-links > *:nth-child(1) { --angle: 45deg; }
-            .mobile-profile .image-links > *:nth-child(2) { --angle: 15deg; }
-            .mobile-profile .image-links > *:nth-child(3) { --angle: -15deg; }
-            .mobile-profile .image-links > *:nth-child(4) { --angle: -45deg; }
-            header, section, footer {
+            .mobile-profile .image-links>*:nth-child(1) {
+                --angle: 45deg;
+            }
+
+            .mobile-profile .image-links>*:nth-child(2) {
+                --angle: 15deg;
+            }
+
+            .mobile-profile .image-links>*:nth-child(3) {
+                --angle: -15deg;
+            }
+
+            .mobile-profile .image-links>*:nth-child(4) {
+                --angle: -45deg;
+            }
+
+            header,
+            section,
+            footer {
                 margin-left: 5%;
                 margin-right: 5%;
             }
+
             .side_content {
                 width: 100%;
             }
@@ -457,7 +498,8 @@
             }
         }
     </style>
-    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css">
+    <link rel="stylesheet" type="text/css"
+        href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -485,8 +527,8 @@
 
 <body>
     <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T8CG4CDB"
-        height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T8CG4CDB" height="0" width="0"
+            style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
     <div class="mobile-profile">
         <canvas id="mobileEdgeCanvas"></canvas>
@@ -560,15 +602,19 @@
     <section id="intro">
         <ul>
             <li>
-                I am a postdoctoral researcher at the School of Computing, University of Wyoming, where I explore the interplay 
-                between Complex Systems and Machine Learning. An example of a complex system is a network of artificial neurons, 
-                whose learning capabilities manifest as an emergent property — a key characteristic of Complex Systems. 
-                I earned my PhD in Applied Mathematics from UC Davis, where my research focused on emergent dynamical 
+                I am a postdoctoral researcher at the School of Computing, University of Wyoming, where I explore the
+                interplay
+                between Complex Systems and Machine Learning. An example of a complex system is a network of artificial
+                neurons,
+                whose learning capabilities manifest as an emergent property — a key characteristic of Complex Systems.
+                I earned my PhD in Applied Mathematics from UC Davis, where my research focused on emergent dynamical
                 phenomena within complex networks.
             </li>
             <li>
-		        My research usually combines numerical methods with analytical work. I use the mathematical tools from my Applied Math 
-                PhD program, the ability to neglect terms without reservation from my MS in Physics, and computational skills from my 
+                My research usually combines numerical methods with analytical work. I use the mathematical tools from
+                my Applied Math
+                PhD program, the ability to neglect terms without reservation from my MS in Physics, and computational
+                skills from my
                 BS in Computer Science.
             </li>
         </ul>
@@ -580,18 +626,19 @@
         <h2>Ongoing research projects</h2>
 
         <h3>AI-enabled Network Optimization Framework</h3>
-        <img src="gradnet.png" alt="Gradient based optimization of network structures" class="side_content side_content--wide"> 
+        <img src="gradnet.png" alt="Gradient based optimization of network structures"
+            class="side_content side_content--wide">
         <ul>
             <li>
                 GradNet is a python package that allows to study
-                how networks should be structured to perform a task as well as possible. 
-                Instead of analyzing dynamics on fixed networks, we treat the network itself as something 
-                that can be optimized under real-world constraints like cost, geometry, or physical 
-                feasibility. Using tools from modern machine learning, such as automatic differentiation 
-                and gradient-based optimization, we allow network connections to adapt while simulating 
-                the dynamics that run on them. This approach helps automatically design efficient 
-                networks and reveals how structural patterns like sparsity or modularity can 
-                emerge naturally from functional demands. 
+                how networks should be structured to perform a task as well as possible.
+                Instead of analyzing dynamics on fixed networks, we treat the network itself as something
+                that can be optimized under real-world constraints like cost, geometry, or physical
+                feasibility. Using tools from modern machine learning, such as automatic differentiation
+                and gradient-based optimization, we allow network connections to adapt while simulating
+                the dynamics that run on them. This approach helps automatically design efficient
+                networks and reveals how structural patterns like sparsity or modularity can
+                emerge naturally from functional demands.
                 <br>
                 It is available through PyPI: <code>pip install gradnet</code>
             </li>
@@ -599,7 +646,8 @@
                 <cite>
                     <b>Mikaberidze, G.</b>, Mikaberidze, B., and Taylor, D.,
                     <a href="https://github.com/mikaberidze/gradnet" target="_blank">
-                    open-source project</a> is available on GitLab, and documentation and tutorials are published on <a href="https://gradnet.readthedocs.io/" target="_blank">Read the Docs</a>.
+                        open-source project</a> is available on GitHub, and documentation and tutorials are published on
+                    <a href="https://gradnet.readthedocs.io/" target="_blank">Read the Docs</a>.
                 </cite>
             </li>
         </ul>
@@ -613,19 +661,22 @@
         <!-- (*) REALLY BELONGS HERE -->
         <ul>
             <li>
-                In this project, we use GradNet to design networks that maximize synchrony 
-                under a constrained coupling budget. The animation shows a network evolving from a dense, 
-                unstructured web into a sparse, highly organized architecture through gradient descent. 
-                Each edge is adjusted to improve global phase coherence, with no design rules imposed—just 
-                dynamics and an objective. Remarkably, the final network is not densely connected or 
+                In this project, we use GradNet to design networks that maximize synchrony
+                under a constrained coupling budget. The animation shows a network evolving from a dense,
+                unstructured web into a sparse, highly organized architecture through gradient descent.
+                Each edge is adjusted to improve global phase coherence, with no design rules imposed—just
+                dynamics and an objective. Remarkably, the final network is not densely connected or
                 short-path but instead long, bipartite, with extremely high monophily, i.e., second-order homophily.
-                This structure emerges purely from optimization and admits surprizingly precise and general analytical treatment.
+                This structure emerges purely from optimization and admits surprizingly precise and general analytical
+                treatment.
             </li>
             <li>
                 <cite>
-                    <b>Mikaberidze, G.</b> and Taylor, D., 2025. Emergent topology of optimal networks for synchrony. Under review at <em>Nature Communications</em>.
+                    <b>Mikaberidze, G.</b> and Taylor, D., 2025. Emergent topology of optimal networks for synchrony.
+                    Under review at <em>Nature Communications</em>.
                     <a href="https://gitlab.com/mikaberidze/network-optimization-for-synchrony" target="_blank">
-                    Project code</a> is available on GitLab, <a href="https://arxiv.org/abs/2509.18279" target="_blank">preprint</a> on arXiv.
+                        Project code</a> is available on GitLab, <a href="https://arxiv.org/abs/2509.18279"
+                        target="_blank">preprint</a> on arXiv.
                 </cite>
             </li>
         </ul>
@@ -643,33 +694,39 @@
         </video>
         <ul>
             <li>
-                In this project, we studied the dynamics of flows on networks under various symmetries and 
-                constraints. We developed a hierarchy of field theoretic tools on networks, capturing emergent 
-                behaviors of packets flowing through networks with routing strategies spanning from random walk 
-                to shortest path. Notably, the novel <i>mesoscopic field theoretic approach</i> admits a closed 
-                form solution by aggregating irrelevant aspects of network structure, and provides analytical 
+                In this project, we studied the dynamics of flows on networks under various symmetries and
+                constraints. We developed a hierarchy of field theoretic tools on networks, capturing emergent
+                behaviors of packets flowing through networks with routing strategies spanning from random walk
+                to shortest path. Notably, the novel <i>mesoscopic field theoretic approach</i> admits a closed
+                form solution by aggregating irrelevant aspects of network structure, and provides analytical
                 insights into this complex nonlinear dynamics.
                 <br>
             </li>
             <li>
                 <cite>
-                    <b>Mikaberidze, G.</b>, Artime, O., Díaz-Guilera, A., &amp; D'Souza, R. M. (2025). Multiscale field theory for network flows. <em>Physical Review X, 15</em>(2), 021044. <a href="https://doi.org/10.1103/PhysRevX.15.021044">https://doi.org/10.1103/PhysRevX.15.021044</a>
+                    <b>Mikaberidze, G.</b>, Artime, O., Díaz-Guilera, A., &amp; D'Souza, R. M. (2025). Multiscale field
+                    theory for network flows. <em>Physical Review X, 15</em>(2), 021044. <a
+                        href="https://doi.org/10.1103/PhysRevX.15.021044">https://doi.org/10.1103/PhysRevX.15.021044</a>
                 </cite>
             </li>
         </ul>
 
         <h3>Georgian Natural Language Processing</h3>
-        <img src="research-LLMKA.png" alt="Georgian Language Models" class="side_content"> 
+        <img src="research-LLMKA.png" alt="Georgian Language Models" class="side_content">
         <ul>
             <li>
-                This project aims to preserve the Kartvelian language family—starting with Georgian—by 
-                developing NLP tools for this low-resource, morphologically rich language. 
-                Our latest work delivers the first in-depth evaluation of tokenization methods for Georgian, 
-                comparing standard approaches and analyzing their performance across key NLP tasks to uncover practical trends and guidance on what to use when.
+                This project aims to preserve the Kartvelian language family—starting with Georgian—by
+                developing NLP tools for this low-resource, morphologically rich language.
+                Our latest work delivers the first in-depth evaluation of tokenization methods for Georgian,
+                comparing standard approaches and analyzing their performance across key NLP tasks to uncover practical
+                trends and guidance on what to use when.
             </li>
             <li>
                 <cite>
-                    Mikaberidze, B., Saghinadze, T., <b>Mikaberidze, G.</b>, Kalandadze, R., Pkhakadze, K., van Genabith, J., Ostermann, S., van der Plas, L. and Müller, P., 2024, October. A Comparison of Different Tokenization Methods for the Georgian Language. In <i>Proceedings of the 7th International Conference on Natural Language and Speech Processing (ICNLSP 2024)</i> (pp. 199-208).
+                    Mikaberidze, B., Saghinadze, T., <b>Mikaberidze, G.</b>, Kalandadze, R., Pkhakadze, K., van
+                    Genabith, J., Ostermann, S., van der Plas, L. and Müller, P., 2024, October. A Comparison of
+                    Different Tokenization Methods for the Georgian Language. In <i>Proceedings of the 7th International
+                        Conference on Natural Language and Speech Processing (ICNLSP 2024)</i> (pp. 199-208).
                 </cite>
         </ul>
 
@@ -680,40 +737,59 @@
         </video>
         <ul>
             <li>
-                In this project we explored diverse mobile agents moving through and interacting in a complex network of different environments, 
-                similar to how people interact in various physical and virtual spaces. The internal workings of these agents and their interactions 
-                are flexible to cater to various applications. The study results in effective equations for understanding agent behavior, 
-                useful for examining emergence of consensus, creating strategies to disrupt cohesion, and optimizing network structures. Applications of 
-                these findings include studying synchronized brain activity in group settings (as observed in recent MRI experiments) or understanding how consensus forms in opinion dynamics. The animation illustraties Kuramoto agents moving through a network of locations that facilitate various coupling strengths.
+                In this project we explored diverse mobile agents moving through and interacting in a complex network of
+                different environments,
+                similar to how people interact in various physical and virtual spaces. The internal workings of these
+                agents and their interactions
+                are flexible to cater to various applications. The study results in effective equations for
+                understanding agent behavior,
+                useful for examining emergence of consensus, creating strategies to disrupt cohesion, and optimizing
+                network structures. Applications of
+                these findings include studying synchronized brain activity in group settings (as observed in recent MRI
+                experiments) or understanding how consensus forms in opinion dynamics. The animation illustraties
+                Kuramoto agents moving through a network of locations that facilitate various coupling strengths.
             </li>
             <li>
                 <cite>
-                    <b>Mikaberidze, G.</b>, Chowdhury, S.N.,   Hastings, A. and D'Souza, R.M., 2023. Consensus Formation Among Mobile Agents in Networks of Heterogeneous Interaction Venues. <i>Chaos, Solitons & Fractals</i>, 178, 114298.
+                    <b>Mikaberidze, G.</b>, Chowdhury, S.N., Hastings, A. and D'Souza, R.M., 2023. Consensus Formation
+                    Among Mobile Agents in Networks of Heterogeneous Interaction Venues. <i>Chaos, Solitons &
+                        Fractals</i>, 178, 114298.
                 </cite>
                 <br>
-                <a href="https://gitlab.com/mikaberidze/consensus-formation-among-mobile-agents-in-networks-of-heterogeneous-interaction-venues" target="_blank">
-                Project code</a> is available on GitLab, <a href="https://arxiv.org/abs/2310.09096" target="_blank">preprint</a> on arXiv.
+                <a href="https://gitlab.com/mikaberidze/consensus-formation-among-mobile-agents-in-networks-of-heterogeneous-interaction-venues"
+                    target="_blank">
+                    Project code</a> is available on GitLab, <a href="https://arxiv.org/abs/2310.09096"
+                    target="_blank">preprint</a> on arXiv.
             </li>
         </ul>
 
         <h3>Dragon Kings in Self-Organized Criticality Systems</h3>
-        <img src="research-DKSOC.png" alt="dragon kings in SOC systems" class="side_content" alt="dragon king classification">
+        <img src="research-DKSOC.png" alt="dragon kings in SOC systems" class="side_content"
+            alt="dragon king classification">
         <ul>
             <li>
-                This recent study focuses on self-organized criticality (SOC) - a phenomenon where systems naturally converge to rare, scale invariant states.
-                While many real-world scenarios display SOC, characterized by frequent and large fluctuations, many of them display even larger numbers of 
-                devastating events than scale invariance would predict. These eveents are known as dragon kings (DK). We explored how DK events emerge in
-                SOC models and discovered that the interplay between driving impulse and energy dissipation plays a crucial role. 
-                By tweaking this balance, we found ways to minimize these disruptions back to the scale-invariant expectations and we analytically found the
-                boundary between the two operating regimes. The figure shows the classification of DK events resulting from our study.
+                This recent study focuses on self-organized criticality (SOC) - a phenomenon where systems naturally
+                converge to rare, scale invariant states.
+                While many real-world scenarios display SOC, characterized by frequent and large fluctuations, many of
+                them display even larger numbers of
+                devastating events than scale invariance would predict. These eveents are known as dragon kings (DK). We
+                explored how DK events emerge in
+                SOC models and discovered that the interplay between driving impulse and energy dissipation plays a
+                crucial role.
+                By tweaking this balance, we found ways to minimize these disruptions back to the scale-invariant
+                expectations and we analytically found the
+                boundary between the two operating regimes. The figure shows the classification of DK events resulting
+                from our study.
             </li>
             <li>
                 <cite>
-                    <b>Mikaberidze, G.</b>, Plaud, A and D'Souza, R.M., 2023. Dragon kings in self-organized criticality systems. <i>Physical Review Research</i>, 5, L042013 <b>(Editors' suggestion)</b>.
+                    <b>Mikaberidze, G.</b>, Plaud, A and D'Souza, R.M., 2023. Dragon kings in self-organized criticality
+                    systems. <i>Physical Review Research</i>, 5, L042013 <b>(Editors' suggestion)</b>.
                 </cite>
                 <br>
                 <a href="https://gitlab.com/mikaberidze/dragon-kings-in-soc-systems-public" \>
-                Project code</a> is available on GitLab, <a target="_blank" href="https://arxiv.org/abs/2308.02658">preprint</a> is on arXiv.
+                    Project code</a> is available on GitLab, <a target="_blank"
+                    href="https://arxiv.org/abs/2308.02658">preprint</a> is on arXiv.
             </li>
         </ul>
 
@@ -724,36 +800,56 @@
         </video>
         <ul>
             <li>
-                In this work, we studied the emergent properties that arise when two seminal models in dynamical systems, the 
-                Bak-Tang-Weisenfeld (BTW) model of sandpile cascades and the Kuramoto model of synchronization in oscillator networks, 
-                are coupled together. The BTW model captures cascades of load shedding and has been used to model brain networks and 
-                electric power grids, but it does not capture the key fact that the nodes in both of these networks are oscillators.
-                We study the interplay between cascading loads and the synchronization of oscillators and show that it 
-                leads to emergent new behaviors and long time-scale organization. It is common to liken the large events 
-                in the BTW model to “black swans” which are massive events generated by 
-                the same underlying mechanism as the smaller events. In contrast, the chain of cascades in our model can be 
-                likened to a “dragon king” which is a massive event that occurs significantly more often than what extrapolation
-                from smaller events would suggest. The presented animation illustrates the coupled BTW-Kuramoto model in action.
+                In this work, we studied the emergent properties that arise when two seminal models in dynamical
+                systems, the
+                Bak-Tang-Weisenfeld (BTW) model of sandpile cascades and the Kuramoto model of synchronization in
+                oscillator networks,
+                are coupled together. The BTW model captures cascades of load shedding and has been used to model brain
+                networks and
+                electric power grids, but it does not capture the key fact that the nodes in both of these networks are
+                oscillators.
+                We study the interplay between cascading loads and the synchronization of oscillators and show that it
+                leads to emergent new behaviors and long time-scale organization. It is common to liken the large events
+                in the BTW model to “black swans” which are massive events generated by
+                the same underlying mechanism as the smaller events. In contrast, the chain of cascades in our model can
+                be
+                likened to a “dragon king” which is a massive event that occurs significantly more often than what
+                extrapolation
+                from smaller events would suggest. The presented animation illustrates the coupled BTW-Kuramoto model in
+                action.
             </li>
             <li>
                 <cite>
-                    <b>Mikaberidze, G.</b> and D'Souza, R.M., 2022. Sandpile cascades on oscillator networks: The BTW model meets Kuramoto. <i>Chaos: An Interdisciplinary Journal of Nonlinear Science</i>, 32(5), p.053121 <b>(Editor's pick)</b>.
+                    <b>Mikaberidze, G.</b> and D'Souza, R.M., 2022. Sandpile cascades on oscillator networks: The BTW
+                    model meets Kuramoto. <i>Chaos: An Interdisciplinary Journal of Nonlinear Science</i>, 32(5),
+                    p.053121 <b>(Editor's pick)</b>.
                 </cite>
                 <br>
-                <a href="https://gitlab.com/mikaberidze/sandpile-cascades-on-oscillator-networks-public" target="_blank">
-                Project code</a> is available on GitLab, <a target="_blank" href="https://arxiv.org/abs/2112.00104">preprint</a> is on arXiv.
+                <a href="https://gitlab.com/mikaberidze/sandpile-cascades-on-oscillator-networks-public"
+                    target="_blank">
+                    Project code</a> is available on GitLab, <a target="_blank"
+                    href="https://arxiv.org/abs/2112.00104">preprint</a> is on arXiv.
             </li>
         </ul>
 
         <h3>Convergent Momentum-Space OPE and Bootstrap Equations in Conformal Field Theory</h3>
-        <img src="research-OPE.png" alt="Operator Product Expansion" class="side_content" alt="operator product expansion">
+        <img src="research-OPE.png" alt="Operator Product Expansion" class="side_content"
+            alt="operator product expansion">
         <ul>
             <li>
-                Conformal Field Theory (CFT) is a type of Quantum Field Theory that is invariant under conformal transformations, that is, generalized scale invariance. CFT is a powerful tool with applications in string theory, quantum gravity, and critical phenomena in statistical physics. The notion of universality classes in statistical physics is closely related to the strict constraints on self-consistent CFTs, and Conformal Bootstrap utilizes this self-consistency to tighten the limits around possible CFTs. In this project, we formulated the conformal bootstrap equations in momentum space and demonstrated that they are convergent.
+                Conformal Field Theory (CFT) is a type of Quantum Field Theory that is invariant under conformal
+                transformations, that is, generalized scale invariance. CFT is a powerful tool with applications in
+                string theory, quantum gravity, and critical phenomena in statistical physics. The notion of
+                universality classes in statistical physics is closely related to the strict constraints on
+                self-consistent CFTs, and Conformal Bootstrap utilizes this self-consistency to tighten the limits
+                around possible CFTs. In this project, we formulated the conformal bootstrap equations in momentum space
+                and demonstrated that they are convergent.
             </li>
             <li>
                 <cite>
-                    Gillioz, M., Lu, X., Luty, M.A. and <b>Mikaberidze, G.</b>, 2020. Convergent momentum-space OPE and bootstrap equations in conformal field theory. <i>Journal of High Energy Physics</i>, 2020(3), pp.1-22.
+                    Gillioz, M., Lu, X., Luty, M.A. and <b>Mikaberidze, G.</b>, 2020. Convergent momentum-space OPE and
+                    bootstrap equations in conformal field theory. <i>Journal of High Energy Physics</i>, 2020(3),
+                    pp.1-22.
                 </cite>
                 <br>
                 <a target="_blank" href="https://arxiv.org/abs/1912.05550">Preprint</a> is available on arXiv.
@@ -764,11 +860,17 @@
         <img src="research-soliton.png" alt="Plasma Solitons" class="side_content" alt="soliton profile">
         <ul>
             <li>
-                Plasma, the fourth fundamental state of matter characterized by a large fraction of charged particles, can become degenerate under high pressures where quantum effects, such as Pauli exclusion, become important. Highly relativistic plasmas are observed in the cores of white dwarfs, in magnetosphere of pulsars, in the MeV epoch of the early Universe, and probably in Active Galactic Nuclei. We found standing electro-magnetic solitons by numerically analyzing relativistic hydrodynamics and Maxwell equations. 
+                Plasma, the fourth fundamental state of matter characterized by a large fraction of charged particles,
+                can become degenerate under high pressures where quantum effects, such as Pauli exclusion, become
+                important. Highly relativistic plasmas are observed in the cores of white dwarfs, in magnetosphere of
+                pulsars, in the MeV epoch of the early Universe, and probably in Active Galactic Nuclei. We found
+                standing electro-magnetic solitons by numerically analyzing relativistic hydrodynamics and Maxwell
+                equations.
             </li>
             <li>
                 <cite>
-                    <b>Mikaberidze, G.</b> and Berezhiani, V.I., 2015. Standing electromagnetic solitons in degenerate relativistic plasmas. <i>Physics Letters A</i>, 379(42), pp.2730-2734..
+                    <b>Mikaberidze, G.</b> and Berezhiani, V.I., 2015. Standing electromagnetic solitons in degenerate
+                    relativistic plasmas. <i>Physics Letters A</i>, 379(42), pp.2730-2734..
                 </cite>
                 <br>
                 <a target="_blank" href="https://arxiv.org/abs/1504.04305">Preprint</a> is available on arXiv.
@@ -784,10 +886,12 @@
                 I have enjoyed teaching various classes in Physics and Mathematics. My favorite appointments include:
             </li>
             <li>
-                Lead TA for graduate level <b>Network Science</b> class at UC Davis, where I helped with the student projects and gave a guest lecture.
+                Lead TA for graduate level <b>Network Science</b> class at UC Davis, where I helped with the student
+                projects and gave a guest lecture.
             </li>
             <li>
-                TA for undergraduate <b>Information Theory</b> class at UC Davis, where I helped students with the material during office hours, and gave a guest lecture on 
+                TA for undergraduate <b>Information Theory</b> class at UC Davis, where I helped students with the
+                material during office hours, and gave a guest lecture on
                 Information Theory in Physics.
             </li>
             <li>
@@ -797,21 +901,22 @@
                 Lead TA for undergraduate <b>Honors Physics</b> series.
             </li>
             <li>
-                Designer and Instructor of an undergraduate class in <b>Computational Physics with Wolfram Mathematica</b> at Free University of Tbilisi, Georgia.
+                Designer and Instructor of an undergraduate class in <b>Computational Physics with Wolfram
+                    Mathematica</b> at Free University of Tbilisi, Georgia.
             </li>
             <li>
-                Coach of Georgian national teams for <b>International Young Physicists' and Naturalists' Tournaments (IYPT and IYNT)</b>.
+                Coach of Georgian national teams for <b>International Young Physicists' and Naturalists' Tournaments
+                    (IYPT and IYNT)</b>.
                 <br>
-                If you don't know about these tournaments, here is a <a href="https://www.youtube.com/watch?v=OitGIGcqwLM" target="_blank">brief overview</a> from Sweden. My teams have obtained a <b>bronze</b> medal in IYPT, and a <b>silver</b> and <b>two golds</b> in IYNT.
+                If you don't know about these tournaments, here is a <a
+                    href="https://www.youtube.com/watch?v=OitGIGcqwLM" target="_blank">brief overview</a> from Sweden.
+                My teams have obtained a <b>bronze</b> medal in IYPT, and a <b>silver</b> and <b>two golds</b> in IYNT.
             </li>
         </ul>
         <div class="teaching-comments-title">
             <div>Sentiment Analysis of Student Feedback for UC Davis Courses using DeBERTa-v3</div>
             <div class="teaching-comments-note">(hover the datapoints for more info)</div>
-            <iframe
-                class="teaching-comments-frame"
-                src="UCD_Student_Comments.html"
-                title="UC Davis Student Comments"
+            <iframe class="teaching-comments-frame" src="UCD_Student_Comments.html" title="UC Davis Student Comments"
                 loading="lazy">
             </iframe>
         </div>
@@ -821,39 +926,53 @@
         <h2>Engagement with society</h2>
         <ul>
             <li>
-                Co-organized <a href="http://ddays2024.ucdavis.edu" target="_blank"><b>Dynamics Days US 2024</b></a> international conference, Davis, California.
+                Co-organized <a href="http://ddays2024.ucdavis.edu" target="_blank"><b>Dynamics Days US 2024</b></a>
+                international conference, Davis, California.
             </li>
 
             <li>
-                Participated in <b><a href="https://www.santafe.edu/engage/learn/programs/sfi-complex-systems-summer-school" target="_blank">Complex Systems Summer School</a> 
-                at Santa Fe Institute</b> in 2023. We spent one month isolated together with around fifty other participants 
-                ranging from undergrads to professors to industry and with the only intersection point being Complexity Science.
+                Participated in <b><a
+                        href="https://www.santafe.edu/engage/learn/programs/sfi-complex-systems-summer-school"
+                        target="_blank">Complex Systems Summer School</a>
+                    at Santa Fe Institute</b> in 2023. We spent one month isolated together with around fifty other
+                participants
+                ranging from undergrads to professors to industry and with the only intersection point being Complexity
+                Science.
                 We learned from experts and each other, and worked on innovative, interdisciplinary projects.
-                
+
             </li>
-            
+
             <li>
                 My contributions to <b>Wikipedia</b> include visualization of
-                <a href="https://en.wikipedia.org/wiki/File:Double_slit_experiment.webm" target="_blank">double slit experiment</a>, 
-                <a href="https://en.wikipedia.org/wiki/File:Refraction_of_a_quantum_particle.webm" target="_blank">refraction</a>, and
-                <a href="https://en.wikipedia.org/wiki/File:Reflection_of_a_quantum_particle.webm" target="_blank">reflection</a> for quantum wave packets,
-                <a href="https://commons.wikimedia.org/wiki/File:Imageedit_6_2578820362.gif" target="_blank">gravitational lensing</a>, and
-                <a href="https://commons.wikimedia.org/wiki/File:Kintsugi.jpg" target="_blank">Kintsugi technique</a>, all used on various Wikipedia pages.
+                <a href="https://en.wikipedia.org/wiki/File:Double_slit_experiment.webm" target="_blank">double slit
+                    experiment</a>,
+                <a href="https://en.wikipedia.org/wiki/File:Refraction_of_a_quantum_particle.webm"
+                    target="_blank">refraction</a>, and
+                <a href="https://en.wikipedia.org/wiki/File:Reflection_of_a_quantum_particle.webm"
+                    target="_blank">reflection</a> for quantum wave packets,
+                <a href="https://commons.wikimedia.org/wiki/File:Imageedit_6_2578820362.gif"
+                    target="_blank">gravitational lensing</a>, and
+                <a href="https://commons.wikimedia.org/wiki/File:Kintsugi.jpg" target="_blank">Kintsugi technique</a>,
+                all used on various Wikipedia pages.
             </li>
             <li>
                 I also maintain a couple of interactive teaching tools visualizations:
                 <ul class="sublist">
                     <li>
-                        <img src="schrodinger/favicon.png" alt="2d Schrödinger equation playground" class="sublist-icon">
-                        <a href="schrodinger" target="_blank"><b>2d Schrödinger equation playground</b></a> – explore quantum wave packet dynamics in customizable potentials.
+                        <img src="schrodinger/favicon.png" alt="2d Schrödinger equation playground"
+                            class="sublist-icon">
+                        <a href="schrodinger" target="_blank"><b>2d Schrödinger equation playground</b></a> – explore
+                        quantum wave packet dynamics in customizable potentials.
                     </li>
                     <li>
                         <img src="kuramoto/favicon.png" alt="Kuramoto model playground" class="sublist-icon">
-                        <a href="kuramoto" target="_blank"><b>Kuramoto model playground</b></a> – explore synchronization on complex networks in real time.
+                        <a href="kuramoto" target="_blank"><b>Kuramoto model playground</b></a> – explore
+                        synchronization on complex networks in real time.
                     </li>
                     <li>
                         <img src="booknet/favicon.png" alt="Character networks for books" class="sublist-icon">
-                        <a href="booknet" target="_blank"><b>Character networks for books</b></a> – visualize and explore co-appearance networks of characters in novels.
+                        <a href="booknet" target="_blank"><b>Character networks for books</b></a> – visualize and
+                        explore co-appearance networks of characters in novels.
                     </li>
                     <!-- <li>
                         <img src="mandelbrot_julia/favicon.svg" alt="Mandelbrot and Julia set explorer" class="sublist-icon">
@@ -863,7 +982,8 @@
             </li>
 
             <li>
-                Jury Chair for <a href="https://www.iynt.org/about/" target="_blank"><b>International Young Naturalists' Tournaments</b></a> 2013–15. 
+                Jury Chair for <a href="https://www.iynt.org/about/" target="_blank"><b>International Young Naturalists'
+                        Tournaments</b></a> 2013–15.
                 (Ranked the performance of national teams from countries other than my own.)
             </li>
 
@@ -887,7 +1007,8 @@
         <h2>Hobbies and personal projects</h2>
         <ul>
             <li>
-                Fiction (you can find my favorite books <a href="https://www.goodreads.com/user/show/32904798-guga-mikaberidze" target="_blank">here</a>).
+                Fiction (you can find my favorite books <a
+                    href="https://www.goodreads.com/user/show/32904798-guga-mikaberidze" target="_blank">here</a>).
             </li>
             <li>
                 Skiing, winter is by far my favorite season.
@@ -896,48 +1017,52 @@
                 Crafts:
                 <br><br>
                 <div class="gallery">
-                    
 
-                    <a href="crafts/2024 აღმაშენებლის მონეტა.png" data-fancybox="gallery" data-caption='Replica of an <a href="https://www.britishmuseum.org/collection/object/C_1857-1226-7">old Georgian coin</a> (1089-1125)'>
-                        <img src="crafts/2024 აღმაშენებლის მონეტა.png" alt="Replica of an old Georgian coin (1089-1125)">
+
+                    <a href="crafts/2024 აღმაშენებლის მონეტა.png" data-fancybox="gallery"
+                        data-caption='Replica of an <a href="https://www.britishmuseum.org/collection/object/C_1857-1226-7">old Georgian coin</a> (1089-1125)'>
+                        <img src="crafts/2024 აღმაშენებლის მონეტა.png"
+                            alt="Replica of an old Georgian coin (1089-1125)">
                     </a>
 
                     <a href="crafts/2022 scarab-top.jpg" data-fancybox="gallery" data-caption="Obsidian scarab">
                         <img src="crafts/2022 scarab-top.jpg" alt="Obsidian scarab">
                     </a>
-        
+
                     <a href="crafts/2015 ელფის.jpg" data-fancybox="gallery" data-caption="Aragorns necklace Evenstar">
                         <img src="crafts/2015 ელფის.jpg" alt="Aragorns necklace Evenstar">
                     </a>
-                    
+
                     <a href="crafts/2011 ისრის წვერი.jpg" data-fancybox="gallery" data-caption="Arrowhead pendent">
                         <img src="crafts/2011 ისრის წვერი.jpg" alt="Arrowhead pendent">
                     </a>
-        
+
                     <a href="crafts/2013 ანხი.jpg" data-fancybox="gallery" data-caption="Ankh">
                         <img src="crafts/2013 ანხი.jpg" alt="Ankh">
                     </a>
-        
+
                     <a href="crafts/2013 საქსაფონი.jpg" data-fancybox="gallery" data-caption="Saxophone">
                         <img src="crafts/2013 საქსაფონი.jpg" alt="Saxophone">
                     </a>
-        
-                    <a href="crafts/2013 ჰალსტუხის თხილამურა დამჭერი.jpg" data-fancybox="gallery" data-caption="Ski shaped tie clip">
+
+                    <a href="crafts/2013 ჰალსტუხის თხილამურა დამჭერი.jpg" data-fancybox="gallery"
+                        data-caption="Ski shaped tie clip">
                         <img src="crafts/2013 ჰალსტუხის თხილამურა დამჭერი.jpg" alt="Ski shaped tie clip">
                     </a>
-        
+
                     <a href="crafts/2014 ყბარფა.jpg" data-fancybox="gallery" data-caption="Jaw harp">
                         <img src="crafts/2014 ყბარფა.jpg" alt="Jaw harp">
                     </a>
-        
-                    <a href="crafts/2014 ინფუზორია ქალამანა.jpg" data-fancybox="gallery" data-caption="Paramecium necklace">
+
+                    <a href="crafts/2014 ინფუზორია ქალამანა.jpg" data-fancybox="gallery"
+                        data-caption="Paramecium necklace">
                         <img src="crafts/2014 ინფუზორია ქალამანა.jpg" alt="Paramecium necklace">
                     </a>
-        
+
                     <a href="crafts/2015 ბრტყელტუჩა 2.jpg" data-fancybox="gallery" data-caption="Mini pliers">
                         <img src="crafts/2015 ბრტყელტუჩა 2.jpg" alt="Mini pliers 1">
                     </a>
-        
+
                     <a href="crafts/2015 ბრტყელტუჩა 1.jpg" data-fancybox="gallery" data-caption="Mini pliers">
                         <img src="crafts/2015 ბრტყელტუჩა 1.jpg" alt="Mini pliers 2">
                     </a>
@@ -949,7 +1074,9 @@
 
     <!-- ---------------------------------------------------------------------------------- Footer -->
     <footer>
-        ✉️ &#x67;&#x75;&#x72;&#x61;&#x6D;&#x2E;&#x6D;&#x69;&#x6B;&#x61;&#x62;&#x65;&#x72;&#x69;&#x64;&#x7A;&#x65;&#x40;&#x67;&#x6D;&#x61;&#x69;&#x6C;&#x2E;&#x63;&#x6F;&#x6D; |
+        ✉️
+        &#x67;&#x75;&#x72;&#x61;&#x6D;&#x2E;&#x6D;&#x69;&#x6B;&#x61;&#x62;&#x65;&#x72;&#x69;&#x64;&#x7A;&#x65;&#x40;&#x67;&#x6D;&#x61;&#x69;&#x6C;&#x2E;&#x63;&#x6F;&#x6D;
+        |
         🇺🇲 &#43;&#49;&#32;&#54;&#50;&#56;&#32;&#50;&#56;&#55;&#32;&#54;&#55;&#57;&#50; |
         🇬🇪 &#x2b;&#x39;&#x39;&#x35;&#x20;&#x35;&#x35;&#x31;&#x20;&#x33;&#x32;&#x20;&#x37;&#x37;&#x20;&#x37;&#x31;
     </footer>
@@ -966,11 +1093,11 @@
         // h = canvas.height*5
         // canvas.style.width = window.innerWidth; // Set canvas width to window width
         // canvas.style.width = window.innerWidth; // Set canvas width to window width
-        canvas.width = window.innerWidth*5; 
-        canvas.height = 100*5; // Set canvas width to window width
+        canvas.width = window.innerWidth * 5;
+        canvas.height = 100 * 5; // Set canvas width to window width
         const points = [];
         const maxPoints = 70;
-        const connectionDistance = 5*70;
+        const connectionDistance = 5 * 70;
 
         const dotSize = 10;
         const edgeWidth = 5;
@@ -1013,7 +1140,7 @@
         function connectDots(p1, p2) {
             const distance = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
             if (distance < connectionDistance) {
-                const opacity = 1 - (distance / connectionDistance)**4;
+                const opacity = 1 - (distance / connectionDistance) ** 4;
                 ctx.beginPath();
                 ctx.moveTo(p1.x, p1.y);
                 ctx.lineTo(p2.x, p2.y);
@@ -1341,11 +1468,11 @@
         const MIN_POINTS_NUMBER = 2000;
         const INCREMENT_POINTS_NUMBER = 2000;
         let pointsNumber = MAX_POINTS_NUMBER;
-        
+
         // Setting up variables to control animation flow
         let profileHovered = false;
         let lastUpdateTime = 0;
-        if (TRIANGULATION_ON){
+        if (TRIANGULATION_ON) {
             document.addEventListener('DOMContentLoaded', () => {
                 // Getting the canvases and their contexts
                 const backgroundCanvas = document.getElementById('backgroundCanvas');
@@ -1363,16 +1490,16 @@
                 overlayCanvas.addEventListener('mouseout', () => {
                     profileHovered = false;
                 });
-                
+
                 // Loading the images
                 const img = new Image();
-                img.src = 'guga_just_background.png'; 
+                img.src = 'guga_just_background.png';
                 const noBackgroundImg = new Image();
                 noBackgroundImg.src = 'guga_no_background.png';
 
-                const size = backgroundCanvas.width*10; // Setting size of canvases (adjusted to match CSS)
+                const size = backgroundCanvas.width * 10; // Setting size of canvases (adjusted to match CSS)
                 const radius = size / 2;
-                
+
                 // Setting canvas dimensions
                 backgroundCanvas.width = size;
                 backgroundCanvas.height = size;
@@ -1380,10 +1507,10 @@
                 triangulationCanvas.height = size;
                 overlayCanvas.width = size;
                 overlayCanvas.height = size;
-                
+
                 // When images are loaded, proceed to set up canvases and start animation
-                Promise.all([img.decode(), noBackgroundImg.decode()]).then(() => {    
-                    
+                Promise.all([img.decode(), noBackgroundImg.decode()]).then(() => {
+
                     // Drawing images onto canvases
                     ctxHidden.drawImage(img, 0, 0, size, size);
                     ctxOverlay.drawImage(noBackgroundImg, 0, 0, size, size);
@@ -1402,7 +1529,7 @@
                             } else {
                                 pointsNumber += INCREMENT_POINTS_NUMBER
                             }
-                        }else {
+                        } else {
                             profilePic.style.display = 'block';
                             triangulationCanvas.style.display = 'none';
                             backgroundCanvas.style.display = 'block';
@@ -1435,13 +1562,13 @@
 
                     const pointIndices = [delaunay.triangles[i], delaunay.triangles[i + 1], delaunay.triangles[i + 2]];
                     const trianglePoints = pointIndices.map(index => points[index]);
-                    
+
                     ctxDisplay.beginPath();
                     ctxDisplay.moveTo(trianglePoints[0][0], trianglePoints[0][1]);
                     ctxDisplay.lineTo(trianglePoints[1][0], trianglePoints[1][1]);
                     ctxDisplay.lineTo(trianglePoints[2][0], trianglePoints[2][1]);
                     ctxDisplay.closePath();
-                    
+
                     const centerX = (trianglePoints[0][0] + trianglePoints[1][0] + trianglePoints[2][0]) / 3;
                     const centerY = (trianglePoints[0][1] + trianglePoints[1][1] + trianglePoints[2][1]) / 3;
                     const color = ctxHidden.getImageData(centerX, centerY, 1, 1).data;
