@@ -387,6 +387,23 @@
             background-color: #f8f8f8;
         }
 
+        .teaching-comments-image-link {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        .teaching-comments-image {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            max-height: min(90dvh, 900px);
+            object-fit: contain;
+            background-color: #f8f8f8;
+            cursor: zoom-in;
+        }
+
         .teaching-comments-title {
             display: flex;
             flex-direction: column;
@@ -495,6 +512,10 @@
 
             .teaching-comments-frame {
                 height: min(78.4dvh, 627px);
+            }
+
+            .teaching-comments-image {
+                max-height: min(78.4dvh, 627px);
             }
         }
     </style>
@@ -901,11 +922,11 @@
                 Lead TA for undergraduate <b>Honors Physics</b> series.
             </li>
             <li>
-                Designer and Instructor of an undergraduate class in <b>Computational Physics with Wolfram
-                    Mathematica</b> at Free University of Tbilisi, Georgia.
+                Designer and Instructor of an undergraduate class in <b>Computational Modelling of Physics Problems</b>
+                at Free University of Tbilisi, Georgia.
             </li>
             <li>
-                Coach of Georgian national teams for <b>International Young Physicists' and Naturalists' Tournaments
+                I led the Georgian national teams for <b>International Young Physicists' and Naturalists' Tournaments
                     (IYPT and IYNT)</b>.
                 <br>
                 If you don't know about these tournaments, here is a <a
@@ -915,10 +936,10 @@
         </ul>
         <div class="teaching-comments-title">
             <div>Sentiment Analysis of Student Feedback for UC Davis Courses using DeBERTa-v3</div>
-            <div class="teaching-comments-note">(hover the datapoints for more info)</div>
-            <iframe class="teaching-comments-frame" src="UCD_Student_Comments.html" title="UC Davis Student Comments"
-                loading="lazy">
-            </iframe>
+            <a class="teaching-comments-image-link" href="TA_evals.png" data-fancybox="ta-evals"
+                data-caption="TA evaluations">
+                <img class="teaching-comments-image" src="TA_evals.png" alt="TA evaluations" loading="lazy">
+            </a>
         </div>
     </section>
 
