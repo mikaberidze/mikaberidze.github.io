@@ -362,14 +362,20 @@
             height: auto;
         }
 
-        .side_content--wide {
-            width: calc(min(max(39%, 390px), 90vw - var(--panelWidth)*1.5));
-        }
+	        .side_content--wide {
+	            width: calc(min(max(39%, 390px), 90vw - var(--panelWidth)*1.5));
+	        }
 
-        .teaching-comments-window {
-            margin-top: 1em;
-            background-color: #f8f8f8;
-            width: min(100%, 800px);
+	        .side_content--embed {
+	            aspect-ratio: 16 / 9;
+	            height: auto;
+	            border: 0;
+	        }
+
+	        .teaching-comments-window {
+	            margin-top: 1em;
+	            background-color: #f8f8f8;
+	            width: min(100%, 800px);
             max-width: 100%;
             margin-left: auto;
             margin-right: auto;
@@ -708,11 +714,16 @@
             </li>
         </ul>
 
-        <h3>Three Projects on Optimizing Wildlife Migration Corridors</h3>
-        <ul>
-            <li>
-                This effort focuses on animal migratory routes and identifying fence combinations whose removal would
-                optimally simplify wildlife movement.
+	        <h3>Three Projects on Optimizing Wildlife Migration Corridors</h3>
+	        <iframe class="side_content side_content--wide side_content--embed" loading="lazy"
+	            src="https://www.youtube-nocookie.com/embed/-gCPoiD7p4c?rel=0"
+	            title="Animal migration project video"
+	            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+	            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+	        <ul>
+	            <li>
+	                This effort focuses on animal migratory routes and identifying fence combinations whose removal would
+	                optimally simplify wildlife movement.
                 <br>
                 Three complementary projects—led by two undergraduate students and one graduate student—support this
                 objective:
