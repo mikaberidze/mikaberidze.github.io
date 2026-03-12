@@ -1268,12 +1268,12 @@
         const mobileEdgeCanvas = document.getElementById('mobileEdgeCanvas');
         const mobileCtx = mobileEdgeCanvas.getContext('2d');
 
-        function drawConnectorSet({ container, canvas, ctx, mainEl, links, drawMenu = false, overshootPx = 0, fitToBounds = false }) {
-            const lineColor = 'gray';
-            ctx.strokeStyle = lineColor;
+	        function drawConnectorSet({ container, canvas, ctx, mainEl, links, drawMenu = false, overshootPx = 0, fitToBounds = false }) {
+	            const lineColor = 'gray';
+	            ctx.strokeStyle = lineColor;
 
-            // Measure targets in viewport coordinates
-            const containerRect = container.getBoundingClientRect();
+	            // Measure targets in viewport coordinates
+	            const containerRect = container.getBoundingClientRect();
             const mainRect = mainEl.getBoundingClientRect();
             const mainCenterAbs = {
                 x: mainRect.left + mainRect.width / 2,
@@ -1306,6 +1306,16 @@
                 cssTop = 0;
                 cssW = Math.ceil(containerRect.width);
                 cssH = Math.ceil(containerRect.height);
+                // The menu can overflow the fixed-height panel (e.g., small screens),
+                // so ensure the edge canvas extends at least to the last menu item ("Hobbies").
+                if (drawMenu) {
+                    const menuItems = Array.from(container.querySelectorAll('.menu-item'));
+                    if (menuItems.length > 0) {
+                        const maxBottomAbs = Math.max(...menuItems.map(item => item.getBoundingClientRect().bottom));
+                        const neededH = Math.ceil((maxBottomAbs - containerRect.top) + 8);
+                        cssH = Math.max(cssH, neededH);
+                    }
+                }
             }
             canvas.style.left = `${cssLeft}px`;
             canvas.style.top = `${cssTop}px`;
@@ -1357,7 +1367,7 @@
                 ctx.lineTo(mainCenter.x, cssH);
                 ctx.stroke();
 
-                document.querySelectorAll('.menu-item').forEach(div => {
+                container.querySelectorAll('.menu-item').forEach(div => {
                     const rect = div.getBoundingClientRect();
                     const circleRadius = 3;
                     const circleX = rect.left + rect.width / 2 - canvasRect.left;
