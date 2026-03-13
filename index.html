@@ -24,12 +24,12 @@
     <meta property="og:description"
         content="Research, publications, teaching, and interactive visualizations on complex systems and machine learning by Guram Mikaberidze.">
     <meta property="og:url" content="https://mikaberidze.github.io/">
-    <meta property="og:image" content="https://mikaberidze.github.io/guga.jpg">
+    <meta property="og:image" content="https://mikaberidze.github.io/assets/images/guga.jpg">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Guram Mikaberidze – Complex Systems & Machine Learning">
     <meta name="twitter:description"
         content="Postdoctoral researcher in complex systems and machine learning at the University of Wyoming.">
-    <meta name="twitter:image" content="https://mikaberidze.github.io/guga.jpg">
+    <meta name="twitter:image" content="https://mikaberidze.github.io/assets/images/guga.jpg">
     <title>Guram Mikaberidze – Complex Systems &amp; Machine Learning</title>
     <link rel="icon" type="image/x-icon" href="favicon.png">
     <style>
@@ -346,6 +346,94 @@
             flex-shrink: 0;
         }
 
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .app-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+            --app-accent: #d9d9d9;
+        }
+
+        .app-media {
+            position: relative;
+            display: block;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #f2f2f2;
+            border: 3px solid var(--app-accent);
+            box-shadow: 0 0 0 6px color-mix(in srgb, var(--app-accent) 72%, transparent),
+                0 14px 30px rgba(0, 0, 0, 0.14);
+        }
+
+        .app-media img,
+        .app-media video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            object-position: center;
+            display: block;
+            transition: opacity 220ms ease;
+        }
+
+        .app-media video {
+            opacity: 0;
+            z-index: 1;
+        }
+
+        .app-media img {
+            z-index: 0;
+        }
+
+        .app-card.is-previewing .app-media video {
+            opacity: 1;
+        }
+
+        .app-meta {
+            display: grid;
+            gap: 0.35rem;
+        }
+
+        .app-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .app-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .app-meta p {
+            margin: 0;
+            font-size: 0.95em;
+            line-height: 1.4;
+        }
+
+        .app-card--schrodinger {
+            --app-accent: #a8c4e6;
+        }
+
+        .app-card--kuramoto {
+            --app-accent: #e8c3aa;
+        }
+
+        .app-card--booknet {
+            --app-accent: #dcd3ba;
+        }
+
         li {
             padding: 1% 0;
         }
@@ -544,7 +632,7 @@
       "@context": "https://schema.org",
       "@type": "Person",
       "name": "Guram Mikaberidze",
-      "image": "https://mikaberidze.github.io/guga.jpg",
+      "image": "https://mikaberidze.github.io/assets/images/guga.jpg",
       "jobTitle": "Postdoctoral Researcher in Complex Systems and Machine Learning",
       "affiliation": {
         "@type": "CollegeOrUniversity",
@@ -571,24 +659,24 @@
     <!-- End Google Tag Manager (noscript) -->
     <div class="mobile-profile">
         <canvas id="mobileEdgeCanvas"></canvas>
-        <img src="guga.jpg" alt="Guram Mikaberidze" id="mobile-profile-pic">
+        <img src="assets/images/guga.jpg" alt="Guram Mikaberidze" id="mobile-profile-pic">
         <div class="image-links">
             <a href="https://scholar.google.com/citations?user=cOkx0_IAAAAJ&hl=en&oi=ao" target="_blank">
-                <img src="icon_scholar_google.png" alt="Google Scholar Logo">
+                <img src="assets/icons/icon_scholar_google.png" alt="Google Scholar Logo">
             </a>
             <a href="https://www.researchgate.net/profile/Guram-Mikaberidze" target="_blank">
-                <img src="icon_researchgate.png" alt="ResearchGate Logo">
+                <img src="assets/icons/icon_researchgate.png" alt="ResearchGate Logo">
             </a>
             <div class="icon-bundle">
                 <a class="gitlab-icon" href="https://gitlab.com/mikaberidze" target="_blank">
-                    <img src="icon_gitlab.png" alt="GitLab Logo">
+                    <img src="assets/icons/icon_gitlab.png" alt="GitLab Logo">
                 </a>
                 <a class="github-icon" href="https://github.com/mikaberidze" target="_blank">
-                    <img src="icon_github.png" alt="GitHub Logo">
+                    <img src="assets/icons/icon_github.png" alt="GitHub Logo">
                 </a>
             </div>
             <a href="https://orcid.org/0000-0001-6776-3481" target="_blank">
-                <img src="icon_orchid.png" alt="Gitlab Logo">
+                <img src="assets/icons/icon_orchid.png" alt="Gitlab Logo">
             </a>
         </div>
     </div>
@@ -598,28 +686,28 @@
         <canvas id="backgroundCanvas" style="display: none;"></canvas>
         <canvas id="triangulationCanvas" style="display: block;"></canvas>
         <canvas id="overlayCanvas" style="display: block;"></canvas>
-        <img src="guga.jpg" alt="Guram Mikaberidze" id="profile-pic">
+        <img src="assets/images/guga.jpg" alt="Guram Mikaberidze" id="profile-pic">
 
         <div class="image-links">
             <a href="https://scholar.google.com/citations?user=cOkx0_IAAAAJ&hl=en&oi=ao" target="_blank">
-                <img src="icon_scholar_google.png" alt="Google Scholar Logo">
+                <img src="assets/icons/icon_scholar_google.png" alt="Google Scholar Logo">
             </a>
             <a href="https://www.researchgate.net/profile/Guram-Mikaberidze" target="_blank">
-                <img src="icon_researchgate.png" alt="ResearchGate Logo">
+                <img src="assets/icons/icon_researchgate.png" alt="ResearchGate Logo">
             </a>
             <div class="icon-bundle">
                 <a class="gitlab-icon" href="https://gitlab.com/mikaberidze" target="_blank">
-                    <img src="icon_gitlab.png" alt="GitLab Logo">
+                    <img src="assets/icons/icon_gitlab.png" alt="GitLab Logo">
                 </a>
                 <a class="github-icon" href="https://github.com/mikaberidze" target="_blank">
-                    <img src="icon_github.png" alt="GitHub Logo">
+                    <img src="assets/icons/icon_github.png" alt="GitHub Logo">
                 </a>
             </div>
             <!-- <a href="https://www.linkedin.com/in/guram-mikaberidze-7914538a/" target="_blank">
-                <img src="icon_linkedin.png" alt="Gitlab Logo">
+                <img src="assets/icons/icon_linkedin.png" alt="Gitlab Logo">
             </a> -->
             <a href="https://orcid.org/0000-0001-6776-3481" target="_blank">
-                <img src="icon_orchid.png" alt="Gitlab Logo">
+                <img src="assets/icons/icon_orchid.png" alt="Gitlab Logo">
             </a>
         </div>
         <div class="menu">
@@ -666,7 +754,7 @@
         <h2>Ongoing research projects</h2>
 
         <h3>AI-enabled Network Optimization Framework</h3>
-        <img src="gradnet.png" alt="Gradient based optimization of network structures"
+        <img src="assets/images/gradnet.png" alt="Gradient based optimization of network structures"
             class="side_content side_content--wide">
         <ul>
             <li>
@@ -698,7 +786,7 @@
 
         <!-- (*) NOTE THAT THIS IS IN A WEIRD LOCATION, WHEN ADDING NEW RESEARCH, NEED TO REMEMBER -->
         <video autoplay muted loop class="side_content">
-            <source src="research-s-shaped.mp4" type="video/mp4">
+            <source src="assets/videos/research-s-shaped.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
         <h3>Synchrony-Optimized Networks</h3>
@@ -753,7 +841,7 @@
 
         <h3>Flows on Networks</h3>
         <video autoplay muted loop class="side_content">
-            <source src="research-flow.mp4" type="video/mp4">
+            <source src="assets/videos/research-flow.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
         <ul>
@@ -776,7 +864,7 @@
         </ul>
 
         <h3>Georgian Natural Language Processing</h3>
-        <img src="research-LLMKA.png" alt="Georgian Language Models" class="side_content">
+        <img src="assets/images/research-LLMKA.png" alt="Georgian Language Models" class="side_content">
         <ul>
             <li>
                 This project aims to preserve the Kartvelian language family—starting with Georgian—by
@@ -799,7 +887,7 @@
 
         <h3>Consensus Formation Among Mobile Agents in Networks of Heterogeneous Interaction Venues</h3>
         <video autoplay muted loop class="side_content">
-            <source src="research-RWO.mp4" type="video/mp4">
+            <source src="assets/videos/research-RWO.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
         <ul>
@@ -831,7 +919,7 @@
         </ul>
 
         <h3>Dragon Kings in Self-Organized Criticality Systems</h3>
-        <img src="research-DKSOC.png" alt="dragon kings in SOC systems" class="side_content"
+        <img src="assets/images/research-DKSOC.png" alt="dragon kings in SOC systems" class="side_content"
             alt="dragon king classification">
         <ul>
             <li>
@@ -862,7 +950,7 @@
 
         <h3>Sandpile Cascades on Oscillator Networks: The BTW Model Meets Kuramoto</h3>
         <video autoplay muted loop class="side_content">
-            <source src="research-BTWKM.mp4" type="video/mp4">
+            <source src="assets/videos/research-BTWKM.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
         <ul>
@@ -900,7 +988,7 @@
         </ul>
 
         <h3>Convergent Momentum-Space OPE and Bootstrap Equations in Conformal Field Theory</h3>
-        <img src="research-OPE.png" alt="Operator Product Expansion" class="side_content"
+        <img src="assets/images/research-OPE.png" alt="Operator Product Expansion" class="side_content"
             alt="operator product expansion">
         <ul>
             <li>
@@ -924,7 +1012,7 @@
         </ul>
 
         <h3>Standing Electromagnetic Solitons in Degenerate Relativistic Plasmas</h3>
-        <img src="research-soliton.png" alt="Plasma Solitons" class="side_content" alt="soliton profile">
+        <img src="assets/images/research-soliton.png" alt="Plasma Solitons" class="side_content" alt="soliton profile">
         <ul>
             <li>
                 Plasma, the fourth fundamental state of matter characterized by a large fraction of charged particles,
@@ -954,7 +1042,7 @@
             </li>
             <li>
                 Lead TA for graduate level <b>Network Science</b> class at UC Davis, where I helped with the student
-                projects and gave a guest lecture.
+                projects and gave guest lectures.
             </li>
             <li>
                 TA for undergraduate <b>Information Theory</b> class at UC Davis, where I helped students with the
@@ -982,9 +1070,10 @@
         </ul>
         <div class="teaching-comments-title">
             <div>Sentiment Analysis of Student Feedback for UC Davis Courses using DeBERTa-v3</div>
-            <a class="teaching-comments-image-link" href="TA_evals.png" data-fancybox="ta-evals"
+            <a class="teaching-comments-image-link" href="assets/images/TA_evals.png" data-fancybox="ta-evals"
                 data-caption="TA evaluations">
-                <img class="teaching-comments-image" src="TA_evals.png" alt="TA evaluations" loading="lazy">
+                <img class="teaching-comments-image" src="assets/images/TA_evals.png" alt="TA evaluations"
+                    loading="lazy">
             </a>
         </div>
     </section>
@@ -1048,31 +1137,6 @@
                 <a href="https://commons.wikimedia.org/wiki/File:Kintsugi.jpg" target="_blank">Kintsugi technique</a>,
                 all used on various Wikipedia pages.
             </li>
-            <li>
-                I also maintain a couple of interactive teaching tools visualizations:
-                <ul class="sublist">
-                    <li>
-                        <img src="schrodinger/favicon.png" alt="2D Schrödinger equation playground"
-                            class="sublist-icon">
-                        <a href="schrodinger" target="_blank"><b>2D Schrödinger equation playground</b></a> – explore
-                        quantum wave packet dynamics in customizable potentials.
-                    </li>
-                    <li>
-                        <img src="kuramoto/favicon.png" alt="Kuramoto model playground" class="sublist-icon">
-                        <a href="kuramoto" target="_blank"><b>Kuramoto model playground</b></a> – explore
-                        synchronization on complex networks in real time.
-                    </li>
-                    <li>
-                        <img src="booknet/favicon.png" alt="Character networks for books" class="sublist-icon">
-                        <a href="booknet" target="_blank"><b>Character networks for books</b></a> – visualize and
-                        explore co-appearance networks of characters in novels.
-                    </li>
-                    <!-- <li>
-                        <img src="mandelbrot_julia/favicon.svg" alt="Mandelbrot and Julia set explorer" class="sublist-icon">
-                        <a href="mandelbrot_julia" target="_blank"><b>Mandelbrot &amp; Julia explorer</b></a> – drag a point on the Mandelbrot set and inspect the corresponding Julia set in real time.
-                    </li> -->
-                </ul>
-            </li>
 
             <li>
                 Jury Chair for <a href="https://www.iynt.org/about/" target="_blank"><b>International Young Naturalists'
@@ -1082,6 +1146,59 @@
 
             <li>
                 Co-organized <b>Georgian Young Physicists’ Tournament</b> 2013.
+            </li>
+            <li>
+                I also maintain a couple of interactive teaching tools visualizations:
+                <div class="app-grid">
+                    <article class="app-card app-card--schrodinger">
+                        <a class="app-media" href="schrodinger" target="_blank"
+                            aria-label="2D Schrödinger equation playground">
+                            <img src="assets/images/apps/schrodinger.png"
+                                alt="2D Schrödinger equation playground preview">
+                            <video muted loop playsinline preload="metadata"
+                                poster="assets/images/apps/schrodinger.png">
+                                <source src="assets/videos/apps/schrodinger.mp4" type="video/mp4">
+                            </video>
+                        </a>
+                        <div class="app-meta">
+                            <div class="app-title">
+                                <img src="schrodinger/favicon.png" alt="" class="app-icon" aria-hidden="true">
+                                <a href="schrodinger" target="_blank"><b>2D Schrödinger equation playground</b></a>
+                            </div>
+                            <p>Explore quantum wave packet dynamics in customizable potentials.</p>
+                        </div>
+                    </article>
+                    <article class="app-card app-card--kuramoto">
+                        <a class="app-media" href="kuramoto" target="_blank" aria-label="Kuramoto model playground">
+                            <img src="assets/images/apps/kuramoto.png" alt="Kuramoto model playground preview">
+                            <video muted loop playsinline preload="metadata" poster="assets/images/apps/kuramoto.png">
+                                <source src="assets/videos/apps/kuramoto.mp4" type="video/mp4">
+                            </video>
+                        </a>
+                        <div class="app-meta">
+                            <div class="app-title">
+                                <img src="kuramoto/favicon.png" alt="" class="app-icon" aria-hidden="true">
+                                <a href="kuramoto" target="_blank"><b>Kuramoto model playground</b></a>
+                            </div>
+                            <p>Explore synchronization on complex networks in real time.</p>
+                        </div>
+                    </article>
+                    <article class="app-card app-card--booknet">
+                        <a class="app-media" href="booknet" target="_blank" aria-label="Character networks for books">
+                            <img src="assets/images/apps/booknet.png" alt="Character networks for books preview">
+                            <video muted loop playsinline preload="metadata" poster="assets/images/apps/booknet.png">
+                                <source src="assets/videos/apps/booknet.mp4" type="video/mp4">
+                            </video>
+                        </a>
+                        <div class="app-meta">
+                            <div class="app-title">
+                                <img src="booknet/favicon.png" alt="" class="app-icon" aria-hidden="true">
+                                <a href="booknet" target="_blank"><b>Character networks for books</b></a>
+                            </div>
+                            <p>Visualize and explore co-appearance networks of characters in novels.</p>
+                        </div>
+                    </article>
+                </div>
             </li>
         </ul>
     </section>
@@ -1700,6 +1817,62 @@
                 }
             }
         }
+
+        // App preview hover interactions
+        const appCards = document.querySelectorAll('.app-card');
+        appCards.forEach((card) => {
+            const video = card.querySelector('video');
+            if (!video) {
+                return;
+            }
+            let stopTimer = null;
+            let playRequestId = 0;
+            const showPreview = () => {
+                card.classList.add('is-previewing');
+            };
+            const playVideo = () => {
+                playRequestId += 1;
+                const requestId = playRequestId;
+                if (stopTimer) {
+                    clearTimeout(stopTimer);
+                    stopTimer = null;
+                }
+                const playPromise = video.play();
+                if (video.readyState >= 2) {
+                    showPreview();
+                } else {
+                    const revealWhenReady = () => {
+                        if (playRequestId !== requestId) {
+                            return;
+                        }
+                        showPreview();
+                    };
+                    video.addEventListener('playing', revealWhenReady, { once: true });
+                    video.addEventListener('canplay', revealWhenReady, { once: true });
+                }
+                if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise.catch(() => { });
+                }
+            };
+            const stopVideo = () => {
+                playRequestId += 1;
+                card.classList.remove('is-previewing');
+                stopTimer = setTimeout(() => {
+                    video.pause();
+                    video.currentTime = 0;
+                    stopTimer = null;
+                }, 220);
+            };
+            card.addEventListener('mouseenter', playVideo);
+            card.addEventListener('mouseleave', stopVideo);
+            card.addEventListener('focusin', playVideo);
+            card.addEventListener('focusout', (event) => {
+                if (card.contains(event.relatedTarget)) {
+                    return;
+                }
+                stopVideo();
+            });
+        });
 
     </script>
 </body>
