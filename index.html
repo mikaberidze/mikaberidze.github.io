@@ -324,6 +324,13 @@
             padding-bottom: 2%;
         }
 
+        /* Extend each main list to the bottom of any floated side media it wraps. */
+        ul:not(.sublist)::after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+
         /* Nested list used for interactive visualizations */
         ul.sublist {
             list-style-type: none;
@@ -815,7 +822,7 @@
         </ul>
 
         <h3>Three Projects on Optimizing Wildlife Migration Corridors</h3>
-        <iframe class="side_content side_content--wide side_content--embed" loading="lazy"
+        <iframe class="side_content side_content--embed" loading="lazy"
             src="https://www.youtube-nocookie.com/embed/-gCPoiD7p4c?rel=0" title="Animal migration project video"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
