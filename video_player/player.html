@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple MKV Browser Player</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111827;
+      --panel: #1f2937;
+      --border: #374151;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --danger: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: linear-gradient(180deg, #0b1020, #111827 40%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .sub {
+      color: var(--muted);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .card {
+      background: rgba(31, 41, 55, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+      margin-bottom: 16px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input[type="file"],
+    select,
+    button {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #0f172a;
+      color: var(--text);
+      padding: 12px;
+      font-size: 14px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      background: linear-gradient(180deg, #2563eb, #1d4ed8);
+      border: none;
+    }
+
+    button.secondary {
+      background: #162033;
+      border: 1px solid var(--border);
+    }
+
+    button:disabled,
+    select:disabled,
+    input:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    video {
+      width: 100%;
+      max-height: 70vh;
+      background: #000;
+      border-radius: 16px;
+    }
+
+    .status {
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      color: #d1d5db;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      max-height: 240px;
+      overflow: auto;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+      background: #111827;
+    }
+
+    .warn {
+      color: #fbbf24;
+    }
+
+    .error {
+      color: var(--danger);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>Simple MKV Browser Player</h1>
+    <div class="sub">
+      Pick a local <code>.mkv</code>, choose an audio track, optionally choose one subtitle track,
+      then press <b>Open in player</b>.
+      This version avoids the cross-origin worker problem by loading FFmpeg package files from the same origin.
+    </div>
+
+    <div class="card">
+      <div class="controls">
+        <div>
+          <label for="fileInput">MKV file</label>
+          <input id="fileInput" type="file" accept=".mkv,video/x-matroska,video/*" />
+        </div>
+        <div>
+          <label for="audioSelect">Audio track</label>
+          <select id="audioSelect" disabled></select>
+        </div>
+        <div>
+          <label for="subtitleSelect">Subtitle track</label>
+          <select id="subtitleSelect" disabled></select>
+        </div>
+        <div>
+          <button id="openBtn" disabled>Open in player</button>
+        </div>
+      </div>
+      <div class="row">
+        <button id="probeBtn" class="secondary">Scan tracks only</button>
+        <button id="reloadBtn" class="secondary">Reload FFmpeg core</button>
+      </div>
+      <div id="trackInfo" style="margin-top: 12px"></div>
+    </div>
+
+    <div class="card">
+      <video id="player" controls playsinline></video>
+    </div>
+
+    <div class="card">
+      <div style="margin-bottom: 8px; font-weight: 600">Status</div>
+      <div id="status" class="status">Idle.</div>
+    </div>
+  </div>
+
+  <script type="module">
+    /*
+      IMPORTANT: serve these files locally from the SAME origin as this HTML:
+
+      ./vendor/ffmpeg/index.js
+      ./vendor/ffmpeg/worker.js
+      ./vendor/ffmpeg/const.js
+      ./vendor/ffmpeg/errors.js
+
+      ./vendor/ffmpeg-util/index.js
+
+      ./vendor/ffmpeg-core/ffmpeg-core.js
+      ./vendor/ffmpeg-core/ffmpeg-core.wasm
+
+      Optional only for multithread core:
+      ./vendor/ffmpeg-core/ffmpeg-core.worker.js
+    */
+
+    import { FFmpeg } from './vendor/ffmpeg/index.js';
+    import { fetchFile } from './vendor/ffmpeg-util/index.js';
+
+    const fileInput = document.getElementById('fileInput');
+    const audioSelect = document.getElementById('audioSelect');
+    const subtitleSelect = document.getElementById('subtitleSelect');
+    const openBtn = document.getElementById('openBtn');
+    const probeBtn = document.getElementById('probeBtn');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const player = document.getElementById('player');
+    const statusEl = document.getElementById('status');
+    const trackInfo = document.getElementById('trackInfo');
+
+    const inputName = 'input.mkv';
+
+    let ffmpeg = null;
+    let loaded = false;
+    let currentFile = null;
+    let lastLogs = [];
+    let trackCache = { audio: [], subtitles: [] };
+    let playerUrl = null;
+    let subtitleUrl = null;
+
+    function setStatus(message, append = false) {
+      if (append) {
+        statusEl.textContent += `\n${message}`;
+      } else {
+        statusEl.textContent = message;
+      }
+      statusEl.scrollTop = statusEl.scrollHeight;
+    }
+
+    function resetPlayerUrls() {
+      if (playerUrl) URL.revokeObjectURL(playerUrl);
+      if (subtitleUrl) URL.revokeObjectURL(subtitleUrl);
+      playerUrl = null;
+      subtitleUrl = null;
+      player.pause();
+      player.removeAttribute('src');
+      [...player.querySelectorAll('track')].forEach((t) => t.remove());
+      player.load();
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function createFFmpeg() {
+      const instance = new FFmpeg();
+
+      instance.on('log', ({ message }) => {
+        lastLogs.push(message);
+        if (lastLogs.length > 1000) lastLogs.shift();
+        setStatus(message, true);
+      });
+
+      return instance;
+    }
+
+    async function loadFFmpeg(force = false) {
+      if (loaded && !force) return;
+
+      setStatus('Loading FFmpeg core...');
+
+      if (force && ffmpeg) {
+        try {
+          ffmpeg.terminate();
+        } catch { }
+        ffmpeg = null;
+      }
+
+      if (!ffmpeg) {
+        ffmpeg = createFFmpeg();
+      }
+
+      // Same-origin URLs avoid the worker origin problem.
+      await ffmpeg.load({
+        coreURL: './vendor/ffmpeg-core/ffmpeg-core.js',
+        wasmURL: './vendor/ffmpeg-core/ffmpeg-core.wasm',
+
+        // This is the important fix for the top-level ffmpeg worker.
+        classWorkerURL: './vendor/ffmpeg/worker.js'
+
+        // If you switch to core-mt, add:
+        // workerURL: './vendor/ffmpeg-core/ffmpeg-core.worker.js'
+      });
+
+      loaded = true;
+      setStatus('FFmpeg loaded.');
+    }
+
+    async function safeDelete(path) {
+      try {
+        await ffmpeg.deleteFile(path);
+      } catch { }
+    }
+
+    async function writeInputFile(file) {
+      currentFile = file;
+      resetPlayerUrls();
+      setStatus(`Writing ${file.name} into FFmpeg virtual FS...`);
+
+      await safeDelete(inputName);
+      await ffmpeg.writeFile(inputName, await fetchFile(file));
+
+      setStatus(`Ready: ${file.name}`);
+    }
+
+    function parseTracks(logs) {
+      const audio = [];
+      const subtitles = [];
+      const seen = new Set();
+
+      const lines = logs.join('\n').split('\n');
+      const regex =
+        /Stream #(?<container>\d+):(?<index>\d+)(?:\((?<lang>[^)]+)\))?(?:\[[^\]]+\])?(?:\((?<extra>[^)]+)\))?:\s(?<type>Audio|Subtitle|Video):\s(?<codec>[^,]+)/i;
+
+      for (const line of lines) {
+        const match = line.match(regex);
+        if (!match?.groups) continue;
+
+        const type = match.groups.type.toLowerCase();
+        const streamIndex = Number(match.groups.index);
+        const lang = (match.groups.lang || '').trim();
+        const codec = (match.groups.codec || '').trim();
+        const titleMatch = line.match(/title\s*:\s*([^,]+)/i);
+        const title = titleMatch ? titleMatch[1].trim() : '';
+
+        if (type !== 'audio' && type !== 'subtitle') continue;
+
+        const key = `${type}:${streamIndex}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const item = {
+          index: streamIndex,
+          map: `0:${streamIndex}`,
+          lang,
+          codec,
+          title,
+          label:
+            `${type === 'audio' ? 'Audio' : 'Subtitle'} ${streamIndex}` +
+            `${lang ? ` • ${lang}` : ''}` +
+            `${codec ? ` • ${codec}` : ''}` +
+            `${title ? ` • ${title}` : ''}`
+        };
+
+        if (type === 'audio') audio.push(item);
+        if (type === 'subtitle') subtitles.push(item);
+      }
+
+      return { audio, subtitles };
+    }
+
+    function fillSelect(select, items, emptyLabel) {
+      select.innerHTML = '';
+
+      if (!items.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = emptyLabel;
+        select.appendChild(option);
+        select.disabled = true;
+        return;
+      }
+
+      items.forEach((item, i) => {
+        const option = document.createElement('option');
+        option.value = String(i);
+        option.textContent = item.label;
+        select.appendChild(option);
+      });
+
+      select.disabled = false;
+    }
+
+    function renderTrackInfo(audio, subtitles) {
+      const pieces = [];
+
+      if (audio.length) {
+        pieces.push(
+          `<div><div style="margin-bottom:6px;font-weight:600">Audio</div>${audio.map((t) => `<span class="pill">${escapeHtml(t.label)}</span>`).join('')
+          }</div>`
+        );
+      }
+
+      if (subtitles.length) {
+        pieces.push(
+          `<div style="margin-top:10px"><div style="margin-bottom:6px;font-weight:600">Subtitles</div>${subtitles.map((t) => `<span class="pill">${escapeHtml(t.label)}</span>`).join('')
+          }</div>`
+        );
+      }
+
+      if (!pieces.length) {
+        pieces.push('<div class="warn">No selectable audio or subtitle tracks were detected.</div>');
+      }
+
+      trackInfo.innerHTML = pieces.join('');
+    }
+
+    async function probeTracks() {
+      if (!currentFile) {
+        setStatus('Choose an MKV file first.');
+        return;
+      }
+
+      await loadFFmpeg();
+      lastLogs = [];
+      setStatus('Scanning tracks...');
+
+      try {
+        // Probe-only run. FFmpeg typically throws because there is no output file.
+        await ffmpeg.exec(['-hide_banner', '-i', inputName]);
+      } catch { }
+
+      const tracks = parseTracks(lastLogs);
+      trackCache = tracks;
+
+      fillSelect(audioSelect, tracks.audio, 'No audio tracks found');
+
+      const subtitleOptions = [{ label: 'None', map: '' }, ...tracks.subtitles];
+      fillSelect(subtitleSelect, subtitleOptions, 'None');
+      subtitleSelect.disabled = false;
+      subtitleSelect.value = '0';
+
+      openBtn.disabled = tracks.audio.length === 0;
+      renderTrackInfo(tracks.audio, tracks.subtitles);
+
+      if (tracks.audio.length) {
+        setStatus(
+          `Track scan finished. Found ${tracks.audio.length} audio track(s) and ${tracks.subtitles.length} subtitle track(s).`
+        );
+      } else {
+        setStatus('Track scan finished, but no audio track was found.');
+      }
+    }
+
+    async function makePlayableVideo(audioTrack) {
+      const outName = 'playable.mp4';
+      await safeDelete(outName);
+
+      setStatus('Creating browser-playable video...');
+
+      try {
+        await ffmpeg.exec([
+          '-i', inputName,
+          '-map', '0:v:0',
+          '-map', audioTrack.map,
+          '-c:v', 'copy',
+          '-c:a', 'aac',
+          '-b:a', '192k',
+          '-sn',
+          '-movflags', '+faststart',
+          outName
+        ]);
+      } catch {
+        setStatus('Fast remux failed. Falling back to video re-encode for compatibility...', true);
+
+        await safeDelete(outName);
+
+        await ffmpeg.exec([
+          '-i', inputName,
+          '-map', '0:v:0',
+          '-map', audioTrack.map,
+          '-c:v', 'libx264',
+          '-preset', 'veryfast',
+          '-crf', '23',
+          '-pix_fmt', 'yuv420p',
+          '-c:a', 'aac',
+          '-b:a', '192k',
+          '-sn',
+          '-movflags', '+faststart',
+          outName
+        ]);
+      }
+
+      const mp4Data = await ffmpeg.readFile(outName);
+      return new Blob([mp4Data.buffer], { type: 'video/mp4' });
+    }
+
+    async function makeSubtitleTrack(subtitleTrack) {
+      if (!subtitleTrack || !subtitleTrack.map) return null;
+
+      const outName = 'subtitle.vtt';
+      await safeDelete(outName);
+
+      setStatus('Extracting subtitle track as WebVTT...');
+
+      await ffmpeg.exec([
+        '-i', inputName,
+        '-map', subtitleTrack.map,
+        '-c:s', 'webvtt',
+        outName
+      ]);
+
+      const vttData = await ffmpeg.readFile(outName);
+      return new Blob([vttData.buffer], { type: 'text/vtt' });
+    }
+
+    async function openInPlayer() {
+      if (!currentFile) {
+        setStatus('Choose an MKV file first.');
+        return;
+      }
+
+      if (!trackCache.audio.length) {
+        setStatus('No audio tracks available. Run a scan first.');
+        return;
+      }
+
+      const audioIndex = Number(audioSelect.value || 0);
+      const subtitleIndex = Number(subtitleSelect.value || 0) - 1;
+
+      const selectedAudio = trackCache.audio[audioIndex];
+      const selectedSubtitle =
+        subtitleIndex >= 0 ? trackCache.subtitles[subtitleIndex] : null;
+
+      setStatus('Preparing playback...');
+      resetPlayerUrls();
+
+      try {
+        const videoBlob = await makePlayableVideo(selectedAudio);
+        playerUrl = URL.createObjectURL(videoBlob);
+        player.src = playerUrl;
+
+        if (selectedSubtitle) {
+          const subtitleBlob = await makeSubtitleTrack(selectedSubtitle);
+          subtitleUrl = URL.createObjectURL(subtitleBlob);
+
+          const track = document.createElement('track');
+          track.kind = 'subtitles';
+          track.label = selectedSubtitle.label;
+          track.srclang = selectedSubtitle.lang || 'und';
+          track.src = subtitleUrl;
+          track.default = true;
+          player.appendChild(track);
+        }
+
+        await player.play().catch(() => { });
+        setStatus('Ready. Change the selects and press Open in player again to switch tracks.');
+      } catch (error) {
+        console.error(error);
+        setStatus(`Error: ${error?.message || error}`);
+      }
+    }
+
+    fileInput.addEventListener('change', async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      try {
+        await loadFFmpeg();
+        await writeInputFile(file);
+        await probeTracks();
+      } catch (error) {
+        console.error(error);
+        setStatus(`Error: ${error?.message || error}`);
+      }
+    });
+
+    probeBtn.addEventListener('click', async () => {
+      try {
+        await probeTracks();
+      } catch (error) {
+        console.error(error);
+        setStatus(`Error: ${error?.message || error}`);
+      }
+    });
+
+    openBtn.addEventListener('click', async () => {
+      try {
+        await openInPlayer();
+      } catch (error) {
+        console.error(error);
+        setStatus(`Error: ${error?.message || error}`);
+      }
+    });
+
+    reloadBtn.addEventListener('click', async () => {
+      try {
+        loaded = false;
+        await loadFFmpeg(true);
+
+        if (currentFile) {
+          await writeInputFile(currentFile);
+          await probeTracks();
+        }
+      } catch (error) {
+        console.error(error);
+        setStatus(`Error reloading FFmpeg: ${error?.message || error}`);
+      }
+    });
+  </script>
+</body>
+
+</html>
