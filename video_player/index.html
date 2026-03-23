@@ -195,25 +195,8 @@
   </div>
 
   <script type="module">
-    /*
-      IMPORTANT: serve these files locally from the SAME origin as this HTML:
-
-      ./vendor/ffmpeg/index.js
-      ./vendor/ffmpeg/worker.js
-      ./vendor/ffmpeg/const.js
-      ./vendor/ffmpeg/errors.js
-
-      ./vendor/ffmpeg-util/index.js
-
-      ./vendor/ffmpeg-core/ffmpeg-core.js
-      ./vendor/ffmpeg-core/ffmpeg-core.wasm
-
-      Optional only for multithread core:
-      ./vendor/ffmpeg-core/ffmpeg-core.worker.js
-    */
-
-    import { FFmpeg } from './vendor/ffmpeg/index.js';
-    import { fetchFile } from './vendor/ffmpeg-util/index.js';
+    import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js';
+    import { toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js';
 
     const fileInput = document.getElementById('fileInput');
     const audioSelect = document.getElementById('audioSelect');
@@ -230,10 +213,12 @@
     let ffmpeg = null;
     let loaded = false;
     let currentFile = null;
+    let currentFileData = null;
     let lastLogs = [];
     let trackCache = { audio: [], subtitles: [] };
     let playerUrl = null;
     let subtitleUrl = null;
+    let ffmpegBlobAssets = null;
 
     function setStatus(message, append = false) {
       if (append) {
@@ -273,7 +258,100 @@
         setStatus(message, true);
       });
 
+      instance.on('progress', ({ progress, time }) => {
+        setStatus(
+          `FFmpeg progress event: ${(progress * 100).toFixed(1)}% at ${(time / 1000000).toFixed(2)}s`,
+          true
+        );
+      });
+
       return instance;
+    }
+
+    function localAsset(path) {
+      return new URL(path, import.meta.url).href;
+    }
+
+    async function probeAsset(label, url) {
+      setStatus(`Checking ${label}: ${url}`, true);
+
+      try {
+        const response = await fetch(url, { method: 'GET', cache: 'no-store' });
+        setStatus(
+          `${label}: HTTP ${response.status} ${response.ok ? 'OK' : 'NOT OK'}${response.type ? ` (${response.type})` : ''}`,
+          true
+        );
+
+        if (!response.ok) {
+          throw new Error(`${label} returned HTTP ${response.status}`);
+        }
+
+        return true;
+      } catch (error) {
+        setStatus(`${label}: fetch failed: ${error?.message || error}`, true);
+        return false;
+      }
+    }
+
+    async function resolveFFmpegAssets() {
+      const assets = {
+        coreURL: localAsset('./vendor/ffmpeg-core/ffmpeg-core.js'),
+        wasmURL: localAsset('./vendor/ffmpeg-core/ffmpeg-core.wasm'),
+        classWorkerURL: localAsset('./vendor/ffmpeg/worker.js')
+      };
+
+      const workerURL = localAsset('./vendor/ffmpeg-core/ffmpeg-core.worker.js');
+      const hasWorker = await probeAsset('ffmpeg-core.worker.js', workerURL);
+
+      if (hasWorker) {
+        assets.workerURL = workerURL;
+      } else {
+        setStatus('ffmpeg-core.worker.js is missing locally; continuing without explicit workerURL.', true);
+      }
+
+      return assets;
+    }
+
+    async function resolveBlobFallbackAssets() {
+      if (ffmpegBlobAssets) return ffmpegBlobAssets;
+
+      const ffmpegVersion = '0.12.10';
+      const coreVersion = '0.12.6';
+      const ffmpegBase = `https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@${ffmpegVersion}/dist/esm`;
+      const coreBase = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${coreVersion}/dist/umd`;
+
+      setStatus(`Preparing blob fallback assets from ${ffmpegBase} and ${coreBase}`, true);
+
+      ffmpegBlobAssets = {
+        classWorkerURL: await toBlobURL(`${ffmpegBase}/worker.js`, 'text/javascript'),
+        coreURL: await toBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm')
+      };
+
+      setStatus('Blob fallback assets are ready.', true);
+      return ffmpegBlobAssets;
+    }
+
+    async function performFFmpegLoad(assets) {
+      await probeAsset('ffmpeg-core.js', assets.coreURL);
+      await probeAsset('ffmpeg-core.wasm', assets.wasmURL);
+      await probeAsset('ffmpeg class worker', assets.classWorkerURL);
+
+      setStatus(`Calling ffmpeg.load() with coreURL=${assets.coreURL}`, true);
+      if (assets.workerURL) {
+        setStatus(`Using workerURL=${assets.workerURL}`, true);
+      }
+      setStatus(`Using classWorkerURL=${assets.classWorkerURL}`, true);
+
+      const stallTimer = window.setTimeout(() => {
+        setStatus('FFmpeg load is still pending after 5s. If it stays here, the worker bootstrap is not completing.', true);
+      }, 5000);
+
+      try {
+        await ffmpeg.load(assets);
+      } finally {
+        window.clearTimeout(stallTimer);
+      }
     }
 
     async function loadFFmpeg(force = false) {
@@ -292,17 +370,21 @@
         ffmpeg = createFFmpeg();
       }
 
-      // Same-origin URLs avoid the worker origin problem.
-      await ffmpeg.load({
-        coreURL: './vendor/ffmpeg-core/ffmpeg-core.js',
-        wasmURL: './vendor/ffmpeg-core/ffmpeg-core.wasm',
+      try {
+        const localAssets = await resolveFFmpegAssets();
+        await performFFmpegLoad(localAssets);
+      } catch (error) {
+        setStatus(`Local FFmpeg load failed: ${error?.message || error}`, true);
+        setStatus('Retrying with blob-backed CDN assets...', true);
 
-        // This is the important fix for the top-level ffmpeg worker.
-        classWorkerURL: './vendor/ffmpeg/worker.js'
+        try {
+          ffmpeg.terminate();
+        } catch { }
 
-        // If you switch to core-mt, add:
-        // workerURL: './vendor/ffmpeg-core/ffmpeg-core.worker.js'
-      });
+        ffmpeg = createFFmpeg();
+        const blobAssets = await resolveBlobFallbackAssets();
+        await performFFmpegLoad(blobAssets);
+      }
 
       loaded = true;
       setStatus('FFmpeg loaded.');
@@ -314,13 +396,30 @@
       } catch { }
     }
 
-    async function writeInputFile(file) {
+    async function readLocalFile(file) {
+      setStatus(
+        `Reading local file: ${file.name} (${file.size.toLocaleString()} bytes, ${file.type || 'unknown type'})`,
+        true
+      );
+
+      if (!(file instanceof File)) {
+        throw new Error('Selected input is not a File instance.');
+      }
+
+      const buffer = await file.arrayBuffer();
+      setStatus(`Read ${buffer.byteLength.toLocaleString()} bytes from ${file.name}`, true);
+      return new Uint8Array(buffer);
+    }
+
+    async function writeInputFile(file, fileData = null) {
       currentFile = file;
+      currentFileData = fileData;
       resetPlayerUrls();
       setStatus(`Writing ${file.name} into FFmpeg virtual FS...`);
 
       await safeDelete(inputName);
-      await ffmpeg.writeFile(inputName, await fetchFile(file));
+      const bytes = fileData || await readLocalFile(file);
+      await ffmpeg.writeFile(inputName, bytes);
 
       setStatus(`Ready: ${file.name}`);
     }
@@ -428,7 +527,6 @@
       setStatus('Scanning tracks...');
 
       try {
-        // Probe-only run. FFmpeg typically throws because there is no output file.
         await ffmpeg.exec(['-hide_banner', '-i', inputName]);
       } catch { }
 
@@ -568,8 +666,9 @@
       if (!file) return;
 
       try {
+        const fileData = await readLocalFile(file);
         await loadFFmpeg();
-        await writeInputFile(file);
+        await writeInputFile(file, fileData);
         await probeTracks();
       } catch (error) {
         console.error(error);
@@ -601,7 +700,7 @@
         await loadFFmpeg(true);
 
         if (currentFile) {
-          await writeInputFile(currentFile);
+          await writeInputFile(currentFile, currentFileData);
           await probeTracks();
         }
       } catch (error) {
