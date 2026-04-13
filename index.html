@@ -395,6 +395,7 @@
         .app-media video {
             opacity: 0;
             z-index: 1;
+            background: #f2f2f2;
         }
 
         .app-media img {
@@ -499,6 +500,7 @@
             width: 100%;
             max-width: 100%;
             height: auto;
+            aspect-ratio: 1588 / 1300;
             max-height: min(90dvh, 900px);
             object-fit: contain;
             background-color: #f8f8f8;
@@ -763,7 +765,7 @@
 
         <h3>AI-enabled Network Optimization Framework</h3>
         <img src="assets/images/gradnet.png" alt="Gradient based optimization of network structures"
-            class="side_content side_content--wide">
+            class="side_content side_content--wide" width="2629" height="806" loading="lazy">
         <ul>
             <li>
                 GradNet is a python package that allows to study
@@ -793,8 +795,9 @@
         </ul>
 
         <!-- (*) NOTE THAT THIS IS IN A WEIRD LOCATION, WHEN ADDING NEW RESEARCH, NEED TO REMEMBER -->
-        <video autoplay muted loop class="side_content">
-            <source src="assets/videos/research-s-shaped.mp4" type="video/mp4">
+        <video autoplay muted loop playsinline preload="none" class="side_content lazy-video" width="1216"
+            height="956" data-lazy-load="viewport">
+            <source data-src="assets/videos/research-s-shaped.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
         <h3>Synchrony-Optimized Networks</h3>
@@ -823,7 +826,7 @@
         </ul>
 
         <h3>Three Projects on Optimizing Wildlife Migration Corridors</h3>
-        <iframe class="side_content side_content--embed" loading="lazy"
+        <iframe class="side_content side_content--embed" loading="lazy" width="16" height="9"
             src="https://www.youtube-nocookie.com/embed/-gCPoiD7p4c?rel=0" title="Animal migration project video"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
@@ -848,8 +851,9 @@
         <h2>Selected publications</h2>
 
         <h3>Flows on Networks</h3>
-        <video autoplay muted loop class="side_content">
-            <source src="assets/videos/research-flow.mp4" type="video/mp4">
+        <video autoplay muted loop playsinline preload="none" class="side_content lazy-video" width="500"
+            height="294" data-lazy-load="viewport">
+            <source data-src="assets/videos/research-flow.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
         <ul>
@@ -872,7 +876,8 @@
         </ul>
 
         <h3>Georgian Natural Language Processing</h3>
-        <img src="assets/images/research-LLMKA.png" alt="Georgian Language Models" class="side_content">
+        <img src="assets/images/research-LLMKA.png" alt="Georgian Language Models" class="side_content" width="608"
+            height="182" loading="lazy">
         <ul>
             <li>
                 This project aims to preserve the Kartvelian language family—starting with Georgian—by
@@ -894,8 +899,9 @@
         </ul>
 
         <h3>Consensus Formation Among Mobile Agents in Networks of Heterogeneous Interaction Venues</h3>
-        <video autoplay muted loop class="side_content">
-            <source src="assets/videos/research-RWO.mp4" type="video/mp4">
+        <video autoplay muted loop playsinline preload="none" class="side_content lazy-video" width="400"
+            height="384" data-lazy-load="viewport">
+            <source data-src="assets/videos/research-RWO.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
         <ul>
@@ -927,8 +933,8 @@
         </ul>
 
         <h3>Dragon Kings in Self-Organized Criticality Systems</h3>
-        <img src="assets/images/research-DKSOC.png" alt="dragon kings in SOC systems" class="side_content"
-            alt="dragon king classification">
+        <img src="assets/images/research-DKSOC.png" alt="dragon kings in SOC systems" class="side_content" width="400"
+            height="186" loading="lazy">
         <ul>
             <li>
                 This recent study focuses on self-organized criticality (SOC) - a phenomenon where systems naturally
@@ -957,8 +963,9 @@
         </ul>
 
         <h3>Sandpile Cascades on Oscillator Networks: The BTW Model Meets Kuramoto</h3>
-        <video autoplay muted loop class="side_content">
-            <source src="assets/videos/research-BTWKM.mp4" type="video/mp4">
+        <video autoplay muted loop playsinline preload="none" class="side_content lazy-video" width="400"
+            height="416" data-lazy-load="viewport">
+            <source data-src="assets/videos/research-BTWKM.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
         <ul>
@@ -996,8 +1003,8 @@
         </ul>
 
         <h3>Convergent Momentum-Space OPE and Bootstrap Equations in Conformal Field Theory</h3>
-        <img src="assets/images/research-OPE.png" alt="Operator Product Expansion" class="side_content"
-            alt="operator product expansion">
+        <img src="assets/images/research-OPE.png" alt="Operator Product Expansion" class="side_content" width="628"
+            height="356" loading="lazy">
         <ul>
             <li>
                 Conformal Field Theory (CFT) is a type of Quantum Field Theory that is invariant under conformal
@@ -1020,7 +1027,8 @@
         </ul>
 
         <h3>Standing Electromagnetic Solitons in Degenerate Relativistic Plasmas</h3>
-        <img src="assets/images/research-soliton.png" alt="Plasma Solitons" class="side_content" alt="soliton profile">
+        <img src="assets/images/research-soliton.png" alt="Plasma Solitons" class="side_content" width="628"
+            height="356" loading="lazy">
         <ul>
             <li>
                 Plasma, the fourth fundamental state of matter characterized by a large fraction of charged particles,
@@ -1081,7 +1089,7 @@
             <a class="teaching-comments-image-link" href="assets/images/TA_evals.png" data-fancybox="ta-evals"
                 data-caption="TA evaluations">
                 <img class="teaching-comments-image" src="assets/images/TA_evals.png" alt="TA evaluations"
-                    loading="lazy">
+                    width="1588" height="1300" loading="lazy">
             </a>
         </div>
     </section>
@@ -1162,10 +1170,12 @@
                         <a class="app-media" href="schrodinger" target="_blank"
                             aria-label="2D Schrödinger equation playground">
                             <img src="assets/images/apps/schrodinger.png"
-                                alt="2D Schrödinger equation playground preview">
-                            <video muted loop playsinline preload="metadata"
+                                alt="2D Schrödinger equation playground preview" width="1280" height="776"
+                                loading="lazy">
+                            <video muted loop playsinline preload="none" class="lazy-video" width="1280" height="776"
+                                data-lazy-load="interaction"
                                 poster="assets/images/apps/schrodinger.png">
-                                <source src="assets/videos/apps/schrodinger.mp4" type="video/mp4">
+                                <source data-src="assets/videos/apps/schrodinger.mp4" type="video/mp4">
                             </video>
                         </a>
                         <div class="app-meta">
@@ -1178,9 +1188,11 @@
                     </article>
                     <article class="app-card app-card--kuramoto">
                         <a class="app-media" href="kuramoto" target="_blank" aria-label="Kuramoto model playground">
-                            <img src="assets/images/apps/kuramoto.png" alt="Kuramoto model playground preview">
-                            <video muted loop playsinline preload="metadata" poster="assets/images/apps/kuramoto.png">
-                                <source src="assets/videos/apps/kuramoto.mp4" type="video/mp4">
+                            <img src="assets/images/apps/kuramoto.png" alt="Kuramoto model playground preview"
+                                width="1850" height="1120" loading="lazy">
+                            <video muted loop playsinline preload="none" class="lazy-video" width="1280" height="720"
+                                data-lazy-load="interaction" poster="assets/images/apps/kuramoto.png">
+                                <source data-src="assets/videos/apps/kuramoto.mp4" type="video/mp4">
                             </video>
                         </a>
                         <div class="app-meta">
@@ -1193,9 +1205,11 @@
                     </article>
                     <article class="app-card app-card--booknet">
                         <a class="app-media" href="booknet" target="_blank" aria-label="Character networks for books">
-                            <img src="assets/images/apps/booknet.png" alt="Character networks for books preview">
-                            <video muted loop playsinline preload="metadata" poster="assets/images/apps/booknet.png">
-                                <source src="assets/videos/apps/booknet.mp4" type="video/mp4">
+                            <img src="assets/images/apps/booknet.png" alt="Character networks for books preview"
+                                width="2096" height="1224" loading="lazy">
+                            <video muted loop playsinline preload="none" class="lazy-video" width="1280" height="720"
+                                data-lazy-load="interaction" poster="assets/images/apps/booknet.png">
+                                <source data-src="assets/videos/apps/booknet.mp4" type="video/mp4">
                             </video>
                         </a>
                         <div class="app-meta">
@@ -1240,49 +1254,57 @@
                     <a href="crafts/2024 აღმაშენებლის მონეტა.png" data-fancybox="gallery"
                         data-caption='Replica of an <a href="https://www.britishmuseum.org/collection/object/C_1857-1226-7">old Georgian coin</a> (1089-1125)'>
                         <img src="crafts/2024 აღმაშენებლის მონეტა.png"
-                            alt="Replica of an old Georgian coin (1089-1125)">
+                            alt="Replica of an old Georgian coin (1089-1125)" width="500" height="938"
+                            loading="lazy">
                     </a>
 
                     <a href="crafts/2022 scarab-top.jpg" data-fancybox="gallery" data-caption="Obsidian scarab">
-                        <img src="crafts/2022 scarab-top.jpg" alt="Obsidian scarab">
+                        <img src="crafts/2022 scarab-top.jpg" alt="Obsidian scarab" width="1581" height="1190"
+                            loading="lazy">
                     </a>
 
                     <a href="crafts/2015 ელფის.jpg" data-fancybox="gallery" data-caption="Aragorns necklace Evenstar">
-                        <img src="crafts/2015 ელფის.jpg" alt="Aragorns necklace Evenstar">
+                        <img src="crafts/2015 ელფის.jpg" alt="Aragorns necklace Evenstar" width="1412" height="2352"
+                            loading="lazy">
                     </a>
 
                     <a href="crafts/2011 ისრის წვერი.jpg" data-fancybox="gallery" data-caption="Arrowhead pendent">
-                        <img src="crafts/2011 ისრის წვერი.jpg" alt="Arrowhead pendent">
+                        <img src="crafts/2011 ისრის წვერი.jpg" alt="Arrowhead pendent" width="1440" height="2400"
+                            loading="lazy">
                     </a>
 
                     <a href="crafts/2013 ანხი.jpg" data-fancybox="gallery" data-caption="Ankh">
-                        <img src="crafts/2013 ანხი.jpg" alt="Ankh">
+                        <img src="crafts/2013 ანხი.jpg" alt="Ankh" width="1062" height="1769" loading="lazy">
                     </a>
 
                     <a href="crafts/2013 საქსაფონი.jpg" data-fancybox="gallery" data-caption="Saxophone">
-                        <img src="crafts/2013 საქსაფონი.jpg" alt="Saxophone">
+                        <img src="crafts/2013 საქსაფონი.jpg" alt="Saxophone" width="384" height="640" loading="lazy">
                     </a>
 
                     <a href="crafts/2013 ჰალსტუხის თხილამურა დამჭერი.jpg" data-fancybox="gallery"
                         data-caption="Ski shaped tie clip">
-                        <img src="crafts/2013 ჰალსტუხის თხილამურა დამჭერი.jpg" alt="Ski shaped tie clip">
+                        <img src="crafts/2013 ჰალსტუხის თხილამურა დამჭერი.jpg" alt="Ski shaped tie clip"
+                            width="2560" height="1536" loading="lazy">
                     </a>
 
                     <a href="crafts/2014 ყბარფა.jpg" data-fancybox="gallery" data-caption="Jaw harp">
-                        <img src="crafts/2014 ყბარფა.jpg" alt="Jaw harp">
+                        <img src="crafts/2014 ყბარფა.jpg" alt="Jaw harp" width="2560" height="1536" loading="lazy">
                     </a>
 
                     <a href="crafts/2014 ინფუზორია ქალამანა.jpg" data-fancybox="gallery"
                         data-caption="Paramecium necklace">
-                        <img src="crafts/2014 ინფუზორია ქალამანა.jpg" alt="Paramecium necklace">
+                        <img src="crafts/2014 ინფუზორია ქალამანა.jpg" alt="Paramecium necklace" width="1536"
+                            height="2560" loading="lazy">
                     </a>
 
                     <a href="crafts/2015 ბრტყელტუჩა 2.jpg" data-fancybox="gallery" data-caption="Mini pliers">
-                        <img src="crafts/2015 ბრტყელტუჩა 2.jpg" alt="Mini pliers 1">
+                        <img src="crafts/2015 ბრტყელტუჩა 2.jpg" alt="Mini pliers 1" width="1249" height="2082"
+                            loading="lazy">
                     </a>
 
                     <a href="crafts/2015 ბრტყელტუჩა 1.jpg" data-fancybox="gallery" data-caption="Mini pliers">
-                        <img src="crafts/2015 ბრტყელტუჩა 1.jpg" alt="Mini pliers 2">
+                        <img src="crafts/2015 ბრტყელტუჩა 1.jpg" alt="Mini pliers 2" width="2560" height="1536"
+                            loading="lazy">
                     </a>
                 </div>
             </li>
@@ -1679,6 +1701,37 @@
                 }
             };
 
+            let pendingNavigationTargetId = null;
+
+            const getSectionTop = (targetElement) => window.scrollY + targetElement.getBoundingClientRect().top;
+
+            const scrollToSection = (targetElement, behavior = 'smooth') => {
+                window.scrollTo({ top: getSectionTop(targetElement), behavior });
+            };
+
+            const correctPendingNavigation = () => {
+                if (!pendingNavigationTargetId) {
+                    return;
+                }
+                const targetElement = document.getElementById(pendingNavigationTargetId);
+                pendingNavigationTargetId = null;
+                if (!targetElement) {
+                    return;
+                }
+                if (Math.abs(targetElement.getBoundingClientRect().top) <= 8) {
+                    return;
+                }
+                scrollToSection(targetElement, 'auto');
+            };
+
+            if (document.readyState === 'complete') {
+                requestAnimationFrame(correctPendingNavigation);
+            } else {
+                window.addEventListener('load', () => {
+                    requestAnimationFrame(correctPendingNavigation);
+                });
+            }
+
             // add click listeners to menu items
             document.querySelectorAll('.menu-item').forEach(item => {
                 item.addEventListener('click', function (e) {
@@ -1691,13 +1744,19 @@
                     if (!targetElement) {
                         return;
                     }
-                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                    scrollToSection(targetElement, 'smooth');
+                    pendingNavigationTargetId = document.readyState === 'complete' ? null : targetId;
                     history.pushState(null, '', `#${targetId}`);
                 });
             });
             // add click listener to the profile pic
             const overlayCanvas = document.getElementById('overlayCanvas');
             overlayCanvas.addEventListener('click', () => {
+                pendingNavigationTargetId = null;
+                const cleanUrl = new URL(window.location.href);
+                cleanUrl.search = '';
+                cleanUrl.hash = '';
+                history.replaceState(null, '', cleanUrl.pathname || '/');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
 
@@ -1826,6 +1885,80 @@
             }
         }
 
+        function hydrateLazyVideo(video) {
+            if (!video) {
+                return Promise.resolve(null);
+            }
+            if (video.dataset.lazyHydrated === '1') {
+                return Promise.resolve(video);
+            }
+
+            const sources = video.querySelectorAll('source[data-src]');
+            if (!sources.length) {
+                video.dataset.lazyHydrated = '1';
+                return Promise.resolve(video);
+            }
+
+            for (const source of sources) {
+                source.src = source.dataset.src;
+                source.removeAttribute('data-src');
+            }
+
+            video.dataset.lazyHydrated = '1';
+
+            return new Promise((resolve) => {
+                let settled = false;
+                const finish = () => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    resolve(video);
+                };
+
+                video.addEventListener('loadeddata', finish, { once: true });
+                video.addEventListener('canplay', finish, { once: true });
+                video.addEventListener('error', finish, { once: true });
+                video.load();
+
+                window.setTimeout(finish, 1500);
+            });
+        }
+
+        const viewportLazyVideos = document.querySelectorAll('video.lazy-video[data-lazy-load="viewport"]');
+        if (viewportLazyVideos.length) {
+            if ('IntersectionObserver' in window) {
+                const lazyVideoObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach((entry) => {
+                        if (!entry.isIntersecting) {
+                            return;
+                        }
+                        const video = entry.target;
+                        observer.unobserve(video);
+                        hydrateLazyVideo(video).then(() => {
+                            const playPromise = video.play();
+                            if (playPromise && typeof playPromise.catch === 'function') {
+                                playPromise.catch(() => { });
+                            }
+                        });
+                    });
+                }, {
+                    rootMargin: '300px 0px'
+                });
+
+                viewportLazyVideos.forEach((video) => lazyVideoObserver.observe(video));
+            } else {
+                viewportLazyVideos.forEach((video) => {
+                    hydrateLazyVideo(video).then(() => {
+                        const playPromise = video.play();
+                        if (playPromise && typeof playPromise.catch === 'function') {
+                            playPromise.catch(() => { });
+                        }
+                    });
+                });
+            }
+        }
+
         // App preview hover interactions
         const appCards = document.querySelectorAll('.app-card');
         appCards.forEach((card) => {
@@ -1845,22 +1978,27 @@
                     clearTimeout(stopTimer);
                     stopTimer = null;
                 }
-                const playPromise = video.play();
-                if (video.readyState >= 2) {
-                    showPreview();
-                } else {
-                    const revealWhenReady = () => {
-                        if (playRequestId !== requestId) {
-                            return;
-                        }
+                hydrateLazyVideo(video).then(() => {
+                    if (playRequestId !== requestId) {
+                        return;
+                    }
+                    const playPromise = video.play();
+                    if (video.readyState >= 2) {
                         showPreview();
-                    };
-                    video.addEventListener('playing', revealWhenReady, { once: true });
-                    video.addEventListener('canplay', revealWhenReady, { once: true });
-                }
-                if (playPromise && typeof playPromise.catch === 'function') {
-                    playPromise.catch(() => { });
-                }
+                    } else {
+                        const revealWhenReady = () => {
+                            if (playRequestId !== requestId) {
+                                return;
+                            }
+                            showPreview();
+                        };
+                        video.addEventListener('playing', revealWhenReady, { once: true });
+                        video.addEventListener('canplay', revealWhenReady, { once: true });
+                    }
+                    if (playPromise && typeof playPromise.catch === 'function') {
+                        playPromise.catch(() => { });
+                    }
+                });
             };
             const stopVideo = () => {
                 playRequestId += 1;

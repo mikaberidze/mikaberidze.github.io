@@ -209,16 +209,20 @@
     const trackInfo = document.getElementById('trackInfo');
 
     const inputName = 'input.mkv';
+    const mountedInputDir = '/mounted-input';
 
     let ffmpeg = null;
     let loaded = false;
     let currentFile = null;
     let currentFileData = null;
+    let currentInputPath = inputName;
+    let inputMounted = false;
     let lastLogs = [];
-    let trackCache = { audio: [], subtitles: [] };
+    let trackCache = { video: [], audio: [], subtitles: [] };
     let playerUrl = null;
     let subtitleUrl = null;
     let ffmpegBlobAssets = null;
+    let playbackCache = { key: null, videoBlob: null };
 
     function setStatus(message, append = false) {
       if (append) {
@@ -238,6 +242,10 @@
       player.removeAttribute('src');
       [...player.querySelectorAll('track')].forEach((t) => t.remove());
       player.load();
+    }
+
+    function resetPlaybackCache() {
+      playbackCache = { key: null, videoBlob: null };
     }
 
     function escapeHtml(text) {
@@ -396,6 +404,26 @@
       } catch { }
     }
 
+    async function safeDeleteDir(path) {
+      try {
+        await ffmpeg.deleteDir(path);
+      } catch { }
+    }
+
+    async function safeUnmount(mountPoint) {
+      try {
+        await ffmpeg.unmount(mountPoint);
+      } catch { }
+    }
+
+    function describeFileReadError(error) {
+      if (error?.name === 'NotReadableError') {
+        return 'The browser could not read that local file. This usually means the file is on a protected, cloud-synced, or temporarily unavailable location.';
+      }
+
+      return error?.message || String(error);
+    }
+
     async function readLocalFile(file) {
       setStatus(
         `Reading local file: ${file.name} (${file.size.toLocaleString()} bytes, ${file.type || 'unknown type'})`,
@@ -411,20 +439,63 @@
       return new Uint8Array(buffer);
     }
 
+    async function resetInputSource() {
+      currentInputPath = inputName;
+      resetPlaybackCache();
+
+      if (!ffmpeg) return;
+
+      if (inputMounted) {
+        await safeUnmount(mountedInputDir);
+        inputMounted = false;
+      }
+
+      await safeDeleteDir(mountedInputDir);
+      await safeDelete(inputName);
+    }
+
+    async function mountInputFile(file) {
+      currentFile = file;
+      currentFileData = null;
+      resetPlayerUrls();
+      setStatus(`Mounting ${file.name} directly into FFmpeg...`);
+
+      await resetInputSource();
+      await ffmpeg.createDir(mountedInputDir);
+      await ffmpeg.mount('WORKERFS', { files: [file] }, mountedInputDir);
+
+      currentInputPath = `${mountedInputDir}/${file.name}`;
+      inputMounted = true;
+      setStatus(`Ready: ${file.name} (direct file mount)`);
+    }
+
     async function writeInputFile(file, fileData = null) {
       currentFile = file;
       currentFileData = fileData;
       resetPlayerUrls();
       setStatus(`Writing ${file.name} into FFmpeg virtual FS...`);
 
-      await safeDelete(inputName);
+      await resetInputSource();
       const bytes = fileData || await readLocalFile(file);
       await ffmpeg.writeFile(inputName, bytes);
 
       setStatus(`Ready: ${file.name}`);
     }
 
+    async function attachInputFile(file) {
+      try {
+        await mountInputFile(file);
+      } catch (mountError) {
+        setStatus(`Direct file mount failed: ${mountError?.message || mountError}`, true);
+        setStatus('Falling back to an in-memory copy of the file...', true);
+
+        const fileData = await readLocalFile(file);
+        await writeInputFile(file, fileData);
+      }
+    }
+
     function parseTracks(logs) {
+      const video = [];
       const audio = [];
       const subtitles = [];
       const seen = new Set();
@@ -444,7 +515,7 @@
         const titleMatch = line.match(/title\s*:\s*([^,]+)/i);
         const title = titleMatch ? titleMatch[1].trim() : '';
 
-        if (type !== 'audio' && type !== 'subtitle') continue;
+        if (type !== 'video' && type !== 'audio' && type !== 'subtitle') continue;
 
         const key = `${type}:${streamIndex}`;
         if (seen.has(key)) continue;
@@ -457,17 +528,18 @@
           codec,
           title,
           label:
-            `${type === 'audio' ? 'Audio' : 'Subtitle'} ${streamIndex}` +
+            `${type === 'video' ? 'Video' : type === 'audio' ? 'Audio' : 'Subtitle'} ${streamIndex}` +
             `${lang ? ` • ${lang}` : ''}` +
             `${codec ? ` • ${codec}` : ''}` +
             `${title ? ` • ${title}` : ''}`
         };
 
+        if (type === 'video') video.push(item);
         if (type === 'audio') audio.push(item);
         if (type === 'subtitle') subtitles.push(item);
       }
 
-      return { audio, subtitles };
+      return { video, audio, subtitles };
     }
 
     function fillSelect(select, items, emptyLabel) {
@@ -492,12 +564,19 @@
       select.disabled = false;
     }
 
-    function renderTrackInfo(audio, subtitles) {
+    function renderTrackInfo(video, audio, subtitles) {
       const pieces = [];
+
+      if (video.length) {
+        pieces.push(
+          `<div><div style="margin-bottom:6px;font-weight:600">Video</div>${video.map((t) => `<span class="pill">${escapeHtml(t.label)}</span>`).join('')
+          }</div>`
+        );
+      }
 
       if (audio.length) {
         pieces.push(
-          `<div><div style="margin-bottom:6px;font-weight:600">Audio</div>${audio.map((t) => `<span class="pill">${escapeHtml(t.label)}</span>`).join('')
+          `<div style="margin-top:10px"><div style="margin-bottom:6px;font-weight:600">Audio</div>${audio.map((t) => `<span class="pill">${escapeHtml(t.label)}</span>`).join('')
           }</div>`
         );
       }
@@ -527,7 +606,7 @@
       setStatus('Scanning tracks...');
 
       try {
-        await ffmpeg.exec(['-hide_banner', '-i', inputName]);
+        await ffmpeg.exec(['-hide_banner', '-i', currentInputPath]);
       } catch { }
 
       const tracks = parseTracks(lastLogs);
@@ -541,7 +620,7 @@
       subtitleSelect.value = '0';
 
       openBtn.disabled = tracks.audio.length === 0;
-      renderTrackInfo(tracks.audio, tracks.subtitles);
+      renderTrackInfo(tracks.video, tracks.audio, tracks.subtitles);
 
       if (tracks.audio.length) {
         setStatus(
@@ -552,31 +631,85 @@
       }
     }
 
+    function normalizeCodec(codec) {
+      return String(codec || '').trim().toLowerCase();
+    }
+
+    function isFastVideoCopyCodec(codec) {
+      const normalized = normalizeCodec(codec);
+      return normalized.includes('h264') || normalized.includes('avc');
+    }
+
+    function isFastAudioCopyCodec(codec) {
+      const normalized = normalizeCodec(codec);
+      return normalized.includes('aac') || normalized.includes('mp3');
+    }
+
+    function getPlaybackPlan(audioTrack) {
+      const videoTrack = trackCache.video[0] || null;
+      const copyVideo = isFastVideoCopyCodec(videoTrack?.codec);
+      const copyAudio = isFastAudioCopyCodec(audioTrack?.codec);
+
+      return {
+        videoTrack,
+        copyVideo,
+        copyAudio,
+        cacheKey: JSON.stringify({
+          inputPath: currentInputPath,
+          videoCodec: normalizeCodec(videoTrack?.codec),
+          audioMap: audioTrack?.map || '',
+          audioCodec: normalizeCodec(audioTrack?.codec)
+        })
+      };
+    }
+
     async function makePlayableVideo(audioTrack) {
       const outName = 'playable.mp4';
       await safeDelete(outName);
 
-      setStatus('Creating browser-playable video...');
+      const plan = getPlaybackPlan(audioTrack);
+      if (playbackCache.key === plan.cacheKey && playbackCache.videoBlob) {
+        setStatus('Using cached playable video for the selected audio track.');
+        return playbackCache.videoBlob;
+      }
+
+      setStatus('Preparing browser-playable video...');
+
+      const primaryArgs = [
+        '-i', currentInputPath,
+        '-map', '0:v:0',
+        '-map', audioTrack.map,
+        '-c:v', plan.copyVideo ? 'copy' : 'libx264',
+        '-sn',
+        '-movflags', '+faststart'
+      ];
+
+      if (plan.copyVideo) {
+        setStatus('Creating browser-playable video with video stream copy...', true);
+      } else {
+        setStatus('Video codec is not browser-friendly. Re-encoding video to H.264...', true);
+        primaryArgs.push('-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p');
+      }
+
+      if (plan.copyAudio) {
+        setStatus('Selected audio codec is already browser-friendly. Copying audio stream...', true);
+        primaryArgs.push('-c:a', 'copy');
+      } else {
+        setStatus('Selected audio codec needs conversion. Transcoding audio to AAC...', true);
+        primaryArgs.push('-c:a', 'aac', '-b:a', '192k');
+      }
+
+      primaryArgs.push(outName);
 
       try {
-        await ffmpeg.exec([
-          '-i', inputName,
-          '-map', '0:v:0',
-          '-map', audioTrack.map,
-          '-c:v', 'copy',
-          '-c:a', 'aac',
-          '-b:a', '192k',
-          '-sn',
-          '-movflags', '+faststart',
-          outName
-        ]);
+        await ffmpeg.exec(primaryArgs);
       } catch {
-        setStatus('Fast remux failed. Falling back to video re-encode for compatibility...', true);
+        setStatus('Primary conversion plan failed. Falling back to H.264 + AAC re-encode...', true);
 
         await safeDelete(outName);
 
         await ffmpeg.exec([
-          '-i', inputName,
+          '-i', currentInputPath,
           '-map', '0:v:0',
           '-map', audioTrack.map,
           '-c:v', 'libx264',
@@ -592,7 +725,9 @@
       }
 
       const mp4Data = await ffmpeg.readFile(outName);
-      return new Blob([mp4Data.buffer], { type: 'video/mp4' });
+      const blob = new Blob([mp4Data.buffer], { type: 'video/mp4' });
+      playbackCache = { key: plan.cacheKey, videoBlob: blob };
+      return blob;
     }
 
     async function makeSubtitleTrack(subtitleTrack) {
@@ -604,7 +739,7 @@
       setStatus('Extracting subtitle track as WebVTT...');
 
       await ffmpeg.exec([
-        '-i', inputName,
+        '-i', currentInputPath,
         '-map', subtitleTrack.map,
         '-c:s', 'webvtt',
         outName
@@ -657,7 +792,7 @@
         setStatus('Ready. Change the selects and press Open in player again to switch tracks.');
       } catch (error) {
         console.error(error);
-        setStatus(`Error: ${error?.message || error}`);
+        setStatus(`Error: ${describeFileReadError(error)}`);
       }
     }
 
@@ -666,13 +801,12 @@
       if (!file) return;
 
       try {
-        const fileData = await readLocalFile(file);
         await loadFFmpeg();
-        await writeInputFile(file, fileData);
+        await attachInputFile(file);
         await probeTracks();
       } catch (error) {
         console.error(error);
-        setStatus(`Error: ${error?.message || error}`);
+        setStatus(`Error: ${describeFileReadError(error)}`);
       }
     });
 
@@ -681,7 +815,7 @@
         await probeTracks();
       } catch (error) {
         console.error(error);
-        setStatus(`Error: ${error?.message || error}`);
+        setStatus(`Error: ${describeFileReadError(error)}`);
       }
     });
 
@@ -690,7 +824,7 @@
         await openInPlayer();
       } catch (error) {
         console.error(error);
-        setStatus(`Error: ${error?.message || error}`);
+        setStatus(`Error: ${describeFileReadError(error)}`);
       }
     });
 
@@ -700,12 +834,12 @@
         await loadFFmpeg(true);
 
         if (currentFile) {
-          await writeInputFile(currentFile, currentFileData);
+          await attachInputFile(currentFile);
           await probeTracks();
         }
       } catch (error) {
         console.error(error);
-        setStatus(`Error reloading FFmpeg: ${error?.message || error}`);
+        setStatus(`Error reloading FFmpeg: ${describeFileReadError(error)}`);
       }
     });
   </script>
