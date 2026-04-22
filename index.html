@@ -117,8 +117,7 @@
             --iconShift: calc(var(--panelWidth)*10/200);
         }
 
-        /* Re-enable interaction for the actual icon targets and the bundle hitbox */
-        .image-links .icon-bundle,
+        /* Re-enable interaction for the actual icon targets */
         .image-links a {
             pointer-events: auto;
         }
@@ -151,118 +150,81 @@
 
         /* circular layout */
         .image-links>*:nth-child(1) {
-            --angle: 50deg;
+            --angle: 60deg;
         }
 
         .image-links>*:nth-child(2) {
-            --angle: 25deg;
+            --angle: 30deg;
         }
 
         .image-links>*:nth-child(3) {
-            --angle: -25deg;
+            --angle: 0deg;
         }
 
         .image-links>*:nth-child(4) {
-            --angle: -50deg;
+            --angle: -30deg;
         }
 
-        /* .image-links > *:nth-child(5) {
-            --angle: -50deg;
-        } */
+        .image-links>*:nth-child(5) {
+            --angle: -60deg;
+        }
 
         .image-links>a:hover img {
             transform: translateX(calc(-1*var(--iconShift)*sin(var(--angle)))) translateY(calc(var(--iconShift)*cos(var(--angle))));
         }
 
-        .icon-bundle {
-            position: absolute;
-            overflow: visible;
-            --githubShift: var(--iconShift);
-            --gitlabShift: calc(var(--iconShift) + var(--iconSize) * 1.15);
-        }
-
-        /* Expand the interactive hitbox only while active/hovered so the
-           pointer can travel to the expanded GitLab icon without dropping hover */
-        .image-links>.icon-bundle:hover,
-        .image-links>.icon-bundle.bundle-active,
-        .image-links>.icon-bundle:focus-within {
-            width: calc(var(--gitlabShift) + var(--gitlabShift) + var(--iconSize));
-            height: calc(var(--gitlabShift) + var(--gitlabShift) + var(--iconSize));
-        }
-
-        .icon-bundle a {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: var(--iconSize);
-            height: var(--iconSize);
-            border-radius: 50%;
-            overflow: hidden;
-            transform: translate(-50%, -50%);
-            transition: transform 0.1s linear;
-            z-index: 4;
-        }
-
-        .icon-bundle a img {
-            width: 100%;
-            height: 100%;
-        }
-
-        .icon-bundle .github-icon {
-            z-index: 5;
-        }
-
-        .icon-bundle:hover .github-icon,
-        .icon-bundle.bundle-active .github-icon,
-        .icon-bundle:focus-within .github-icon {
-            transform: translate(-50%, -50%) translateX(calc(-1*var(--githubShift)*sin(var(--angle)))) translateY(calc(var(--githubShift)*cos(var(--angle))));
-        }
-
-        .icon-bundle:hover .gitlab-icon,
-        .icon-bundle.bundle-active .gitlab-icon,
-        .icon-bundle:focus-within .gitlab-icon {
-            transform: translate(-50%, -50%) translateX(calc(-1*var(--gitlabShift)*sin(var(--angle)))) translateY(calc(var(--gitlabShift)*cos(var(--angle))));
-        }
-
-        @media (hover: none) {
-            .image-links .icon-bundle .github-icon {
-                transform: translate(-50%, -50%) translateX(calc(-1*var(--githubShift)*sin(var(--angle)))) translateY(calc(var(--githubShift)*cos(var(--angle))));
-            }
-
-            .image-links .icon-bundle .gitlab-icon {
-                transform: translate(-50%, -50%) translateX(calc(-1*var(--gitlabShift)*sin(var(--angle)))) translateY(calc(var(--gitlabShift)*cos(var(--angle))));
-            }
-        }
-
         /* ---------------------------------------------------------------------------------------------------- NAVIGATION */
         .menu {
-            margin-top: calc(var(--panelWidth)*1.3);
+            margin-top: calc(var(--panelWidth)*1.45);
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: flex-start;
+            gap: clamp(0.55rem, 2vh, 1.2rem);
+            box-sizing: border-box;
+            width: 100%;
+            padding-left: 0;
             position: relative;
+            left: calc(var(--panelWidth)*-0.08);
         }
 
         .menu-item {
-            margin-bottom: 4vh;
-            /* Increase distance between menu items */
-            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5em;
+            margin-bottom: 0;
+            text-align: left;
             color: #333;
-            transition: font-weight 0.3s;
-            /* Smooth transition for font-weight */
-            /* padding-top: 5px; */
+            font-size: clamp(0.88rem, 1vw, 1.05rem);
+            line-height: 1.15;
+            transition: color 0.2s ease, transform 0.2s ease;
             cursor: pointer;
-            /* Optional: Change cursor to pointer to indicate clickability */
             z-index: 1;
             text-decoration: none;
         }
 
+        .menu-item::before {
+            content: "";
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+            flex: 0 0 5px;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
         .menu-item:hover,
         .menu-item.bold {
-            font-weight: bold;
+            color: #111;
+            font-weight: 600;
+            transform: translateX(2px);
+        }
+
+        .menu-item:hover::before,
+        .menu-item.bold::before {
+            opacity: 1;
+            transform: scale(1);
         }
 
         /* ---------------------------------------------------------------------------------------------------- MAIN TEXT */
@@ -595,19 +557,23 @@
 
             /* Mobile-specific angle distribution for icon links */
             .mobile-profile .image-links>*:nth-child(1) {
-                --angle: 45deg;
+                --angle: 52deg;
             }
 
             .mobile-profile .image-links>*:nth-child(2) {
-                --angle: 15deg;
+                --angle: 26deg;
             }
 
             .mobile-profile .image-links>*:nth-child(3) {
-                --angle: -15deg;
+                --angle: 0deg;
             }
 
             .mobile-profile .image-links>*:nth-child(4) {
-                --angle: -45deg;
+                --angle: -26deg;
+            }
+
+            .mobile-profile .image-links>*:nth-child(5) {
+                --angle: -52deg;
             }
 
             header,
@@ -677,16 +643,14 @@
             <a href="https://www.researchgate.net/profile/Guram-Mikaberidze" target="_blank">
                 <img src="assets/icons/icon_researchgate.png" alt="ResearchGate Logo">
             </a>
-            <div class="icon-bundle">
-                <a class="gitlab-icon" href="https://gitlab.com/mikaberidze" target="_blank">
-                    <img src="assets/icons/icon_gitlab.png" alt="GitLab Logo">
-                </a>
-                <a class="github-icon" href="https://github.com/mikaberidze" target="_blank">
-                    <img src="assets/icons/icon_github.png" alt="GitHub Logo">
-                </a>
-            </div>
+            <a href="https://gitlab.com/mikaberidze" target="_blank">
+                <img src="assets/icons/icon_gitlab.png" alt="GitLab Logo">
+            </a>
+            <a href="https://github.com/mikaberidze" target="_blank">
+                <img src="assets/icons/icon_github.png" alt="GitHub Logo">
+            </a>
             <a href="https://orcid.org/0000-0001-6776-3481" target="_blank">
-                <img src="assets/icons/icon_orchid.png" alt="Gitlab Logo">
+                <img src="assets/icons/icon_orchid.png" alt="ORCID Logo">
             </a>
         </div>
     </div>
@@ -705,19 +669,14 @@
             <a href="https://www.researchgate.net/profile/Guram-Mikaberidze" target="_blank">
                 <img src="assets/icons/icon_researchgate.png" alt="ResearchGate Logo">
             </a>
-            <div class="icon-bundle">
-                <a class="gitlab-icon" href="https://gitlab.com/mikaberidze" target="_blank">
-                    <img src="assets/icons/icon_gitlab.png" alt="GitLab Logo">
-                </a>
-                <a class="github-icon" href="https://github.com/mikaberidze" target="_blank">
-                    <img src="assets/icons/icon_github.png" alt="GitHub Logo">
-                </a>
-            </div>
-            <!-- <a href="https://www.linkedin.com/in/guram-mikaberidze-7914538a/" target="_blank">
-                <img src="assets/icons/icon_linkedin.png" alt="Gitlab Logo">
-            </a> -->
+            <a href="https://gitlab.com/mikaberidze" target="_blank">
+                <img src="assets/icons/icon_gitlab.png" alt="GitLab Logo">
+            </a>
+            <a href="https://github.com/mikaberidze" target="_blank">
+                <img src="assets/icons/icon_github.png" alt="GitHub Logo">
+            </a>
             <a href="https://orcid.org/0000-0001-6776-3481" target="_blank">
-                <img src="assets/icons/icon_orchid.png" alt="Gitlab Logo">
+                <img src="assets/icons/icon_orchid.png" alt="ORCID Logo">
             </a>
         </div>
         <div class="menu">
@@ -795,8 +754,8 @@
         </ul>
 
         <!-- (*) NOTE THAT THIS IS IN A WEIRD LOCATION, WHEN ADDING NEW RESEARCH, NEED TO REMEMBER -->
-        <video autoplay muted loop playsinline preload="none" class="side_content lazy-video" width="1216"
-            height="956" data-lazy-load="viewport">
+        <video autoplay muted loop playsinline preload="none" class="side_content lazy-video" width="1216" height="956"
+            data-lazy-load="viewport">
             <source data-src="assets/videos/research-s-shaped.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
@@ -851,8 +810,8 @@
         <h2>Selected publications</h2>
 
         <h3>Flows on Networks</h3>
-        <video autoplay muted loop playsinline preload="none" class="side_content lazy-video" width="500"
-            height="294" data-lazy-load="viewport">
+        <video autoplay muted loop playsinline preload="none" class="side_content lazy-video" width="500" height="294"
+            data-lazy-load="viewport">
             <source data-src="assets/videos/research-flow.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
@@ -899,8 +858,8 @@
         </ul>
 
         <h3>Consensus Formation Among Mobile Agents in Networks of Heterogeneous Interaction Venues</h3>
-        <video autoplay muted loop playsinline preload="none" class="side_content lazy-video" width="400"
-            height="384" data-lazy-load="viewport">
+        <video autoplay muted loop playsinline preload="none" class="side_content lazy-video" width="400" height="384"
+            data-lazy-load="viewport">
             <source data-src="assets/videos/research-RWO.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
@@ -963,8 +922,8 @@
         </ul>
 
         <h3>Sandpile Cascades on Oscillator Networks: The BTW Model Meets Kuramoto</h3>
-        <video autoplay muted loop playsinline preload="none" class="side_content lazy-video" width="400"
-            height="416" data-lazy-load="viewport">
+        <video autoplay muted loop playsinline preload="none" class="side_content lazy-video" width="400" height="416"
+            data-lazy-load="viewport">
             <source data-src="assets/videos/research-BTWKM.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
@@ -1088,8 +1047,8 @@
             <div>Sentiment Analysis of Student Feedback for UC Davis Courses using DeBERTa-v3</div>
             <a class="teaching-comments-image-link" href="assets/images/TA_evals.png" data-fancybox="ta-evals"
                 data-caption="TA evaluations">
-                <img class="teaching-comments-image" src="assets/images/TA_evals.png" alt="TA evaluations"
-                    width="1588" height="1300" loading="lazy">
+                <img class="teaching-comments-image" src="assets/images/TA_evals.png" alt="TA evaluations" width="1588"
+                    height="1300" loading="lazy">
             </a>
         </div>
     </section>
@@ -1173,8 +1132,7 @@
                                 alt="2D Schrödinger equation playground preview" width="1280" height="776"
                                 loading="lazy">
                             <video muted loop playsinline preload="none" class="lazy-video" width="1280" height="776"
-                                data-lazy-load="interaction"
-                                poster="assets/images/apps/schrodinger.png">
+                                data-lazy-load="interaction" poster="assets/images/apps/schrodinger.png">
                                 <source data-src="assets/videos/apps/schrodinger.mp4" type="video/mp4">
                             </video>
                         </a>
@@ -1253,9 +1211,8 @@
 
                     <a href="crafts/2024 აღმაშენებლის მონეტა.png" data-fancybox="gallery"
                         data-caption='Replica of an <a href="https://www.britishmuseum.org/collection/object/C_1857-1226-7">old Georgian coin</a> (1089-1125)'>
-                        <img src="crafts/2024 აღმაშენებლის მონეტა.png"
-                            alt="Replica of an old Georgian coin (1089-1125)" width="500" height="938"
-                            loading="lazy">
+                        <img src="crafts/2024 აღმაშენებლის მონეტა.png" alt="Replica of an old Georgian coin (1089-1125)"
+                            width="500" height="938" loading="lazy">
                     </a>
 
                     <a href="crafts/2022 scarab-top.jpg" data-fancybox="gallery" data-caption="Obsidian scarab">
@@ -1283,8 +1240,8 @@
 
                     <a href="crafts/2013 ჰალსტუხის თხილამურა დამჭერი.jpg" data-fancybox="gallery"
                         data-caption="Ski shaped tie clip">
-                        <img src="crafts/2013 ჰალსტუხის თხილამურა დამჭერი.jpg" alt="Ski shaped tie clip"
-                            width="2560" height="1536" loading="lazy">
+                        <img src="crafts/2013 ჰალსტუხის თხილამურა დამჭერი.jpg" alt="Ski shaped tie clip" width="2560"
+                            height="1536" loading="lazy">
                     </a>
 
                     <a href="crafts/2014 ყბარფა.jpg" data-fancybox="gallery" data-caption="Jaw harp">
@@ -1446,7 +1403,7 @@
         const mobileEdgeCanvas = document.getElementById('mobileEdgeCanvas');
         const mobileCtx = mobileEdgeCanvas.getContext('2d');
 
-        function drawConnectorSet({ container, canvas, ctx, mainEl, links, drawMenu = false, overshootPx = 0, fitToBounds = false }) {
+        function drawConnectorSet({ container, canvas, ctx, mainEl, links, overshootPx = 0, fitToBounds = false }) {
             const lineColor = 'gray';
             ctx.strokeStyle = lineColor;
 
@@ -1484,16 +1441,6 @@
                 cssTop = 0;
                 cssW = Math.ceil(containerRect.width);
                 cssH = Math.ceil(containerRect.height);
-                // The menu can overflow the fixed-height panel (e.g., small screens),
-                // so ensure the edge canvas extends at least to the last menu item ("Hobbies").
-                if (drawMenu) {
-                    const menuItems = Array.from(container.querySelectorAll('.menu-item'));
-                    if (menuItems.length > 0) {
-                        const maxBottomAbs = Math.max(...menuItems.map(item => item.getBoundingClientRect().bottom));
-                        const neededH = Math.ceil((maxBottomAbs - containerRect.top) + 8);
-                        cssH = Math.max(cssH, neededH);
-                    }
-                }
             }
             canvas.style.left = `${cssLeft}px`;
             canvas.style.top = `${cssTop}px`;
@@ -1537,38 +1484,6 @@
                 ctx.strokeStyle = lineColor;
                 ctx.stroke();
             });
-
-            // Desktop trunk + circles
-            if (drawMenu) {
-                ctx.beginPath();
-                ctx.moveTo(mainCenter.x, mainCenter.y);
-                ctx.lineTo(mainCenter.x, cssH);
-                ctx.stroke();
-
-                container.querySelectorAll('.menu-item').forEach(div => {
-                    const rect = div.getBoundingClientRect();
-                    const circleRadius = 3;
-                    const circleX = rect.left + rect.width / 2 - canvasRect.left;
-                    const circleY = rect.bottom - canvasRect.top;
-
-                    // erase line behind text
-                    ctx.strokeStyle = '#f8f8f8';
-                    ctx.lineWidth = 20;
-                    ctx.beginPath();
-                    ctx.moveTo(mainCenter.x, circleY);
-                    ctx.lineTo(mainCenter.x, rect.top - canvasRect.top);
-                    ctx.stroke();
-
-                    // circle
-                    ctx.strokeStyle = lineColor;
-                    ctx.fillStyle = lineColor;
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.closePath();
-                });
-            }
         }
 
         function drawEdges() {
@@ -1580,7 +1495,6 @@
                     ctx: profileCtx,
                     mainEl: desktopMainPic,
                     links: desktopLinkImages,
-                    drawMenu: true,
                     overshootPx: 0,
                     fitToBounds: false
                 });
@@ -1592,7 +1506,6 @@
                     ctx: mobileCtx,
                     mainEl: mobileMainPic,
                     links: mobileLinkImages,
-                    drawMenu: false,
                     overshootPx: 0,
                     fitToBounds: true
                 });
@@ -1627,59 +1540,6 @@
             [...desktopLinkImages, ...mobileLinkImages].forEach(link => {
                 ['mouseenter', 'mouseleave', 'focus', 'blur'].forEach(evt => {
                     link.addEventListener(evt, queueEdgeFollow);
-                });
-            });
-
-            document.querySelectorAll('.icon-bundle').forEach(bundle => {
-                const activeTargets = new Set();
-                let collapseTimeout = null;
-                const ensureBundleActive = () => {
-                    if (collapseTimeout) {
-                        clearTimeout(collapseTimeout);
-                        collapseTimeout = null;
-                    }
-                    if (!bundle.classList.contains('bundle-active')) {
-                        bundle.classList.add('bundle-active');
-                    }
-                };
-                const scheduleBundleCollapse = () => {
-                    if (collapseTimeout) {
-                        return;
-                    }
-                    collapseTimeout = setTimeout(() => {
-                        collapseTimeout = null;
-                        if (activeTargets.size === 0) {
-                            bundle.classList.remove('bundle-active');
-                            queueEdgeFollow();
-                        }
-                    }, 0);
-                };
-                const activate = (target) => {
-                    activeTargets.add(target);
-                    ensureBundleActive();
-                    queueEdgeFollow();
-                };
-                const deactivate = (target) => {
-                    activeTargets.delete(target);
-                    queueEdgeFollow();
-                    if (activeTargets.size === 0) {
-                        scheduleBundleCollapse();
-                    }
-                };
-                const bindPointer = (node) => {
-                    node.addEventListener('mouseenter', () => activate(node));
-                    node.addEventListener('mouseleave', () => deactivate(node));
-                };
-
-                bindPointer(bundle);
-                bundle.addEventListener('focusin', () => activate(bundle));
-                bundle.addEventListener('focusout', () => deactivate(bundle));
-
-                bundle.querySelectorAll('a').forEach(anchor => {
-                    bindPointer(anchor);
-                    anchor.addEventListener('focus', () => activate(anchor));
-                    anchor.addEventListener('blur', () => deactivate(anchor));
-                    anchor.addEventListener('transitionend', queueEdgeFollow);
                 });
             });
 
