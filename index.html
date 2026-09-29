@@ -702,8 +702,8 @@
                 I am a postdoctoral researcher at the School of Computing, University of Wyoming, where I explore the
                 interplay between complex systems and machine learning. 
                 The connection runs both ways: neural networks are complex systems whose learning emerges from simple interacting
-                parts, and complex systems resist traditional prediction, which is exactly where machine learning excels.
-                Currently, I am developing tools based on automatic differentiation and variational analysis for optimal network science: 
+                parts, and complex systems resist traditional prediction, which is where machine learning can help.
+                Currently, I am developing tools based on automatic differentiation and variational analysis for
                 designing network structures that optimize properties like synchronization, robustness, or navigability. For example, 
                 my research has shown that synchronization in the continental European power grid can be improved by 19% by
                 shifting resources from local connections to long-range transmission lines.
@@ -794,22 +794,22 @@
             referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
         <ul>
             <li>
-                This effort focuses on animal migratory routes and identifying fence combinations whose removal would
+                This effort focuses on modeling animal migratory routes and identifying fence combinations whose removal would
                 optimally simplify wildlife movement.
                 <br>
-                Three complementary projects—led by two undergraduate students and one graduate student—support this
-                objective:
-                (1) developing machine learning models trained on GPS and geospatial data to predict deer movement as
-                a function of time and environmental conditions; (2) developing Topological Data Analysis methods; and
+                A large collaboration on benchmarking wildlife movement forecasting was accepted as an oral presentation at 
+                NeurIPS 2026 <a class="cite-ref" href="#movebench-citation"></a>, which means it has been ranked among top 0.4% of all valid submissions.
+                <br>
+                Three ongowing student-led projects complement this effort:
+                (1) training a machine learning model on sequences of GPS locations and surrounding geospatial data to predict deer movement; 
+                (2) developing topological data analysis methods for studying migration patterns; and
                 (3) developing network-science methods, with (2) and (3) aimed at characterizing how fence
                 configurations shape migration corridors. Together, these threads converge on a unified objective:
                 applying GradNet to optimize fence modifications at the network level.
             </li>
             <li>
-                A collaboration on benchmarking wildlife movement forecasting was accepted as an oral presentation at NeurIPS 2026:
-                <br>
-                <cite>
-                    <b>Mikaberidze, G.</b> et al., 2026. MOVEBENCH: A Benchmark for Global-Scale Wildlife Movement Forecasting.
+                <cite id="movebench-citation">
+                    Kay, J et al. (including <b>Mikaberidze, G.</b>), 2026. MOVEBENCH: A Benchmark for Global-Scale Wildlife Movement Forecasting.
                     Accepted as an oral at <em>NeurIPS 2026 Evaluations & Datasets Track</em>.
                     <a href="https://arxiv.org/abs/2609.15780" target="_blank">Preprint</a> available on arXiv.
                 </cite>
@@ -1890,6 +1890,14 @@
                 }
                 stopVideo();
             });
+        });
+
+        document.querySelectorAll('.cite-ref').forEach(ref => {
+            const target = document.querySelector(ref.getAttribute('href'));
+            const citations = [...document.querySelectorAll('cite')];
+            const number = citations.indexOf(target) + 1;
+
+            ref.textContent = `[${number}]`;
         });
 
     </script>
