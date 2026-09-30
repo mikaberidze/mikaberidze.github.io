@@ -701,12 +701,15 @@
             <li>
                 I am a postdoctoral researcher at the School of Computing, University of Wyoming, where I explore the
                 interplay between complex systems and machine learning. 
-                The connection runs both ways: neural networks are complex systems whose learning emerges from simple interacting
-                parts, and complex systems resist traditional prediction, which is where machine learning can help.
-                Currently, I am developing tools based on automatic differentiation and variational analysis for
-                designing network structures that optimize properties like synchronization, robustness, or navigability. For example, 
-                my research has shown that synchronization in the continental European power grid can be improved by 19% by
-                shifting resources from local connections to long-range transmission lines.
+                The connection runs both ways: neural networks are themselves complex systems, with learning that 
+                emerges from simple interacting parts, and machine learning offers new ways to model 
+                complex systems that resist traditional prediction.
+                Currently, I am developing tools for designing network structures that optimize properties like
+                synchronization, robustness, or navigability, combining numerical methods built on PyTorch's automatic
+                differentiation with analytical methods from variational analysis <a class="cite-ref" href="#gradnet-citation"></a>.
+                For example, my research shows that synchronization in the continental European power grid 
+                can be improved by 19% by shifting resources from local connections to long-range transmission lines 
+                <a class="cite-ref" href="#synchrony-citation"></a>.
                 <!-- I earned my PhD in Applied Mathematics from UC Davis, where my research focused on emergent dynamics
                 in complex networks. -->
             </li>
@@ -743,7 +746,7 @@
                 It is available through PyPI: <code>pip install gradnet</code>
             </li>
             <li>
-                <cite>
+                <cite id="gradnet-citation">
                     <b>Mikaberidze, G.</b>, Mikaberidze, B., and Taylor, D., GradNet: A Gradient-Based Framework for
                     Optimal Network Science.
                     <a href="https://arxiv.org/abs/2603.09197" target="_blank">preprint</a> on arXiv.
@@ -776,7 +779,7 @@
                 treatment.
             </li>
             <li>
-                <cite>
+                <cite id="synchrony-citation">
                     <b>Mikaberidze, G.</b> and Taylor, D., 2025. Emergent topology of optimal networks for synchrony.
                     Under review at <em>Nature Communications</em>.
                     </br>
