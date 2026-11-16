@@ -85,10 +85,10 @@
     }
 
     .page {
-      padding: 12px 16px 14px;
+      padding: 8px 16px 10px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
       max-width: 1400px;
       min-height: 100vh;
       margin: 0 auto;
@@ -100,7 +100,7 @@
       justify-content: space-between;
       align-items: flex-start;
       gap: 12px;
-      padding: 8px 4px;
+      padding: 4px;
       flex-shrink: 0;
     }
 
@@ -128,7 +128,7 @@
       border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 16px;
+      padding: 12px;
       position: relative;
       display: flex;
       flex-direction: column;
@@ -153,13 +153,13 @@
     .controls {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 7px;
       flex: 1;
     }
 
     .control {
       background: var(--panel-2);
-      padding: 12px;
+      padding: 7px 11px;
       border-radius: 12px;
       border: 1px solid rgba(255, 255, 255, 0.04);
     }
@@ -171,7 +171,7 @@
       color: var(--muted);
       font-size: 13px;
       letter-spacing: 0.01em;
-      margin-bottom: 6px;
+      margin-bottom: 3px;
     }
 
     .control-value {
@@ -184,17 +184,21 @@
 
     select {
       width: 100%; color: var(--text); background: var(--panel); border: 1px solid var(--muted);
-      border-radius: 6px; padding: 7px; font: inherit; font-size: 12px;
+      border-radius: 6px; padding: 5px 7px; font: inherit; font-size: 12px;
     }
+    .device-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .device-controls .engine-note { grid-column: 1 / -1; margin-top: 0; }
+    .engine-note:empty { display: none; }
     .engine-note { font-size: 11px; line-height: 1.5; color: var(--muted); margin: 8px 0 0; overflow-wrap: anywhere; }
     input[type="range"] {
+      display: block;
       -webkit-appearance: none;
       width: 100%;
       height: 6px;
       background: linear-gradient(90deg, rgba(90, 242, 193, 0.7), rgba(159, 178, 255, 0.7));
       border-radius: 10px;
       outline: none;
-      margin: 6px 0 2px;
+      margin: 8px 0 6px;
     }
 
     input[type="range"]::-webkit-slider-thumb {
@@ -220,17 +224,22 @@
     }
 
     .buttons {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
       gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 6px;
+      margin: 2px 12px 0;
+    }
+
+    .buttons button {
+      min-width: 0;
+      padding-inline: 6px;
     }
 
     button {
       background: linear-gradient(135deg, rgba(90, 242, 193, 0.8), rgba(159, 178, 255, 0.7));
       color: #041024;
       border: none;
-      padding: 10px 12px;
+      padding: 8px 12px;
       border-radius: 12px;
       font-weight: 700;
       letter-spacing: 0.02em;
@@ -252,13 +261,14 @@
 
     .playback-controls {
       display: grid;
+      min-width: 0;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 6px;
-      margin-top: 8px;
+      gap: 5px;
+      margin-top: 6px;
     }
 
     .playback-btn {
-      padding: 8px 6px;
+      padding: 6px 4px;
       border-radius: 10px;
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -283,12 +293,13 @@
     }
 
     .playback-meta {
-      margin-top: 4px;
       display: flex;
       justify-content: flex-end;
+      margin-top: 4px;
       font-size: 12px;
       color: var(--muted);
       gap: 6px;
+      white-space: nowrap;
     }
 
     .playback-meta strong {
@@ -298,7 +309,7 @@
 
     .visuals {
       display: grid;
-      grid-template-rows: repeat(2, minmax(260px, auto));
+      grid-template-rows: repeat(2, minmax(240px, auto));
       gap: 10px;
       min-height: 0;
     }
@@ -316,7 +327,7 @@
       border-radius: var(--radius);
       position: relative;
       overflow: hidden;
-      min-height: 260px;
+      min-height: 240px;
       box-shadow: var(--shadow);
     }
 
@@ -479,7 +490,7 @@
 
     .author-note {
       margin-top: auto;
-      padding-top: 12px;
+      padding-top: 8px;
       color: var(--muted);
       font-size: 12px;
     }
@@ -607,24 +618,28 @@
                 </svg>
               </button>
             </div>
-            <div class="playback-meta" aria-live="polite">
-              <span>Speed</span>
-              <strong id="speedMultiplier">x0</strong>
+            <div class="playback-meta" aria-live="polite" aria-label="Coupling sweep speed" title="Coupling sweep speed">
+              <span>sweep speed</span>
+              <strong id="speedMultiplier">0</strong>
             </div>
           </div>
-          <div class="control">
-            <label class="control-header" for="simRate">speed</label>
-            <select id="simRate">
-              <option value="0">Paused</option>
-              <option value="auto" selected>Auto</option>
-              <option value="-1">Fastest</option>
-            </select>
-            <label class="control-header" for="backend" style="margin-top:12px">device</label>
-            <select id="backend">
-              <option value="auto">Auto</option>
-              <option value="gpu">GPU</option>
-              <option value="cpu">CPU</option>
-            </select>
+          <div class="control device-controls">
+            <div>
+              <label class="control-header" for="simRate">simulation speed</label>
+              <select id="simRate">
+                <option value="0">Paused</option>
+                <option value="auto" selected>Auto</option>
+                <option value="-1">Fastest</option>
+              </select>
+            </div>
+            <div>
+              <label class="control-header" for="backend">device</label>
+              <select id="backend">
+                <option value="auto">Auto</option>
+                <option value="gpu">GPU</option>
+                <option value="cpu">CPU</option>
+              </select>
+            </div>
             <p class="engine-note" id="engineStatus" role="status"></p>
           </div>
           <div class="buttons">
@@ -668,7 +683,7 @@
           </div>
         </div>
         <div class="card">
-          <button id="clearHistory" class="secondary" style="position:absolute; top:12px; right:16px; z-index:2; font-size:11px; padding:6px 10px;">Clear points</button>
+          <button id="clearHistory" class="secondary" style="position:absolute; top:12px; right:16px; z-index:2; font-size:11px; padding:6px 10px;">Clear trace</button>
           <div class="canvas-frame">
             <canvas id="phaseCanvas"></canvas>
           </div>
