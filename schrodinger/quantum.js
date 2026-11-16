@@ -65,7 +65,8 @@ let cnRhsIm = null;
 
 // Time evolution state
 let isPlaying = false;
-let animationFrameId = null;
+let simulationTaskChannel = null;
+let simulationTaskQueued = false;
 
 let initialPsiDirty = true;
 // True when the current wavefunction can be fully reconstructed
@@ -76,6 +77,7 @@ let wavefunctionCanBeReconstructedFromControls = true;
 let simTime = 0;
 let frameCount = 0;
 let lastLogTime = 0;
+let lastLoggedStepCount = 0;
 
 // Boundary condition mode: "open" uses imaginary absorbing layers at the edges,
 // "closed" omits the absorbing potential (Neumann reflection only).
@@ -122,11 +124,17 @@ let eigenstateMaxIterationsPerState =
 // Compute the physical potential range used for color mapping.
 // V_max (white) corresponds to max between the field maximum and POTENTIAL_SCALE.
 // V_min (black) corresponds to min between 0 and the field minimum.
+let potentialRangeCache = null;
 function getPotentialRange() {
   const scale =
     typeof POTENTIAL_SCALE === "number" && Number.isFinite(POTENTIAL_SCALE)
       ? POTENTIAL_SCALE
       : 1;
+
+  if (potentialRangeCache && potentialRangeCache.field === potentialField &&
+      potentialRangeCache.revision === potentialRevision && potentialRangeCache.scale === scale) {
+    return potentialRangeCache.range;
+  }
 
   if (!potentialField || !potentialField.length || !Number.isFinite(scale)) {
     const defaultMin = 0;
@@ -164,10 +172,13 @@ function getPotentialRange() {
     maxV = center + 0.5 * span;
   }
 
-  return { minV, maxV };
+  const range = { minV, maxV };
+  potentialRangeCache = { field: potentialField, revision: potentialRevision, scale, range };
+  return range;
 }
 
 function initPotentialField(width, height) {
+  markPotentialGPUChanged();
   potentialWidth = width;
   potentialHeight = height;
   potentialField = new Float32Array(width * height);
@@ -176,6 +187,7 @@ function initPotentialField(width, height) {
 }
 
 function initSimulationGrid(width, height) {
+  markWavefunctionCPUChanged();
   simWidth = width;
   simHeight = height;
   psiRe = new Float32Array(width * height);
@@ -580,6 +592,8 @@ function complexToRGBA(re, im) {
 }
 
 function normalizeWavefunctionToUnitNorm() {
+  if (quantumGPU && !quantumGPU.uploadNeeded &&
+      runQuantumGPU(gpu => gpu.rescale("norm"))) return;
   if (!psiRe || !psiIm || !canvas) return;
 
   const width = canvas.width;
@@ -607,6 +621,8 @@ function normalizeWavefunctionToUnitNorm() {
 }
 
 function updatePlotScaleFromCurrentPsi() {
+  if (quantumGPU && !quantumGPU.uploadNeeded &&
+      runQuantumGPU(gpu => { plotScaleFactor = gpu.plotScale(); })) return;
   if (!psiRe || !psiIm) return;
   const n = Math.min(psiRe.length, psiIm.length);
   if (!Number.isFinite(n) || n <= 0) return;
@@ -642,29 +658,32 @@ function drawScene() {
     }
   }
 
-  const imageData = ctx.createImageData(width, height);
-  const data = imageData.data;
+  const drawnOnGPU = runQuantumGPU(gpu => gpu.draw(ctx));
+  if (!drawnOnGPU) {
+    const imageData = ctx.createImageData(width, height);
+    const data = imageData.data;
 
-  const total = width * height;
+    const total = width * height;
 
-  const plotScale =
-    typeof plotScaleFactor === "number" && Number.isFinite(plotScaleFactor)
-      ? plotScaleFactor
-      : 1;
+    const plotScale =
+      typeof plotScaleFactor === "number" && Number.isFinite(plotScaleFactor)
+        ? plotScaleFactor
+        : 1;
 
-  for (let idx = 0; idx < total; idx++) {
-    const re = psiRe[idx] * plotScale;
-    const im = psiIm[idx] * plotScale;
-    const [r, g, b, a] = complexToRGBA(re, im);
+    for (let idx = 0; idx < total; idx++) {
+      const re = psiRe[idx] * plotScale;
+      const im = psiIm[idx] * plotScale;
+      const [r, g, b, a] = complexToRGBA(re, im);
 
-    const base = idx * 4;
-    data[base] = r;
-    data[base + 1] = g;
-    data[base + 2] = b;
-    data[base + 3] = a;
+      const base = idx * 4;
+      data[base] = r;
+      data[base + 1] = g;
+      data[base + 2] = b;
+      data[base + 3] = a;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
   }
-
-  ctx.putImageData(imageData, 0, 0);
 
   // Draw overlays (colorbar, energy, signature) on the high-resolution layer.
   if (typeof drawOverlayLayer === "function") {
@@ -678,6 +697,7 @@ function drawScene() {
 }
 
 function resetWavefunctionFromControls() {
+  markWavefunctionCPUChanged();
   if (!psiRe || !psiIm || !canvas) return;
 
   const state = getControlsState();
@@ -739,6 +759,8 @@ function resetWavefunctionFromControls() {
 }
 
 function stepSchrodingerEuler() {
+  syncWavefunctionToCPU();
+  markWavefunctionCPUChanged();
   if (!psiRe || !psiIm || !psiReNext || !psiImNext) return;
   if (!canvas) return;
 
@@ -855,6 +877,8 @@ function stepSchrodingerEuler() {
 }
 
 function stepSchrodingerCrankNicolsonFixedPointIters() {
+  syncWavefunctionToCPU();
+  markWavefunctionCPUChanged();
   if (!psiRe || !psiIm || !psiReNext || !psiImNext) return;
   if (!canvas) return;
 
@@ -1077,6 +1101,7 @@ function stepSchrodingerCrankNicolsonFixedPointIters() {
 }
 
 function rescaleWavefunctionIfNeeded() {
+  if (psiRescaleMode !== "none" && runQuantumGPU(gpu => gpu.rescale(psiRescaleMode))) return;
   if (!psiRe || !psiIm) return;
   if (typeof psiRescaleMode === "undefined" || psiRescaleMode === "none") {
     return;
@@ -1116,6 +1141,14 @@ function stepSchrodinger() {
   // imaginary-time evolution. The underlying step functions switch
   // between real and imaginary dynamics based on isImaginaryTime.
   wavefunctionCanBeReconstructedFromControls = false;
+  const timeBeforeStep = simTime;
+  if (runQuantumGPU(gpu => gpu.step())) return;
+  if (simTime > timeBeforeStep) {
+    // The solver completed before a later GPU operation failed. Finish the
+    // rescaling on CPU without advancing an additional time step.
+    rescaleWavefunctionIfNeeded();
+    return;
+  }
   const scheme =
     typeof integratorScheme === "string" ? integratorScheme : "crank";
   if (scheme === "euler") {
@@ -1133,6 +1166,8 @@ function stepSchrodinger() {
 }
 
 function computeEnergyExpectation() {
+  let gpuEnergy;
+  if (runQuantumGPU(gpu => { gpuEnergy = gpu.energy(); })) return gpuEnergy;
   if (!psiRe || !psiIm || !canvas) return null;
 
   const width = canvas.width;
@@ -1396,12 +1431,27 @@ function drawOverlayLayer() {
   }
 }
 
+// A task boundary lets input and browser painting run between completed updates.
+// MessageChannel does not impose a frame rate or tie simulated time to wall time.
+function requestNextSimulationFrame() {
+  if (!isPlaying || simulationTaskQueued ||
+      (typeof document !== "undefined" && document.visibilityState === "hidden")) return;
+  if (!simulationTaskChannel) {
+    simulationTaskChannel = new MessageChannel();
+    simulationTaskChannel.port1.onmessage = () => {
+      simulationTaskQueued = false;
+      animationLoop();
+    };
+  }
+  simulationTaskQueued = true;
+  simulationTaskChannel.port2.postMessage(null);
+}
+
 function animationLoop() {
   if (isPlaying) {
     if (initialPsiDirty) {
       resetWavefunctionFromControls();
     }
-    // Take several small steps per frame for smoother evolution
     for (let i = 0; i < STEPS_PER_FRAME; i++) {
       stepSchrodinger();
       frameCount += 1;
@@ -1409,10 +1459,17 @@ function animationLoop() {
 
     const now = performance.now();
     if (!lastLogTime || now - lastLogTime > 1000) {
+      const rate = lastLogTime && frameCount >= lastLoggedStepCount
+        ? ((frameCount - lastLoggedStepCount) * 1000 / (now - lastLogTime)).toFixed(1)
+        : "warming up";
+      const controls = typeof getControlsState === "function" ? getControlsState() : null;
+      const momentum = controls ? `, p=(${controls.px.toFixed(3)}, ${controls.py.toFixed(3)})` : "";
+      const backend = quantumGPU && !quantumGPUDisabled ? "GPU" : "CPU";
       console.log(
-        `[Schrödinger] t = ${simTime.toFixed(3)}, frames = ${frameCount}`
+        `[Schrödinger] ${backend}, grid=${simWidth}x${simHeight}, t=${simTime.toFixed(3)}, steps=${frameCount}, steps/s=${rate}${momentum}`
       );
       lastLogTime = now;
+      lastLoggedStepCount = frameCount;
     }
 
     drawScene();
@@ -1421,7 +1478,10 @@ function animationLoop() {
     if (typeof recordFrameIfNeeded === "function") {
       recordFrameIfNeeded();
     }
+    // A one-pixel readback applies GPU backpressure: finish this update before
+    // submitting the next, including when the energy overlay is switched off.
+    // This waits only for computation, never for a playback clock.
+    if (quantumGPU && !quantumGPUDisabled) runQuantumGPU(gpu => gpu.finishFrame());
+    requestNextSimulationFrame();
   }
-
-  animationFrameId = window.requestAnimationFrame(animationLoop);
 }

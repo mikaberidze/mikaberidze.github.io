@@ -1,0 +1,41 @@
+<!doctype html><meta charset="utf-8"><title>Schrödinger browser CPU/GPU benchmark</title>
+<pre id="results">Running…</pre>
+<script src="../constants.js"></script><script src="../quantum-gpu.js"></script><script src="../quantum.js"></script>
+<script>
+// Run without a virtual-time browser flag: performance.now must use real time.
+// Scalar readback fences actual GPU completion; Canvas2D readback also completes drawing.
+try {
+ const rows=[];const gpu=getQuantumGPU();if(!gpu)throw new Error('GPU unavailable');
+ function setup(w,h,cpu){
+   quantumGPUDisabled=cpu;canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;ctx=canvas.getContext('2d');
+   initSimulationGrid(w,h);initPotentialField(w,h);
+   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+     const i=y*w+x,a=Math.exp(-((x-w/2)**2+(y-h/2)**2)/(2*(w*.08)**2));
+     psiRe[i]=a*Math.cos(x*.2);psiIm[i]=a*Math.sin(x*.2);potentialField[i]=x>w*.7?.5:0;
+   }
+   initialPsiDirty=false;currentTimeStep=.5;psiRescaleMode='none';boundaryMode='open';
+   showEnergy=true;showColorbar=false;showPhaseCircle=false;
+ }
+ function measure(fn,cpu){
+   for(let i=0;i<8;i++)fn();if(!cpu)gpu.scalar(gpu.read);ctx.getImageData(0,0,1,1);
+   const times=[];
+   for(let j=0;j<3;j++){
+     const start=performance.now();for(let i=0;i<20;i++)fn();
+     if(!cpu)gpu.scalar(gpu.read);ctx.getImageData(0,0,1,1);times.push((performance.now()-start)/20);
+   }
+   return times.sort((a,b)=>a-b)[1];
+ }
+ for(const [w,h]of [[400,300],[800,600],[1600,1200]]){
+   const row={grid:`${w}×${h}`};
+   for(const cpu of [true,false]){
+     setup(w,h,cpu);gpu.checkpointAt=Infinity;
+     row[cpu?'cpuStepMs':'gpuStepMs']=measure(stepSchrodinger,cpu);
+     row[cpu?'cpuFrameMs':'gpuFrameMs']=measure(()=>{stepSchrodinger();drawScene();},cpu);
+     if(!cpu&&quantumGPUDisabled)throw new Error('Unexpected CPU fallback');
+   }
+   row.stepSpeedup=row.cpuStepMs/row.gpuStepMs;row.frameSpeedup=row.cpuFrameMs/row.gpuFrameMs;rows.push(row);
+ }
+ const ext=gpu.gl.getExtension('WEBGL_debug_renderer_info');
+ document.getElementById('results').textContent=JSON.stringify({renderer:ext?gpu.gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):'unknown',rows},null,2);
+}catch(e){document.getElementById('results').textContent=JSON.stringify({failed:e.message,stack:e.stack});}
+</script>

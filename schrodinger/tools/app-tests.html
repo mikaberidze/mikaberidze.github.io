@@ -1,0 +1,121 @@
+<!doctype html><meta charset="utf-8"><title>Schrödinger app integration tests</title>
+<pre id="results">Running…</pre><iframe id="app" src="../index.html" width="1200" height="800"></iframe>
+<script>
+const frame=document.getElementById('app');
+const timer=setInterval(async()=>{
+ const w=frame.contentWindow;
+ if(!w.eval('typeof canvasInitialized !== "undefined" && canvasInitialized && typeof getControlsState === "function"'))return;
+ clearInterval(timer);
+ try {
+  const result=await w.eval(`(async()=>{
+    const checks=[];
+    function check(name,condition){if(!condition)throw new Error(name);checks.push(name);}
+    function snap(){syncWavefunctionToCPU();return {re:psiRe.slice(),im:psiIm.slice()};}
+    function difference(a,b){let e=0;for(let i=0;i<a.re.length;i++)e=Math.max(e,Math.abs(a.re[i]-b.re[i]),Math.abs(a.im[i]-b.im[i]));return e;}
+    isPlaying=false;
+    check('app initializes GPU',!!getQuantumGPU()&&!quantumGPUDisabled);
+    document.getElementById('play-pause').click();animationLoop();
+    document.getElementById('play-pause').click();
+    check('play/pause advances and preserves state',simTime>0&&quantumGPU.cpuCurrent);
+    const momentumBeforeResize=getControlsState();
+    document.getElementById('lattice-width').value='1600';
+    document.getElementById('lattice-height').value='1200';
+    document.getElementById('lattice-width').dispatchEvent(new Event('change'));
+    const momentumAfterResize=getControlsState();
+    check('grid resize preserves displayed momentum',Math.abs(momentumBeforeResize.px-momentumAfterResize.px)<2e-4&&Math.abs(momentumBeforeResize.py-momentumAfterResize.py)<2e-4);
+    setMomentumFromDisplay(0,0);setMomentumFromDisplay(.8,.6);
+    const reachableMomentum=getControlsState();
+    check('momentum arrow reaches its full range on a large grid',Math.abs(reachableMomentum.px-.8)<2e-4&&Math.abs(reachableMomentum.py-.6)<2e-4);
+    const beforeHighResFrame=frameCount,beforeHighResTime=simTime;
+    isPlaying=true;animationLoop(0);isPlaying=false;
+    check('high-resolution updates advance immediately without a playback clock',frameCount-beforeHighResFrame===STEPS_PER_FRAME&&Math.abs(simTime-beforeHighResTime-STEPS_PER_FRAME*currentTimeStep)<1e-8);
+    document.getElementById('lattice-width').value='61';
+    document.getElementById('lattice-height').value='53';
+    document.getElementById('lattice-width').dispatchEvent(new Event('change'));
+    check('resolution controls resize all fields',simWidth===61&&simHeight===53&&potentialWidth===61&&potentialHeight===53);
+    isPlaying=false;resetWavefunctionFromControls();stepSchrodinger();
+    const originalRAF=window.requestAnimationFrame;
+    window.requestAnimationFrame=(callback)=>{
+      if(callback===animationLoop)throw new Error('simulation waited for display refresh');
+      return originalRAF.call(window,callback);
+    };
+    const stepsBeforeUncapped=frameCount;
+    document.getElementById('play-pause').click();
+    await new Promise(resolve=>setTimeout(resolve,150));
+    document.getElementById('play-pause').click();
+    window.requestAnimationFrame=originalRAF;
+    check('completion loop runs without display-refresh callbacks',frameCount>stepsBeforeUncapped+STEPS_PER_FRAME);
+    const pausedCount=frameCount;
+    await new Promise(resolve=>setTimeout(resolve,30));
+    check('pause stops the completion loop',frameCount===pausedCount);
+    resetPotentialHistory();savePotentialHistory();
+    brushSize=7;applyBrushAt(20,20,false);redrawPotential();savePotentialHistory();
+    const painted=potentialField[20*potentialWidth+20];
+    undoPotentialEdit();check('undo restores potential',potentialField[20*potentialWidth+20]!==painted);
+    redoPotentialEdit();check('redo restores edited potential',potentialField[20*potentialWidth+20]===painted);
+    stepSchrodinger();drawScene();
+    check('potential editing keeps GPU available',!quantumGPUDisabled);
+    // Capture an actual export without prompting a download.
+    const originalCreate=URL.createObjectURL, originalClick=HTMLAnchorElement.prototype.click;
+    let exported;URL.createObjectURL=blob=>{exported=blob;return originalCreate(blob)};
+    HTMLAnchorElement.prototype.click=function(){};
+    try{await exportCurrentSetup();}finally{URL.createObjectURL=originalCreate;HTMLAnchorElement.prototype.click=originalClick;}
+    check('export captures GPU state',!!exported);
+    const before=snap(),savedTime=simTime;
+    const exportedSetup=typeof JSZip!=='undefined'
+      ? JSON.parse(await (await JSZip.loadAsync(await exported.arrayBuffer())).file('setup.json').async('string'))
+      : JSON.parse(await exported.text());
+    check('export serializes the current GPU field exactly',difference(before,exportedSetup.wavefunction)===0);
+    // The pre-existing importer normalizes saved wavefunctions on load.
+    // Compare against that contract, including states with probability loss.
+    const scalePos=BASE_SCALE_POS*simWidth/BASE_RESOLUTION;
+    let probability=0;for(let i=0;i<before.re.length;i++)probability+=before.re[i]**2+before.im[i]**2;
+    const factor=scalePos/Math.sqrt(probability);
+    const expectedImport={re:before.re.map(v=>v*factor),im:before.im.map(v=>v*factor)};
+    if(typeof JSZip!=='undefined')await loadSetupFromPsiArrayBuffer(await exported.arrayBuffer());
+    else applySetupObject(exportedSetup);
+    check('export/import preserves the normalized evolved state and time',difference(expectedImport,snap())<2e-5&&simTime===savedTime);
+    // Full eigensearch loop, including yield/progress, storage and application.
+    currentTimeStep=.03;integratorScheme='crank';boundaryMode='closed';
+    eigenstateMaxIterationsPerState=8;eigenstateRelaxationDelta=0;
+    const random=Math.random;
+    const seeded=()=>{let n=123;return ()=>{n=(1664525*n+1013904223)>>>0;return n/4294967296;}};
+    let cpuStates,gpuStates;
+    try{
+      clearEigenstates();quantumGPUDisabled=true;Math.random=seeded();
+      await findEigenstates(2);cpuStates=getDiscoveredEigenstates();
+      clearEigenstates();quantumGPUDisabled=false;Math.random=seeded();
+      await findEigenstates(2);gpuStates=getDiscoveredEigenstates();
+    }finally{Math.random=random;}
+    check('eigensearch stores both states',gpuStates.length===2);
+    let eigenError=0;for(let i=0;i<2;i++)eigenError=Math.max(eigenError,difference(cpuStates[i],gpuStates[i]));
+    check('eigensearch agrees with CPU',eigenError<2e-4);
+    applyEigenstateToWavefunction(1);drawScene();
+    check('selecting eigenstate preserves GPU state',difference(gpuStates[1],snap())<2e-5);
+    initializeRandomGaussianForEigensearch();stepSchrodinger();
+    const controller=new AbortController();controller.abort();
+    const cancelled=await findEigenstates(1,{signal:controller.signal});
+    check('eigensearch cancellation restores runtime flags',cancelled.cancelled&&!eigenstateSearchInProgress&&!isImaginaryTime);
+    updateCombinedCanvas(false);
+    const stream=combinedCanvas.captureStream(30);
+    check('recording/PiP combined canvas remains capturable',stream.getVideoTracks().length===1);
+    const chunks=[];
+    const recorder=new MediaRecorder(stream);
+    const stopped=new Promise(resolve=>{recorder.onstop=resolve;});
+    recorder.ondataavailable=event=>{if(event.data.size)chunks.push(event.data);};
+    recorder.start();
+    for(let i=0;i<3;i++){
+      stepSchrodinger();drawScene();updateCombinedCanvas(false);
+      const track=stream.getVideoTracks()[0];if(track.requestFrame)track.requestFrame();
+      await new Promise(resolve=>setTimeout(resolve,100));
+    }
+    recorder.stop();await stopped;
+    check('MediaRecorder encodes GPU canvas frames',chunks.reduce((n,b)=>n+b.size,0)>100);
+    stream.getTracks().forEach(t=>t.stop());
+    check('all operations stay on GPU',!quantumGPUDisabled&&quantumGPU.gl.getError()===0);
+    return {passed:checks.length,eigenError,resizeMomentum:{before:momentumBeforeResize,after:momentumAfterResize,reachable:reachableMomentum},checks};
+  })()`);
+  document.getElementById('results').textContent=JSON.stringify(result,null,2);
+ }catch(e){document.getElementById('results').textContent=JSON.stringify({failed:e.message,stack:e.stack},null,2);}
+},50);
+</script>

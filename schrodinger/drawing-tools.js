@@ -1386,6 +1386,7 @@ window.addEventListener("keyup", handleShapeRegularKeyup);
 // --- Export / import setup (potential + initial conditions) ---
 
 async function exportCurrentSetup() {
+  syncWavefunctionToCPU();
   if (!potentialField || potentialWidth === 0 || potentialHeight === 0) return;
 
   const controls =
@@ -1644,6 +1645,7 @@ async function loadSetupFromPsiArrayBuffer(arrayBuffer) {
       isPlaying = wasPlaying;
     }
     if (wasPlaying) {
+      requestNextSimulationFrame();
       if (typeof markSimulationStarted === "function") {
         markSimulationStarted();
       } else if (typeof creationToolsVisible !== "undefined") {
@@ -1979,6 +1981,7 @@ function applySetupObject(setup) {
         initSimulationGrid(w, h);
       }
 
+      markWavefunctionCPUChanged();
       for (let i = 0; i < count; i++) {
         const reVal = reArr[i];
         const imVal = imArr[i];

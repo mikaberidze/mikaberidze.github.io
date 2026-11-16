@@ -59,6 +59,36 @@ function parseEquationInput(text, options) {
   return null;
 }
 
+// Scale used when the current hidden slider values/ranges were configured.
+// It must change together with the grid, not merely when interpreting a value.
+let momentumSliderScale = null;
+function syncMomentumSlidersToResolution() {
+  const scale = getMomentumDisplayScale();
+  if (momentumSliderScale === null) {
+    momentumSliderScale = scale;
+    return;
+  }
+  if (scale === momentumSliderScale || !(scale > 0)) return;
+  const previousScale = momentumSliderScale;
+  const sliders = ["px", "py"].map(id => {
+    const slider = document.getElementById(id);
+    return { id, slider, k: slider ? (parseFloat(slider.value) || 0) / previousScale : 0 };
+  });
+  const maxP = Number.isFinite(MAX_P) && MAX_P > 0 ? MAX_P : 2;
+  const limit = 2 * Math.asin(Math.min(1, maxP / 2)) * scale;
+  for (const {slider, k} of sliders) {
+    if (!slider) continue;
+    slider.min = String(-limit);
+    slider.max = String(limit);
+    slider.value = String(k * scale);
+  }
+  momentumSliderScale = scale;
+  for (const {id, slider} of sliders) {
+    const edit = document.getElementById(`${id}-edit`);
+    if (slider && edit) edit.value = formatBasicSliderValue(internalMomentumToDisplay(parseFloat(slider.value) || 0));
+  }
+}
+
 function getMomentumDisplayScale() {
   if (
     typeof currentResolutionWidth === "number" &&
@@ -131,6 +161,7 @@ function clampMomentumDisplayVector(pxDisplay, pyDisplay) {
 // to update the momentum sliders from display-space values
 // while respecting the vector-length constraint.
 function setMomentumFromDisplay(pxDisplay, pyDisplay) {
+  syncMomentumSlidersToResolution();
   if (typeof displayMomentumToInternal !== "function") {
     return;
   }
@@ -151,6 +182,7 @@ function setMomentumFromDisplay(pxDisplay, pyDisplay) {
 }
 
 function setupBasicSliders() {
+  momentumSliderScale = getMomentumDisplayScale();
   const ids = ["x", "y", "px", "py"];
 
   ids.forEach((id) => {
@@ -2277,6 +2309,7 @@ function initApp() {
         if (typeof stopSimulationAnalytics === "function") {
           stopSimulationAnalytics("pause");
         }
+        syncWavefunctionToCPU();
         console.log("[Schrödinger] Simulation paused at t =", simTime.toFixed(3));
         // Pausing does not automatically bring back creation tools
         if (isRecording) {
@@ -2284,6 +2317,7 @@ function initApp() {
         }
       }
 
+      if (isPlaying) requestNextSimulationFrame();
       updateRecordBlink();
       updateParticleOverlay();
       if (!isPlaying && typeof syncCreationToolsVisibility === "function") {
@@ -3872,6 +3906,7 @@ document.addEventListener("visibilitychange", () => {
       updateRecordBlink();
     }
   } else if (document.visibilityState === "visible") {
+    if (isPlaying) requestNextSimulationFrame();
     if (isRecording && isPlaying) {
       startCanvasRecorderIfNeeded();
       resumeCanvasRecorder();

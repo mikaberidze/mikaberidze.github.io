@@ -42,6 +42,7 @@ function applyBrushSizeDelta(delta) {
 }
 
 function redrawPotential() {
+  markPotentialGPUChanged();
   if (!potentialCanvas || !potentialCtx || !potentialField) return;
 
   const width = potentialWidth;
@@ -154,6 +155,9 @@ function resamplePotentialField(targetWidth, targetHeight) {
 }
 
 function resizeCanvas() {
+  if (typeof syncMomentumSlidersToResolution === "function") {
+    syncMomentumSlidersToResolution();
+  }
   // Internal simulation/drawing resolution (can be non-square) – set only once
   if (!canvasInitialized) {
     if (canvas) {

@@ -1,0 +1,36 @@
+<!doctype html><meta charset="utf-8"><title>Schrödinger fallback tests</title><pre id="results">Running…</pre>
+<script>
+if(new URLSearchParams(location.search).has('unavailable')){
+ const getContext=HTMLCanvasElement.prototype.getContext;
+ HTMLCanvasElement.prototype.getContext=function(kind,...args){return kind==='webgl2'?null:getContext.call(this,kind,...args);};
+}
+</script>
+<script src="../constants.js"></script><script src="../quantum-gpu.js"></script><script src="../quantum.js"></script>
+<script>
+(async()=>{
+ try{
+  const checks=[];function check(name,ok){if(!ok)throw new Error(name);checks.push(name);}
+  canvas=document.createElement('canvas');document.body.append(canvas);canvas.width=51;canvas.height=37;ctx=canvas.getContext('2d');
+  initSimulationGrid(51,37);initPotentialField(51,37);psiRe.fill(1);psiIm.fill(0);
+  potentialField.fill(.2);markPotentialGPUChanged();initialPsiDirty=false;
+  showEnergy=false;showColorbar=false;boundaryMode='closed';currentTimeStep=.1;psiRescaleMode='none';
+  const gpu=getQuantumGPU();
+  if(!gpu){
+    check('CPU fallback selected',quantumGPUDisabled);stepSchrodinger();drawScene();
+    check('CPU evolves and renders without WebGL',simTime===.1&&psiIm.some(v=>v!==0)&&ctx.getImageData(0,0,1,1).data[3]>0);
+  }else{
+    stepSchrodinger();syncWavefunctionToCPU();const checkpoint=psiRe.slice(),time=simTime;
+    stepSchrodinger();stepSchrodinger();
+    check('GPU field advanced beyond checkpoint',!gpu.cpuCurrent&&simTime>time);
+    const lose=gpu.gl.getExtension('WEBGL_lose_context');check('context loss test supported',!!lose);
+    lose.loseContext();await new Promise(resolve=>setTimeout(resolve,50));
+    check('lost GPU selects CPU backend',quantumGPUDisabled&&getQuantumGPU()===null);
+    check('context loss restores checkpoint and matching time',simTime===time&&psiRe.every((v,i)=>v===checkpoint[i]));
+    stepSchrodinger();drawScene();
+    check('CPU continues after context loss',Math.abs(simTime-time-.1)<1e-10&&psiRe.every(Number.isFinite));
+    check('context loss is visible to the user',document.getElementById('quantum-compute-status').textContent.includes('checkpoint'));
+  }
+  document.getElementById('results').textContent=JSON.stringify({passed:checks.length,checks},null,2);
+ }catch(e){document.getElementById('results').textContent=JSON.stringify({failed:e.message,stack:e.stack},null,2);}
+})();
+</script>

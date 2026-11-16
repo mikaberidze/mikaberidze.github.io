@@ -35,6 +35,7 @@ function applyEigenstateToWavefunction(index) {
     initSimulationGrid(w, h);
   }
 
+  markWavefunctionCPUChanged();
   for (let i = 0; i < count; i++) {
     psiRe[i] = state.re[i];
     psiIm[i] = state.im[i];
@@ -66,6 +67,7 @@ function applyEigenstateToWavefunction(index) {
 }
 
 function initializeRandomGaussianForEigensearch() {
+  markWavefunctionCPUChanged();
   if (!canvas) return;
 
   const width = canvas.width;
@@ -178,8 +180,10 @@ function initializeRandomGaussianForEigensearch() {
 }
 
 function gramSchmidtAgainstEigenstates() {
-  if (!psiRe || !psiIm) return;
-  if (!eigenstates || !eigenstates.length) return;
+  if (!psiRe || !psiIm || !eigenstates || !eigenstates.length) return;
+  if (runQuantumGPU(gpu => gpu.orthogonalize())) return;
+  syncWavefunctionToCPU();
+  markWavefunctionCPUChanged();
 
   const n = psiRe.length;
 
@@ -247,6 +251,7 @@ function gramSchmidtAgainstEigenstates() {
 }
 
 function computeMaxWavefunctionDelta(oldRe, oldIm) {
+  syncWavefunctionToCPU();
   if (!psiRe || !psiIm || !oldRe || !oldIm) return 0;
   const n = Math.min(
     psiRe.length,
@@ -374,8 +379,11 @@ async function findEigenstates(targetCount, options = {}) {
           : 25;
 
       for (let iter = 0; iter < maxIters; iter++) {
-        oldRe.set(psiRe);
-        oldIm.set(psiIm);
+        const capturedOnGPU = runQuantumGPU(gpu => gpu.capturePrevious());
+        if (!capturedOnGPU) {
+          oldRe.set(psiRe);
+          oldIm.set(psiIm);
+        }
 
         // Imaginary-time step using the standard integrator.
         stepSchrodinger();
@@ -388,7 +396,12 @@ async function findEigenstates(targetCount, options = {}) {
         // Rescale according to the selected mode (Max for eigenstate search).
         rescaleWavefunctionIfNeeded();
 
-        const maxDelta = computeMaxWavefunctionDelta(oldRe, oldIm);
+        let maxDelta;
+        if (!capturedOnGPU || !runQuantumGPU(gpu => { maxDelta = gpu.delta(); })) {
+          // A GPU failure can roll back to a checkpoint. Do not declare
+          // convergence against a CPU snapshot that was never populated.
+          maxDelta = capturedOnGPU ? Infinity : computeMaxWavefunctionDelta(oldRe, oldIm);
+        }
 
         if (onProgress) {
           onProgress({
@@ -439,6 +452,7 @@ async function findEigenstates(targetCount, options = {}) {
       }
 
       // Store a copy of the converged (or best-effort) wavefunction.
+      syncWavefunctionToCPU();
       eigenstates.push({
         re: new Float32Array(psiRe),
         im: new Float32Array(psiIm),
@@ -486,6 +500,7 @@ async function findEigenstates(targetCount, options = {}) {
     simulationStopped = false;
 
     eigenstateSearchInProgress = false;
+    if (isPlaying) requestNextSimulationFrame();
     if (typeof syncCreationToolsVisibility === "function") {
       syncCreationToolsVisibility();
     }

@@ -47,8 +47,8 @@ let integratorScheme = "crank";
 // "max"   – scale so max |ψ| = 1.
 let psiRescaleMode = "none";
 
-// Number of Schrödinger steps taken per animation frame.
-// Higher values evolve faster but cost more CPU per frame.
+// Number of integration steps per displayed update. No wall-clock playback cap.
+// Updates run as soon as the previous update completes; dt controls time advanced.
 const STEPS_PER_FRAME = 1;
 
 // Number of fixed-point iterations used in the Crank–Nicolson solver.

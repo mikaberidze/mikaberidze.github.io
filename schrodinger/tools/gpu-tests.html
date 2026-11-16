@@ -1,0 +1,164 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Schrödinger GPU regression tests</title>
+<pre id="results">Running…</pre>
+<script src="../constants.js"></script>
+<script src="../drawing-state.js"></script>
+<script src="../quantum-gpu.js"></script>
+<script src="../quantum.js"></script>
+<script src="../quantum-eigen.js"></script>
+<script src="../drawing-canvas.js"></script>
+<script src="../ui-recording.js"></script>
+<script>
+// Run in a browser over HTTP. This page intentionally does not load analytics.
+const checks = [];
+function assert(condition, message) {if (!condition) throw new Error(message);}
+function test(name, fn) {fn(); checks.push({name, passed:true});}
+function setup(w=31,h=23,pw=w,ph=h) {
+  canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;ctx=canvas.getContext('2d');
+  initSimulationGrid(w,h);initPotentialField(pw,ph);
+  for(let i=0;i<w*h;i++) {psiRe[i]=Math.sin(i*.37)*.2;psiIm[i]=Math.cos(i*.11)*.3;}
+  for(let i=0;i<pw*ph;i++) potentialField[i]=.3*Math.sin(i*.17);
+  markPotentialGPUChanged();
+  initialPsiDirty=false;simTime=0;frameCount=0;isPlaying=false;
+  showColorbar=false;showEnergy=false;showPhaseCircle=false;
+  overlayCanvas=null;overlayCtx=null;
+}
+function snapshot(){syncWavefunctionToCPU();return {re:psiRe.slice(),im:psiIm.slice()};}
+function restore(s){markWavefunctionCPUChanged();psiRe.set(s.re);psiIm.set(s.im);simTime=0;}
+function error(a,b){let e=0;for(let i=0;i<a.re.length;i++)e=Math.max(e,Math.abs(a.re[i]-b.re[i]),Math.abs(a.im[i]-b.im[i]));return e;}
+function norm(){let v=0;for(let i=0;i<psiRe.length;i++)v+=psiRe[i]**2+psiIm[i]**2;return v;}
+function updateParticleOverlay() {}
+function getControlsState(){return {x:0,y:0,px:.2,py:.1,sigmaX:1};}
+(async()=>{
+ try {
+  const gpu=getQuantumGPU(); assert(gpu,'WebGL2 float GPU unavailable (tests require a GPU backend)');
+  const gl=gpu.gl;let maxError=0;
+  for(const scheme of ['crank','euler']) for(const imaginary of [false,true])
+  for(const boundary of ['open','closed']) for(const rescale of ['none','norm','max']) {
+    const name=`${scheme}, imaginary=${imaginary}, ${boundary}, ${rescale}`;
+    test(name,()=>{
+      setup();currentTimeStep=.05;integratorScheme=scheme;isImaginaryTime=imaginary;boundaryMode=boundary;psiRescaleMode=rescale;
+      const initial=snapshot();quantumGPUDisabled=true;
+      for(let i=0;i<12;i++)stepSchrodinger();const cpu=snapshot();
+      restore(initial);quantumGPUDisabled=false;
+      for(let i=0;i<12;i++)stepSchrodinger();const actual=snapshot();
+      assert(!quantumGPUDisabled,'GPU unexpectedly fell back');
+      const e=error(cpu,actual);maxError=Math.max(maxError,e);assert(e<3e-5,`${name}: error ${e}`);
+      assert(gl.getError()===gl.NO_ERROR,`${name}: WebGL error`);
+    });
+  }
+  test('each update advances immediately without an elapsed-time gate',()=>{
+    setup();currentTimeStep=.05;integratorScheme='crank';isImaginaryTime=false;psiRescaleMode='none';
+    const queue=requestNextSimulationFrame,raf=window.requestAnimationFrame;
+    requestNextSimulationFrame=()=>{};
+    window.requestAnimationFrame=()=>{throw new Error('playback waited for display refresh');};
+    try {
+      isPlaying=true;animationLoop(0);animationLoop(0);
+      assert(Math.abs(simTime-2*.05*STEPS_PER_FRAME)<1e-8,'same-timestamp update skipped');
+      currentTimeStep=.01;animationLoop(0);
+      assert(Math.abs(simTime-(2*.05+.01)*STEPS_PER_FRAME)<1e-8,'dt did not control time advanced');
+      isPlaying=false;const time=simTime;animationLoop();
+      assert(simTime===time,'paused simulation advanced');
+    }finally{isPlaying=false;requestNextSimulationFrame=queue;window.requestAnimationFrame=raf;}
+  });
+  test('CPU fallback also advances without a playback-rate gate',()=>{
+    setup();currentTimeStep=.05;psiRescaleMode='none';
+    const queue=requestNextSimulationFrame;requestNextSimulationFrame=()=>{};
+    try{
+      quantumGPUDisabled=true;isPlaying=true;animationLoop(0);animationLoop(0);
+      assert(Math.abs(simTime-.1*STEPS_PER_FRAME)<1e-8,'CPU update skipped');
+    }finally{quantumGPUDisabled=false;isPlaying=false;requestNextSimulationFrame=queue;}
+  });
+  test('long evolution agrees with CPU over 1000 steps',()=>{
+    setup();currentTimeStep=.05;integratorScheme='crank';isImaginaryTime=false;boundaryMode='closed';psiRescaleMode='none';
+    const initial=snapshot();quantumGPUDisabled=true;
+    for(let i=0;i<1000;i++)stepSchrodinger();const cpu=snapshot();
+    restore(initial);quantumGPUDisabled=false;
+    for(let i=0;i<1000;i++)stepSchrodinger();
+    assert(error(cpu,snapshot())<3e-5,'long evolution differs');
+  });
+  test('mismatched potential grid, dt=0.5 and edge damping',()=>{
+    setup(35,27,19,13);currentTimeStep=.5;integratorScheme='crank';isImaginaryTime=false;boundaryMode='open';psiRescaleMode='none';
+    const initial=snapshot();quantumGPUDisabled=true;for(let i=0;i<5;i++)stepSchrodinger();const cpu=snapshot();
+    restore(initial);quantumGPUDisabled=false;for(let i=0;i<5;i++)stepSchrodinger();
+    assert(error(cpu,snapshot())<1e-5,'potential resampling differs');
+  });
+  test('energy and maximum reductions',()=>{
+    const gpuEnergy=computeEnergyExpectation();const gpuScale=gpu.plotScale();snapshot();
+    quantumGPUDisabled=true;const cpuEnergy=computeEnergyExpectation();updatePlotScaleFromCurrentPsi();const cpuScale=plotScaleFactor;
+    quantumGPUDisabled=false;
+    assert(Math.abs(gpuEnergy-cpuEnergy)<1e-5*Math.max(1,Math.abs(cpuEnergy)),'energy differs');
+    assert(Math.abs(gpuScale-cpuScale)<1e-5*Math.max(1,cpuScale),'maximum differs');
+  });
+  test('potential range cache invalidates on edits',()=>{
+    const first=getPotentialRange();assert(first===getPotentialRange(),'unchanged potential not cached');
+    potentialField.fill(2);markPotentialGPUChanged();assert(getPotentialRange().maxV===2,'range cache stale');
+  });
+  test('potential edits are uploaded without resetting psi',()=>{
+    const initial=snapshot();potentialField.fill(.7);markPotentialGPUChanged();
+    quantumGPUDisabled=true;stepSchrodinger();const cpu=snapshot();
+    restore(initial);quantumGPUDisabled=false;stepSchrodinger();assert(error(cpu,snapshot())<1e-5,'edited potential stale');
+  });
+  test('all color schemes and Canvas2D orientation/compositing',()=>{
+    setup(37,29);plotScaleFactor=2.1;const initial=snapshot();
+    for(const id of Object.keys(COMPLEX_COLOR_SCHEMES)) {
+      activeColorSchemeId=id;quantumGPUDisabled=true;drawScene();const cpu=ctx.getImageData(0,0,37,29).data;
+      quantumGPUDisabled=false;restore(initial);drawScene();const actual=ctx.getImageData(0,0,37,29).data;
+      let bad=0;
+      for(let i=0;i<cpu.length;i+=4){
+        // Canvas2D round-trips premultiplied colors; compare composited intensities.
+        for(let c=0;c<3;c++)if(Math.abs(cpu[i+c]*cpu[i+3]/255-actual[i+c]*actual[i+3]/255)>2)bad++;
+        if(Math.abs(cpu[i+3]-actual[i+3])>1)bad++;
+      }
+      assert(!bad,`${id}: ${bad} mismatched components`);
+    }
+  });
+  test('GPU stays resident during consecutive steps and draws',()=>{
+    setup();currentTimeStep=.05;psiRescaleMode='norm';activeColorSchemeId='phase';
+    stepSchrodinger();drawScene();gpu.checkpointAt=performance.now();
+    let fullReads=0;const original=gl.readPixels.bind(gl);
+    gl.readPixels=(x,y,w,h,...args)=>{if(w*h>1)fullReads++;return original(x,y,w,h,...args);};
+    for(let i=0;i<5;i++){stepSchrodinger();drawScene();}
+    gl.readPixels=original;assert(fullReads===0,`unexpected full-field reads: ${fullReads}`);
+  });
+  test('Gram–Schmidt and convergence reduction',()=>{
+    setup();currentTimeStep=.03;psiRescaleMode='none';
+    const basis={re:psiRe.slice(),im:psiIm.slice()};
+    let n=norm(),dA=1/(BASE_SCALE_POS*simWidth/BASE_RESOLUTION)**2;
+    for(let i=0;i<basis.re.length;i++){basis.re[i]/=Math.sqrt(n*dA);basis.im[i]/=Math.sqrt(n*dA);}
+    eigenstates=[basis];for(let i=0;i<psiRe.length;i++)psiRe[i]+=.01*Math.cos(i);
+    markWavefunctionCPUChanged();const initial=snapshot();
+    quantumGPUDisabled=true;gramSchmidtAgainstEigenstates();const cpu=snapshot();
+    restore(initial);quantumGPUDisabled=false;gpu.capturePrevious();gramSchmidtAgainstEigenstates();
+    const delta=gpu.delta(),actual=snapshot();assert(error(cpu,actual)<1e-5,'projection differs');
+    assert(Math.abs(delta-computeMaxWavefunctionDelta(initial.re,initial.im))<1e-5,'convergence differs');
+  });
+  test('grid resize and CPU reset replace GPU state',()=>{
+    setup(51,19);resetWavefunctionFromControls();const cpu=snapshot();stepSchrodinger();
+    resetWavefunctionFromControls();drawScene();assert(error(cpu,snapshot())<1e-7,'reset stale');
+  });
+  test('combined recording/PiP canvas contains GPU-rendered wavefunction',()=>{
+    potentialCanvas=document.createElement('canvas');potentialCanvas.width=canvas.width;potentialCanvas.height=canvas.height;
+    potentialCtx=potentialCanvas.getContext('2d');potentialCtx.fillStyle='white';potentialCtx.fillRect(0,0,canvas.width,canvas.height);
+    drawScene();updateCombinedCanvas(false);
+    const pixels=combinedCtx.getImageData(0,0,combinedCanvas.width,combinedCanvas.height).data;
+    assert(pixels.some((v,i)=>i%4!==3&&v<250),'wavefunction missing from combined canvas');
+    assert(typeof combinedCanvas.captureStream==='function','canvas capture unavailable');
+    const stream=combinedCanvas.captureStream(30);assert(stream.getVideoTracks().length===1,'capture stream missing');stream.getTracks().forEach(t=>t.stop());
+  });
+  assert(!quantumGPUDisabled,'unexpected fallback');assert(gl.getError()===gl.NO_ERROR,'WebGL error at end');
+  test('late GPU failure falls back without taking an extra time step',()=>{
+    setup();currentTimeStep=.05;psiRescaleMode='norm';
+    const initial=snapshot();quantumGPUDisabled=true;stepSchrodinger();const cpu=snapshot();
+    restore(initial);quantumGPUDisabled=false;
+    gpu.rescale=()=>{throw new Error('Injected post-solver failure');};
+    stepSchrodinger();
+    assert(quantumGPUDisabled,'failure did not select CPU');
+    assert(simTime===.05,'fallback advanced time twice');
+    assert(error(cpu,snapshot())<1e-5,'fallback state differs');
+  });
+  document.getElementById('results').textContent=JSON.stringify({passed:checks.length,maxSolverError:maxError,checks},null,2);
+ }catch(error){document.getElementById('results').textContent=JSON.stringify({failed:error.message,stack:error.stack,checks},null,2);}
+})();
+</script>
